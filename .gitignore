@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Build state
+.build-state.json
+
+# Build logs
+build-logs/
+
+# Environment
+.env*.local
