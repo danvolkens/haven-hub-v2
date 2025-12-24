@@ -1,33 +1,55 @@
+import { redirect } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import type { User, Session } from '@supabase/supabase-js';
 
-/**
- * Get the current user ID from the session
- * Throws an error if not authenticated
- */
-export async function getUserId(): Promise<string> {
+export async function getSession(): Promise<Session | null> {
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  return session;
+}
 
-  if (error || !user) {
-    throw new Error('Unauthorized');
+export async function getUser(): Promise<User | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
+}
+
+export async function requireSession(): Promise<Session> {
+  const session = await getSession();
+  if (!session) {
+    redirect('/login');
   }
+  return session;
+}
 
+export async function requireUser(): Promise<User> {
+  const user = await getUser();
+  if (!user) {
+    redirect('/login');
+  }
+  return user;
+}
+
+export async function getUserId(): Promise<string> {
+  const user = await requireUser();
   return user.id;
 }
 
-/**
- * Get the current user from the session
- * Returns null if not authenticated
- */
-export async function getUser() {
+export async function getUserSettings() {
   const supabase = await createServerSupabaseClient();
-  const { data: { user }, error } = await supabase.auth.getUser();
+  const user = await requireUser();
 
-  if (error || !user) {
-    return null;
+  const { data, error } = await (supabase as any)
+    .from('user_settings')
+    .select('*')
+    .eq('user_id', user.id)
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to fetch user settings: ${error.message}`);
   }
 
-  return user;
+  return data;
 }
 
 /**

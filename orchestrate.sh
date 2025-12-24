@@ -157,9 +157,37 @@ count_steps() {
     fi
 }
 
-# Get files expected from step
+# Get files expected from step - maps plan paths to actual src/ paths
 get_expected_files() {
-    grep -oE '(src/|trigger/|supabase/)[a-zA-Z0-9/_.-]+\.(ts|tsx|sql)' "$1" 2>/dev/null | sort -u
+    local step_file=$1
+    local files=""
+    
+    # Extract raw paths from the step
+    local raw_paths=$(grep -oE '(app/|components/|lib/|hooks/|types/|trigger/|supabase/)[a-zA-Z0-9/_.-]+\.(ts|tsx|sql)' "$step_file" 2>/dev/null | sort -u)
+    
+    for path in $raw_paths; do
+        # Map to actual location
+        case "$path" in
+            app/*|components/*|lib/*|hooks/*|types/*)
+                # These go under src/
+                files+="src/$path "
+                ;;
+            trigger/*|supabase/migrations/*)
+                # These stay at root
+                files+="$path "
+                ;;
+            supabase/*.ts)
+                # supabase/*.ts files go to src/lib/supabase/
+                local filename=$(basename "$path")
+                files+="src/lib/supabase/$filename "
+                ;;
+            *)
+                files+="$path "
+                ;;
+        esac
+    done
+    
+    echo "$files"
 }
 
 #-------------------------------------------------------------------------------
@@ -434,8 +462,31 @@ main() {
             fi
             exit 
             ;;
+        --fix)
+            shift
+            init_state
+            preflight || exit 1
+            ensure_dirs
+            if [[ $# -eq 0 ]]; then
+                fix_missing 1 2 3 4 5 6 7 8 9 10 11
+            else
+                fix_missing "$@"
+            fi
+            exit
+            ;;
         --resume) init_state; set -- $(seq "$(get_state current_part)" 11) ;;
-        -h|--help) echo "Usage: $0 [--status|--reset|--resume|--verify|--preflight] [parts...]"; exit ;;
+        -h|--help) 
+            echo "Usage: $0 [options] [parts...]"
+            echo ""
+            echo "Options:"
+            echo "  --status     Show build progress"
+            echo "  --reset      Clear state, start fresh"
+            echo "  --resume     Continue from last position"  
+            echo "  --verify     Check all work for accuracy (report only)"
+            echo "  --fix        Find and fix missing files"
+            echo "  --preflight  Check environment"
+            exit 
+            ;;
     esac
     
     init_state
@@ -460,6 +511,106 @@ main() {
     
     header "🚀 Complete!"
     echo "Steps: $(jq '.completed_steps | length' "$STATE_FILE")"
+}
+
+#-------------------------------------------------------------------------------
+# Fix Missing Files
+#-------------------------------------------------------------------------------
+fix_missing() {
+    local fixed=0
+    local failed=0
+    
+    header "Finding and Fixing Missing Files"
+    
+    for part in "$@"; do
+        local steps=$(count_steps "$part")
+        [[ $steps -eq 0 ]] && continue
+        
+        log "Part $part ($steps steps)"
+        
+        for ((step=1; step<=steps; step++)); do
+            local sf=$(extract_step "$part" "$step") || continue
+            local title=$(step_title "$part" "$step")
+            local expected=$(get_expected_files "$sf")
+            local missing=""
+            
+            for f in $expected; do
+                [[ ! -f "$f" ]] && missing+="$f "
+            done
+            
+            if [[ -n "$missing" ]]; then
+                echo ""
+                warn "Step $step: $title"
+                echo "  Missing: $missing"
+                info "Fixing..."
+                
+                local logf="$LOG_DIR/fix-p${part}s${step}-$(date +%H%M%S).log"
+                
+                run_claude "CREATE THESE MISSING FILES:
+$missing
+
+Use this step as reference:
+---
+$(cat "$sf")
+---
+
+PATHS: app/→src/app/ components/→src/components/ lib/→src/lib/ hooks/→src/hooks/ types/→src/types/
+
+Create each file. Run 'npm run build' after." "$FIX_TURNS" "$FIX_TIMEOUT" "$logf"
+                
+                # Check if files were created
+                local still_missing=""
+                for f in $missing; do
+                    [[ ! -f "$f" ]] && still_missing+="$f "
+                done
+                
+                if [[ -z "$still_missing" ]]; then
+                    success "Fixed Step $step"
+                    ((fixed++))
+                else
+                    error "Still missing: $still_missing"
+                    ((failed++))
+                fi
+            fi
+        done
+    done
+    
+    # Check build
+    echo ""
+    info "Checking build..."
+    if build_ok; then
+        success "Build passes"
+    else
+        warn "Build has errors:"
+        get_errors | head -15
+        echo ""
+        info "Running build fix..."
+        
+        local logf="$LOG_DIR/fix-build-$(date +%H%M%S).log"
+        run_claude "FIX BUILD ERRORS:
+$(get_errors)
+
+Use 'as any' for Supabase type errors.
+Run 'npm run build' until it passes." "$FIX_TURNS" "$FIX_TIMEOUT" "$logf"
+    fi
+    
+    # Commit if changes
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        git add -A
+        git commit -m "Fix: repaired missing files"
+        [[ -n "$GIT_REMOTE" ]] && git push "$GIT_REMOTE" "$GIT_BRANCH" || true
+    fi
+    
+    # Summary
+    header "Fix Summary"
+    echo "Steps fixed: $fixed"
+    echo "Steps failed: $failed"
+    
+    if build_ok; then
+        success "Build passes!"
+    else
+        error "Build still failing - run ./orchestrate.sh --fix again or fix manually"
+    fi
 }
 
 #-------------------------------------------------------------------------------

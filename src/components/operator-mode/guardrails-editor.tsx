@@ -1,0 +1,326 @@
+'use client';
+
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Save, RefreshCw, AlertTriangle, Info } from 'lucide-react';
+import { useOperatorMode } from '@/contexts/operator-mode-context';
+import { Button, Card, CardHeader, CardContent, Input, Badge } from '@/components/ui';
+import { cn, formatCurrency } from '@/lib/utils';
+import { GUARDRAIL_DEFAULTS } from '@/lib/constants';
+import type { Guardrails } from '@/types/database';
+import { useToast } from '@/components/providers/toast-provider';
+
+interface GuardrailConfig {
+  key: keyof Guardrails;
+  label: string;
+  description: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  format?: (value: number | null) => string;
+  usageQueryKey?: string[];
+}
+
+const guardrailConfigs: GuardrailConfig[] = [
+  {
+    key: 'daily_pin_limit',
+    label: 'Daily Pin Limit',
+    description: 'Maximum pins published per day',
+    unit: 'pins',
+    min: 1,
+    max: 25,
+    step: 1,
+    usageQueryKey: ['usage', 'daily-pins'],
+  },
+  {
+    key: 'weekly_ad_spend_cap',
+    label: 'Weekly Ad Spend Cap',
+    description: 'Maximum Pinterest ad spend per week',
+    unit: 'USD',
+    min: 0,
+    max: 10000,
+    step: 10,
+    format: (v) => v !== null ? formatCurrency(v) : 'No limit',
+    usageQueryKey: ['usage', 'weekly-ad-spend'],
+  },
+  {
+    key: 'monthly_ad_spend_cap',
+    label: 'Monthly Ad Spend Cap',
+    description: 'Maximum Pinterest ad spend per month (optional)',
+    unit: 'USD',
+    min: 0,
+    max: 50000,
+    step: 50,
+    format: (v) => v !== null ? formatCurrency(v) : 'No limit',
+    usageQueryKey: ['usage', 'monthly-ad-spend'],
+  },
+  {
+    key: 'annual_mockup_budget',
+    label: 'Annual Mockup Budget',
+    description: 'Dynamic Mockups API credits per year',
+    unit: 'credits',
+    min: 100,
+    max: 10000,
+    step: 100,
+    usageQueryKey: ['usage', 'mockup-credits'],
+  },
+  {
+    key: 'monthly_mockup_soft_limit',
+    label: 'Monthly Mockup Soft Limit',
+    description: 'Warning threshold for monthly mockup usage (~annual/12)',
+    unit: 'credits',
+    min: 10,
+    max: 1000,
+    step: 10,
+    usageQueryKey: ['usage', 'monthly-mockups'],
+  },
+  {
+    key: 'auto_retire_days',
+    label: 'Auto-Retire Threshold',
+    description: 'Days of underperformance before retiring content',
+    unit: 'days',
+    min: 3,
+    max: 30,
+    step: 1,
+  },
+  {
+    key: 'abandonment_window_hours',
+    label: 'Cart Abandonment Window',
+    description: 'Hours before triggering abandonment sequence',
+    unit: 'hours',
+    min: 1,
+    max: 24,
+    step: 1,
+  },
+  {
+    key: 'duplicate_content_days',
+    label: 'Duplicate Content Protection',
+    description: 'Days to prevent re-pinning same content',
+    unit: 'days',
+    min: 7,
+    max: 90,
+    step: 7,
+  },
+];
+
+export function GuardrailsEditor() {
+  const { guardrails, updateGuardrail } = useOperatorMode();
+  const { toast } = useToast();
+
+  const [editingKey, setEditingKey] = useState<keyof Guardrails | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleEdit = (key: keyof Guardrails) => {
+    setEditingKey(key);
+    const currentValue = guardrails[key];
+    setEditValue(currentValue !== null ? String(currentValue) : '');
+  };
+
+  const handleSave = async (config: GuardrailConfig) => {
+    setIsSaving(true);
+
+    try {
+      const numValue = editValue === '' ? null : Number(editValue);
+
+      // Validate
+      if (numValue !== null) {
+        if (isNaN(numValue)) {
+          toast('Please enter a valid number', 'error');
+          setIsSaving(false);
+          return;
+        }
+        if (numValue < config.min || numValue > config.max) {
+          toast(`Value must be between ${config.min} and ${config.max}`, 'error');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      await updateGuardrail(config.key, numValue);
+      toast('Guardrail updated', 'success');
+      setEditingKey(null);
+    } catch {
+      toast('Failed to update guardrail', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReset = async (config: GuardrailConfig) => {
+    setIsSaving(true);
+    try {
+      await updateGuardrail(config.key, GUARDRAIL_DEFAULTS[config.key]);
+      toast('Guardrail reset to default', 'success');
+    } catch {
+      toast('Failed to reset guardrail', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader
+        title="Guardrails"
+        description="Safety limits that apply regardless of operator mode"
+        action={
+          <Badge variant="info" size="sm">
+            <Info className="h-3 w-3 mr-1" />
+            Always enforced
+          </Badge>
+        }
+      />
+      <CardContent>
+        <div className="space-y-4">
+          {guardrailConfigs.map((config) => {
+            const currentValue = guardrails[config.key];
+            const defaultValue = GUARDRAIL_DEFAULTS[config.key];
+            const isModified = currentValue !== defaultValue;
+            const isEditing = editingKey === config.key;
+            const displayValue = config.format
+              ? config.format(currentValue)
+              : currentValue !== null
+                ? `${currentValue} ${config.unit}`
+                : 'No limit';
+
+            return (
+              <div
+                key={config.key}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-md border"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-body font-medium">{config.label}</span>
+                    {isModified && (
+                      <Badge variant="secondary" size="sm">Modified</Badge>
+                    )}
+                  </div>
+                  <p className="text-body-sm text-[var(--color-text-secondary)] mt-0.5">
+                    {config.description}
+                  </p>
+
+                  {/* Usage indicator if available */}
+                  {config.usageQueryKey && currentValue !== null && (
+                    <GuardrailUsage
+                      guardrailKey={config.key}
+                      limit={currentValue}
+                      queryKey={config.usageQueryKey}
+                    />
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isEditing ? (
+                    <>
+                      <Input
+                        type="number"
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        min={config.min}
+                        max={config.max}
+                        step={config.step}
+                        className="w-32"
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => handleSave(config)}
+                        isLoading={isSaving}
+                        leftIcon={<Save className="h-3 w-3" />}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingKey(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-body font-mono">{displayValue}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(config.key)}
+                      >
+                        Edit
+                      </Button>
+                      {isModified && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReset(config)}
+                          leftIcon={<RefreshCw className="h-3 w-3" />}
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function GuardrailUsage({
+  guardrailKey,
+  limit,
+  queryKey,
+}: {
+  guardrailKey: keyof Guardrails;
+  limit: number;
+  queryKey: string[];
+}) {
+  const { data: usage } = useQuery({
+    queryKey,
+    queryFn: async () => {
+      const response = await fetch(`/api/usage/${guardrailKey}`);
+      if (!response.ok) return { current: 0 };
+      return response.json();
+    },
+    staleTime: 60000,
+  });
+
+  if (!usage) return null;
+
+  const percentage = limit > 0 ? (usage.current / limit) * 100 : 0;
+  const isWarning = percentage >= 75;
+  const isDanger = percentage >= 90;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-caption mb-1">
+        <span className={cn(
+          isDanger ? 'text-error' : isWarning ? 'text-warning' : 'text-[var(--color-text-tertiary)]'
+        )}>
+          {usage.current} / {limit} used ({percentage.toFixed(0)}%)
+        </span>
+        {isDanger && (
+          <span className="flex items-center gap-1 text-error">
+            <AlertTriangle className="h-3 w-3" />
+            Near limit
+          </span>
+        )}
+      </div>
+      <div className="h-1.5 rounded-full bg-elevated overflow-hidden">
+        <div
+          className={cn(
+            'h-full rounded-full transition-all',
+            isDanger ? 'bg-error' : isWarning ? 'bg-warning' : 'bg-sage'
+          )}
+          style={{ width: `${Math.min(percentage, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
