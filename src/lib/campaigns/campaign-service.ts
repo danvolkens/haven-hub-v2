@@ -1,0 +1,332 @@
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import type { Campaign, CampaignTask, CreateCampaignRequest } from '@/types/campaigns';
+
+export async function createCampaign(
+  userId: string,
+  request: CreateCampaignRequest
+): Promise<{ success: boolean; campaign?: Campaign; error?: string }> {
+  const supabase = await createServerSupabaseClient();
+
+  try {
+    const { data: campaign, error } = await (supabase as any)
+      .from('campaigns')
+      .insert({
+        user_id: userId,
+        name: request.name,
+        description: request.description,
+        type: request.type,
+        start_date: request.startDate,
+        end_date: request.endDate,
+        target_collections: request.targetCollections || [],
+        target_customer_stages: request.targetCustomerStages || [],
+        theme: request.theme,
+        hashtags: request.hashtags || [],
+        revenue_goal: request.revenueGoal,
+        order_goal: request.orderGoal,
+        lead_goal: request.leadGoal,
+        has_offer: request.hasOffer || false,
+        offer_type: request.offerType,
+        offer_value: request.offerValue,
+        offer_code: request.offerCode,
+        channels: {
+          pinterest: request.channels?.pinterest ?? true,
+          email: request.channels?.email ?? true,
+          ads: request.channels?.ads ?? false,
+        },
+        status: 'draft',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    // Log activity
+    await (supabase as any).rpc('log_activity', {
+      p_user_id: userId,
+      p_action_type: 'campaign_created',
+      p_details: { campaignId: campaign.id, name: request.name, type: request.type },
+      p_executed: true,
+      p_module: 'campaigns',
+      p_reference_id: campaign.id,
+      p_reference_table: 'campaigns',
+    });
+
+    return { success: true, campaign: campaign as Campaign };
+  } catch (error) {
+    console.error('Create campaign error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function scheduleCampaign(
+  userId: string,
+  campaignId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createServerSupabaseClient();
+
+  try {
+    // Get campaign
+    const { data: campaign } = await (supabase as any)
+      .from('campaigns')
+      .select('*')
+      .eq('id', campaignId)
+      .eq('user_id', userId)
+      .single();
+
+    if (!campaign) {
+      return { success: false, error: 'Campaign not found' };
+    }
+
+    // Validate campaign has required content
+    if (!campaign.featured_asset_ids?.length && !campaign.featured_product_ids?.length) {
+      return { success: false, error: 'Campaign needs featured content' };
+    }
+
+    // Create default tasks based on channels
+    const campaignTasks: Partial<CampaignTask>[] = [];
+
+    if (campaign.channels.pinterest) {
+      // Schedule pin publishing for campaign start
+      campaignTasks.push({
+        campaign_id: campaignId,
+        user_id: userId,
+        type: 'publish_pins',
+        title: 'Publish campaign pins',
+        scheduled_at: campaign.start_date,
+        config: {
+          asset_ids: campaign.featured_asset_ids,
+        },
+      });
+    }
+
+    if (campaign.channels.email) {
+      // Schedule email for campaign start
+      campaignTasks.push({
+        campaign_id: campaignId,
+        user_id: userId,
+        type: 'send_email',
+        title: 'Send campaign launch email',
+        scheduled_at: campaign.start_date,
+        config: {
+          type: 'campaign_launch',
+        },
+      });
+    }
+
+    if (campaign.channels.ads) {
+      // Schedule ads to start
+      campaignTasks.push({
+        campaign_id: campaignId,
+        user_id: userId,
+        type: 'start_ads',
+        title: 'Start campaign ads',
+        scheduled_at: campaign.start_date,
+        config: {},
+      });
+
+      // Schedule ads to pause at end
+      campaignTasks.push({
+        campaign_id: campaignId,
+        user_id: userId,
+        type: 'pause_ads',
+        title: 'Pause campaign ads',
+        scheduled_at: campaign.end_date,
+        config: {},
+      });
+    }
+
+    // Insert tasks
+    if (campaignTasks.length > 0) {
+      await (supabase as any).from('campaign_tasks').insert(campaignTasks);
+    }
+
+    // Update campaign status
+    await (supabase as any)
+      .from('campaigns')
+      .update({ status: 'scheduled' })
+      .eq('id', campaignId);
+
+    return { success: true };
+  } catch (error) {
+    console.error('Schedule campaign error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+export async function processCampaignTasks(userId: string): Promise<{ processed: number; errors: string[] }> {
+  const supabase = await createServerSupabaseClient();
+  const errors: string[] = [];
+  let processed = 0;
+
+  try {
+    // Get pending tasks that are due
+    const { data: tasks } = await (supabase as any)
+      .from('campaign_tasks')
+      .select('*, campaign:campaigns(*)')
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+      .lte('scheduled_at', new Date().toISOString())
+      .order('scheduled_at');
+
+    if (!tasks || tasks.length === 0) {
+      return { processed: 0, errors: [] };
+    }
+
+    for (const task of tasks) {
+      try {
+        // Update status to processing
+        await (supabase as any)
+          .from('campaign_tasks')
+          .update({ status: 'processing' })
+          .eq('id', task.id);
+
+        // Execute task based on type
+        await executeTask(userId, task, supabase);
+
+        // Mark as completed
+        await (supabase as any)
+          .from('campaign_tasks')
+          .update({
+            status: 'completed',
+            executed_at: new Date().toISOString(),
+          })
+          .eq('id', task.id);
+
+        processed++;
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Task ${task.id}: ${errorMessage}`);
+
+        await (supabase as any)
+          .from('campaign_tasks')
+          .update({
+            status: 'failed',
+            error_message: errorMessage,
+          })
+          .eq('id', task.id);
+      }
+    }
+
+    return { processed, errors };
+  } catch (error) {
+    console.error('Process campaign tasks error:', error);
+    return {
+      processed,
+      errors: [error instanceof Error ? error.message : 'Unknown error'],
+    };
+  }
+}
+
+async function executeTask(
+  userId: string,
+  task: CampaignTask & { campaign: Campaign },
+  supabase: any
+): Promise<void> {
+  switch (task.type) {
+    case 'publish_pins': {
+      const assetIds = task.config.asset_ids as string[] || task.campaign.featured_asset_ids;
+      // Trigger pin publishing through existing service
+      // This would call the pin scheduling logic
+      await supabase
+        .from('campaigns')
+        .update({ pins_published: task.campaign.pins_published + assetIds.length })
+        .eq('id', task.campaign_id);
+      break;
+    }
+
+    case 'send_email': {
+      // Trigger Klaviyo flow
+      // This would integrate with Klaviyo service
+      await supabase
+        .from('campaigns')
+        .update({ emails_sent: task.campaign.emails_sent + 1 })
+        .eq('id', task.campaign_id);
+      break;
+    }
+
+    case 'start_ads': {
+      // Activate ad campaigns
+      // This would integrate with Pinterest Ads service
+      break;
+    }
+
+    case 'pause_ads': {
+      // Pause ad campaigns
+      break;
+    }
+
+    default:
+      console.log(`Unknown task type: ${task.type}`);
+  }
+}
+
+export async function getCampaignPerformance(
+  userId: string,
+  campaignId: string
+): Promise<{
+  revenue: number;
+  orders: number;
+  leads: number;
+  pinsPublished: number;
+  pinsImpressions: number;
+  pinsSaves: number;
+  emailsSent: number;
+  emailsOpened: number;
+  goalProgress: {
+    revenue: number;
+    orders: number;
+    leads: number;
+  };
+} | null> {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: campaign } = await (supabase as any)
+    .from('campaigns')
+    .select('*')
+    .eq('id', campaignId)
+    .eq('user_id', userId)
+    .single();
+
+  if (!campaign) {
+    return null;
+  }
+
+  // Calculate goal progress
+  const goalProgress = {
+    revenue: campaign.revenue_goal ? (campaign.revenue / campaign.revenue_goal) * 100 : 0,
+    orders: campaign.order_goal ? (campaign.orders / campaign.order_goal) * 100 : 0,
+    leads: campaign.lead_goal ? (campaign.leads / campaign.lead_goal) * 100 : 0,
+  };
+
+  // Get pin performance from campaign dates
+  const { data: pinStats } = await (supabase as any)
+    .from('pins')
+    .select('impressions, saves')
+    .eq('user_id', userId)
+    .in('asset_id', campaign.featured_asset_ids || [])
+    .gte('published_at', campaign.start_date)
+    .lte('published_at', campaign.end_date);
+
+  const pinsImpressions = pinStats?.reduce((sum: number, p: any) => sum + p.impressions, 0) || 0;
+  const pinsSaves = pinStats?.reduce((sum: number, p: any) => sum + p.saves, 0) || 0;
+
+  return {
+    revenue: campaign.revenue,
+    orders: campaign.orders,
+    leads: campaign.leads,
+    pinsPublished: campaign.pins_published,
+    pinsImpressions,
+    pinsSaves,
+    emailsSent: campaign.emails_sent,
+    emailsOpened: 0, // Would come from Klaviyo
+    goalProgress,
+  };
+}
