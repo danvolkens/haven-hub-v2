@@ -35,8 +35,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
       // Process based on operation type (implementation in Phase 6)
       // For now, just mark as resolved for testing
 
-      await (supabase
-        .from('retry_queue') as any)
+      await (supabase as any)
+        .from('retry_queue')
         .update({
           status: 'resolved',
           worker_id: null,
@@ -56,8 +56,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
 
       if (nextAttempt >= item.max_attempts) {
         // Mark as permanently failed
-        await (supabase
-          .from('retry_queue') as any)
+        await (supabase as any)
+          .from('retry_queue')
           .update({
             status: 'failed',
             last_error: err instanceof Error ? err.message : 'Unknown error',
@@ -71,8 +71,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
         }
       } else {
         // Schedule next retry
-        await (supabase
-          .from('retry_queue') as any)
+        await (supabase as any)
+          .from('retry_queue')
           .update({
             status: 'pending',
             last_error: err instanceof Error ? err.message : 'Unknown error',

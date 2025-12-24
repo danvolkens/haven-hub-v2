@@ -1,13 +1,15 @@
 #!/bin/bash
 #===============================================================================
-# Haven Hub v2 Automated Builder - Optimized
+# Haven Hub v2 Automated Builder - Optimized v3
 #
 # Key optimizations:
-# 1. Extracts just the relevant step from plan (saves context/turns)
-# 2. Pre-checks for existing files
-# 3. Passes build errors directly to fix prompts
-# 4. Shorter, more directive prompts
-# 5. Better state tracking within steps
+# 1. Step extraction - only send relevant step content to Claude
+# 2. Pre-flight checks - verify environment before starting
+# 3. Auto Supabase types - regenerate after migrations
+# 4. Error caching - detect stuck loops with same error
+# 5. File existence hints - tell Claude what exists/missing
+# 6. Smarter retries - different prompts for repeated failures
+# 7. Directory pre-creation - less work for Claude
 #===============================================================================
 
 set -uo pipefail
@@ -19,6 +21,7 @@ PLANS_DIR="${PLANS_DIR:-./plans}"
 LOG_DIR="${LOG_DIR:-./build-logs}"
 STATE_FILE=".build-state.json"
 EXTRACTED_DIR=".extracted-steps"
+LAST_ERROR_FILE=".last-build-error"
 
 MAX_RETRIES=3
 STEP_TIMEOUT=1200
@@ -34,14 +37,10 @@ GIT_BRANCH="${GIT_BRANCH:-main}"
 GITHUB_REPO="https://github.com/danvolkens/haven-hub-v2"
 
 #-------------------------------------------------------------------------------
-# Colors and Logging
+# Colors
 #-------------------------------------------------------------------------------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 
 timestamp() { date +'%Y-%m-%d %H:%M:%S'; }
 log()     { echo -e "${GREEN}[$(timestamp)]${NC} $1"; }
@@ -51,320 +50,340 @@ error()   { echo -e "${RED}[$(timestamp)]${NC} ❌ $1"; }
 success() { echo -e "${GREEN}[$(timestamp)]${NC} ✅ $1"; }
 
 header() {
-    echo ""
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
+    echo -e "\n${CYAN}══════════════════════════════════════════════════════${NC}"
     echo -e "${CYAN}  $1${NC}"
-    echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-    echo ""
+    echo -e "${CYAN}══════════════════════════════════════════════════════${NC}\n"
+}
+
+#-------------------------------------------------------------------------------
+# Pre-flight Checks
+#-------------------------------------------------------------------------------
+preflight() {
+    local errors=0
+    info "Pre-flight checks..."
+    
+    command -v node &>/dev/null && log "Node $(node -v)" || { error "Node not found"; ((errors++)); }
+    
+    # Check Claude CLI works
+    if command -v claude &>/dev/null; then
+        log "Claude CLI ✓"
+    else
+        error "Claude CLI not found"
+        ((errors++))
+    fi
+    
+    # Check for plan files
+    local plan_count=0
+    for i in {1..11}; do
+        [[ -f "$PLANS_DIR/haven-hub-plan-part${i}.md" ]] && ((plan_count++))
+    done
+    
+    if [[ $plan_count -gt 0 ]]; then
+        log "Found $plan_count plan files in $PLANS_DIR"
+    else
+        error "No plan files found in $PLANS_DIR"
+        error "Expected: $PLANS_DIR/haven-hub-plan-part1.md through part11.md"
+        ((errors++))
+    fi
+    
+    [[ "$OSTYPE" == "darwin"* ]] && ! command -v gtimeout &>/dev/null && warn "gtimeout not found (brew install coreutils)"
+    
+    [[ $errors -gt 0 ]] && { error "Pre-flight failed"; return 1; }
+    success "Pre-flight passed"
+}
+
+#-------------------------------------------------------------------------------
+# Directory Setup
+#-------------------------------------------------------------------------------
+ensure_dirs() {
+    mkdir -p src/app/{api,\(auth\),\(dashboard\)/dashboard,\(public\)} \
+             src/components/ui src/lib/supabase src/hooks src/types \
+             trigger supabase/migrations "$LOG_DIR" "$EXTRACTED_DIR"
+}
+
+#-------------------------------------------------------------------------------
+# Supabase Types
+#-------------------------------------------------------------------------------
+regen_types() {
+    if command -v supabase &>/dev/null || npx supabase --version &>/dev/null 2>&1; then
+        npx supabase gen types typescript --local > src/types/supabase.ts 2>/dev/null && info "Types regenerated" || true
+    fi
 }
 
 #-------------------------------------------------------------------------------
 # State Management
 #-------------------------------------------------------------------------------
 init_state() {
-    if [[ ! -f "$STATE_FILE" ]]; then
-        echo '{"started_at":null,"current_part":1,"current_step":1,"completed_parts":[],"completed_steps":[],"failed_attempts":[],"last_updated":null}' > "$STATE_FILE"
-    fi
+    [[ -f "$STATE_FILE" ]] || echo '{"current_part":1,"current_step":1,"completed_parts":[],"completed_steps":[],"failed":[]}' > "$STATE_FILE"
     mkdir -p "$EXTRACTED_DIR" "$LOG_DIR"
 }
 
-get_state() {
-    jq -r ".$1" "$STATE_FILE"
-}
-
-set_state() {
-    local tmp=$(mktemp)
-    jq ".$1 = $2 | .last_updated = \"$(timestamp)\"" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
-}
-
-add_to_array() {
-    local tmp=$(mktemp)
-    jq ".$1 += [$2]" "$STATE_FILE" > "$tmp" && mv "$tmp" "$STATE_FILE"
-}
-
-is_step_completed() {
-    jq -e ".completed_steps | index(\"$1\")" "$STATE_FILE" > /dev/null 2>&1
-}
+get_state() { jq -r ".$1" "$STATE_FILE"; }
+set_state() { jq ".$1 = $2" "$STATE_FILE" > tmp.$$ && mv tmp.$$ "$STATE_FILE"; }
+add_completed() { jq ".completed_steps += [\"$1\"]" "$STATE_FILE" > tmp.$$ && mv tmp.$$ "$STATE_FILE"; }
+is_done() { jq -e ".completed_steps | index(\"$1\")" "$STATE_FILE" &>/dev/null; }
 
 show_status() {
     header "Build Status"
-    echo "Current: Part $(get_state 'current_part'), Step $(get_state 'current_step')"
-    echo "Completed steps: $(jq '.completed_steps | length' "$STATE_FILE")"
-    echo "Completed parts: $(jq -r '.completed_parts | join(", ")' "$STATE_FILE")"
+    echo "Position: Part $(get_state current_part), Step $(get_state current_step)"
+    echo "Completed: $(jq '.completed_steps | length' "$STATE_FILE") steps"
+    echo "Parts done: $(jq -r '.completed_parts | join(", ")' "$STATE_FILE")"
 }
 
 #-------------------------------------------------------------------------------
-# Step Extraction (KEY OPTIMIZATION)
+# Step Extraction
 #-------------------------------------------------------------------------------
 extract_step() {
-    local part=$1
-    local step=$2
-    local plan_file="$PLANS_DIR/haven-hub-plan-part${part}.md"
-    local output_file="$EXTRACTED_DIR/part${part}-step${step}.md"
+    local part=$1 step=$2
+    local plan="$PLANS_DIR/haven-hub-plan-part${part}.md"
+    local out="$EXTRACTED_DIR/p${part}s${step}.md"
     
-    if [[ ! -f "$plan_file" ]]; then
-        error "Plan file not found: $plan_file"
-        return 1
-    fi
+    [[ -f "$plan" ]] || { error "Plan not found: $plan"; return 1; }
     
-    # Extract just this step using awk
-    awk -v step="$step" '
-        /^## Step/ { count++; if (count == step) found=1; else if (found) exit }
-        found { print }
-    ' "$plan_file" > "$output_file"
-    
-    if [[ ! -s "$output_file" ]]; then
-        error "Could not extract step $step from $plan_file"
-        return 1
-    fi
-    
-    echo "$output_file"
+    awk -v s="$step" '/^## Step/{n++} n==s{p=1} n>s{exit} p' "$plan" > "$out"
+    [[ -s "$out" ]] && echo "$out" || { error "Extract failed"; return 1; }
 }
 
-get_step_title() {
-    local part=$1
-    local step=$2
-    local plan_file="$PLANS_DIR/haven-hub-plan-part${part}.md"
-    grep "^## Step" "$plan_file" | sed -n "${step}p" | sed 's/^## Step [0-9.]*: //'
+step_title() {
+    grep "^## Step" "$PLANS_DIR/haven-hub-plan-part${1}.md" | sed -n "${2}p" | sed 's/## Step [0-9.]*: //'
 }
 
 count_steps() {
-    local part=$1
-    local plan_file="$PLANS_DIR/haven-hub-plan-part${part}.md"
-    [[ -f "$plan_file" ]] && grep -c "^## Step" "$plan_file" || echo "0"
+    local plan="$PLANS_DIR/haven-hub-plan-part${1}.md"
+    if [[ -f "$plan" ]]; then
+        grep -c "^## Step" "$plan"
+    else
+        echo 0
+    fi
+}
+
+# Get files expected from step
+get_expected_files() {
+    grep -oE '(src/|trigger/|supabase/)[a-zA-Z0-9/_.-]+\.(ts|tsx|sql)' "$1" 2>/dev/null | sort -u
 }
 
 #-------------------------------------------------------------------------------
 # Build Helpers
 #-------------------------------------------------------------------------------
-verify_build() {
-    npm run build 2>&1
+build_ok() { npm run build &>/dev/null; }
+
+get_errors() {
+    npm run build 2>&1 | grep -A4 "error\|Error" | head -30
 }
 
-get_build_errors() {
-    npm run build 2>&1 | grep -A3 "error\|Error" | head -30
-}
+save_error() { echo "$1" > "$LAST_ERROR_FILE"; }
+last_error() { cat "$LAST_ERROR_FILE" 2>/dev/null; }
+same_error() { [[ -f "$LAST_ERROR_FILE" ]] && [[ "$(echo "$1" | md5sum)" == "$(last_error | md5sum)" ]]; }
 
 run_migrations() {
-    if ls supabase/migrations/*.sql 1> /dev/null 2>&1; then
+    ls supabase/migrations/*.sql &>/dev/null && {
+        info "Running migrations..."
         npx supabase db push 2>&1 || true
-    fi
+        regen_types
+    }
 }
 
 #-------------------------------------------------------------------------------
-# Claude Runner (Optimized)
+# Claude Runner (real-time output)
 #-------------------------------------------------------------------------------
 run_claude() {
-    local prompt="$1"
-    local max_turns=${2:-50}
-    local timeout_secs=${3:-600}
-    local log_file="${4:-/dev/null}"
+    local prompt="$1" turns=${2:-50} timeout=${3:-600} logfile="${4:-/dev/null}"
     
-    # Write prompt to file
-    local prompt_file=$(mktemp)
-    printf '%s' "$prompt" > "$prompt_file"
+    info "Claude ($turns turns):"
+    echo "─────────────────────────────────────────────"
     
-    # Create wrapper
+    # Write prompt to temp file  
+    local pf=$(mktemp)
+    printf '%s' "$prompt" > "$pf"
+    
+    # Create wrapper script
     local wrapper=$(mktemp)
     cat > "$wrapper" << EOF
 #!/bin/bash
-exec claude -p "\$(cat '$prompt_file')" --allowedTools Bash,Read,Write,Edit --max-turns $max_turns
+claude -p "\$(cat '$pf')" --allowedTools Bash,Read,Write,Edit --max-turns $turns
 EOF
     chmod +x "$wrapper"
     
-    # Run
-    if [[ "$OSTYPE" == "darwin"* ]] && command -v gtimeout &> /dev/null; then
-        gtimeout "$timeout_secs" "$wrapper" 2>&1 | tee -a "$log_file"
-    elif [[ "$OSTYPE" != "darwin"* ]]; then
-        timeout "$timeout_secs" "$wrapper" 2>&1 | tee -a "$log_file"
-    else
-        "$wrapper" 2>&1 | tee -a "$log_file"
-    fi
-    
-    local exit_code=$?
-    rm -f "$prompt_file" "$wrapper"
-    sleep 1
-    return $exit_code
-}
-
-#-------------------------------------------------------------------------------
-# Implementation (Optimized)
-#-------------------------------------------------------------------------------
-implement_step() {
-    local part=$1
-    local step=$2
-    local step_title=$(get_step_title "$part" "$step")
-    local log_file="$LOG_DIR/part${part}-step${step}-impl-$(date +%Y%m%d-%H%M%S).log"
-    
-    log "Implementing: Part $part, Step $step - $step_title"
-    
-    # Extract just this step (saves tokens!)
-    local step_file
-    step_file=$(extract_step "$part" "$step")
-    if [[ $? -ne 0 ]]; then
-        return 1
-    fi
-    
-    info "Step extracted to: $step_file"
-    info "Running Claude (max $IMPLEMENT_TURNS turns)..."
-    
-    # Concise, action-oriented prompt
-    local prompt="IMPLEMENT this step. The step content is below.
-
-PATH RULES:
-- app/ → src/app/
-- components/ → src/components/  
-- lib/ → src/lib/
-- hooks/ → src/hooks/
-- types/ → src/types/
-- trigger/ and supabase/ stay at root
-
-ACTIONS:
-1. Create each file shown below
-2. Run: npx supabase db push (if migrations)
-3. Run: npm run build
-4. Fix errors (use 'as any' for Supabase type issues)
-5. Repeat until build passes
-
---- STEP CONTENT ---
-$(cat "$step_file")
---- END ---
-
-START NOW. Create the files."
-
-    run_claude "$prompt" "$IMPLEMENT_TURNS" "$STEP_TIMEOUT" "$log_file"
-    info "Implementation complete"
-}
-
-#-------------------------------------------------------------------------------
-# Verification (Optimized)
-#-------------------------------------------------------------------------------
-verify_step() {
-    local part=$1
-    local step=$2
-    local log_file="$LOG_DIR/part${part}-step${step}-verify-$(date +%Y%m%d-%H%M%S).log"
-    
-    info "Verifying step..."
-    
-    # Check build first
-    if npm run build > /dev/null 2>&1; then
-        success "Build passes"
-        return 0
-    fi
-    
-    # Get specific errors
-    local errors
-    errors=$(get_build_errors)
-    
-    warn "Build failed, running verification..."
-    
-    local step_file="$EXTRACTED_DIR/part${part}-step${step}.md"
-    
-    local prompt="BUILD FAILED. Fix these errors:
-
-$errors
-
-Check files exist in src/ and fix any issues.
-Use 'as any' for Supabase type errors.
-Run 'npm run build' until it passes."
-
-    run_claude "$prompt" "$VERIFY_TURNS" "$VERIFY_TIMEOUT" "$log_file"
-    
-    # Check again
-    npm run build > /dev/null 2>&1
-}
-
-#-------------------------------------------------------------------------------
-# Fix Step (Optimized)  
-#-------------------------------------------------------------------------------
-fix_step() {
-    local part=$1
-    local step=$2
-    local attempt=$3
-    local log_file="$LOG_DIR/part${part}-step${step}-fix${attempt}-$(date +%Y%m%d-%H%M%S).log"
-    
-    warn "Fix attempt $attempt..."
-    
-    local errors
-    errors=$(get_build_errors)
-    
-    local prompt="FIX THESE BUILD ERRORS (attempt $attempt):
-
-$errors
-
-Common fixes:
-- Missing import → add it
-- Type error on Supabase table → use 'as any'
-- Wrong path → files are in src/
-- Missing file → create it
-
-Run 'npm run build' after each fix."
-
-    run_claude "$prompt" "$FIX_TURNS" "$FIX_TIMEOUT" "$log_file"
-    
-    npm run build > /dev/null 2>&1
-}
-
-#-------------------------------------------------------------------------------
-# Git Operations
-#-------------------------------------------------------------------------------
-git_commit_and_push() {
-    local message=$1
-    
-    git add -A
-    if git diff --cached --quiet; then
-        info "No changes to commit"
-        return 0
-    fi
-    
-    git commit -m "$message"
-    
-    if [[ -n "$GIT_REMOTE" ]]; then
-        git push "$GIT_REMOTE" "$GIT_BRANCH" 2>&1 || warn "Push failed"
-    fi
-}
-
-#-------------------------------------------------------------------------------
-# Build Step (Main Loop)
-#-------------------------------------------------------------------------------
-build_step() {
-    local part=$1
-    local step=$2
-    local step_id="part${part}-step${step}"
-    local step_title=$(get_step_title "$part" "$step")
-    
-    if is_step_completed "$step_id"; then
-        info "Step already complete, skipping"
-        return 0
-    fi
-    
-    header "Part $part, Step $step: $step_title"
-    
-    set_state "current_part" "$part"
-    set_state "current_step" "$step"
-    
-    # Implement
-    implement_step "$part" "$step"
-    
-    # Verify (with retries)
-    local attempt=0
-    while ! verify_step "$part" "$step"; do
-        ((attempt++))
-        if [[ $attempt -ge $MAX_RETRIES ]]; then
-            error "Failed after $MAX_RETRIES attempts"
-            add_to_array "failed_attempts" "\"$step_id at $(timestamp)\""
-            return 1
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # Mac: script -q file command - outputs to both terminal and file
+        if command -v gtimeout &>/dev/null; then
+            script -q "$logfile" gtimeout "$timeout" "$wrapper"
+        else
+            script -q "$logfile" "$wrapper"
         fi
-        fix_step "$part" "$step" "$attempt"
+    else
+        # Linux: script -q -c "command" file
+        if command -v gtimeout &>/dev/null; then
+            script -q -c "timeout $timeout $wrapper" "$logfile"
+        else
+            script -q -c "timeout $timeout $wrapper" "$logfile"
+        fi
+    fi
+    
+    rm -f "$pf" "$wrapper"
+    echo ""
+    echo "─────────────────────────────────────────────"
+    info "Claude session ended"
+    sleep 1
+    return 0
+}
+
+#-------------------------------------------------------------------------------
+# Implement Step
+#-------------------------------------------------------------------------------
+implement() {
+    local part=$1 step=$2
+    local title=$(step_title "$part" "$step")
+    local logf="$LOG_DIR/p${part}s${step}-impl-$(date +%H%M%S).log"
+    
+    log "Part $part Step $step: $title"
+    
+    local sf=$(extract_step "$part" "$step") || return 1
+    
+    # Check existing files
+    local expected=$(get_expected_files "$sf")
+    local existing="" missing=""
+    for f in $expected; do
+        [[ -f "$f" ]] && existing+=" $f" || missing+=" $f"
     done
     
-    # Commit
-    git_commit_and_push "Part $part Step $step: $step_title"
+    local hint=""
+    [[ -n "$existing" ]] && hint+="EXISTS:$existing
+"
+    [[ -n "$missing" ]] && hint+="CREATE:$missing
+"
     
-    # Mark complete
-    add_to_array "completed_steps" "\"$step_id\""
-    success "Step complete!"
-    return 0
+    run_claude "IMPLEMENT step below.
+$hint
+PATHS: app/→src/app/ components/→src/components/ lib/→src/lib/ hooks/→src/hooks/ types/→src/types/
+ROOT (no src): trigger/ supabase/
+
+DO:
+1. Create files shown
+2. npx supabase db push (if .sql)
+3. npm run build
+4. Fix errors ('as any' for Supabase types)
+
+---STEP---
+$(cat "$sf")
+---END---
+
+START." "$IMPLEMENT_TURNS" "$STEP_TIMEOUT" "$logf"
+    
+    run_migrations
+    info "Checking build..."
+}
+
+#-------------------------------------------------------------------------------
+# Verify/Fix
+#-------------------------------------------------------------------------------
+verify() {
+    local part=$1 step=$2
+    local logf="$LOG_DIR/p${part}s${step}-verify.log"
+    local sf="$EXTRACTED_DIR/p${part}s${step}.md"
+    
+    # First check: did all expected files get created?
+    local expected=$(get_expected_files "$sf")
+    local missing=""
+    for f in $expected; do
+        [[ ! -f "$f" ]] && missing+=" $f"
+    done
+    
+    if [[ -n "$missing" ]]; then
+        warn "Missing files:$missing"
+        
+        # Ask Claude to create missing files
+        run_claude "MISSING FILES - create these:
+$missing
+
+Read the step content and create each missing file:
+---
+$(cat "$sf")
+---
+
+Then run: npm run build" "$VERIFY_TURNS" "$VERIFY_TIMEOUT" "$logf"
+    fi
+    
+    # Second check: does build pass?
+    if build_ok; then
+        success "Build OK"
+        return 0
+    fi
+    
+    local err=$(get_errors)
+    warn "Build failed, fixing..."
+    
+    run_claude "FIX:
+$err
+
+Tips: 'as any' for Supabase, check src/ paths.
+npm run build after." "$VERIFY_TURNS" "$VERIFY_TIMEOUT" "$logf"
+    
+    build_ok
+}
+
+fix() {
+    local part=$1 step=$2 attempt=$3
+    local logf="$LOG_DIR/p${part}s${step}-fix${attempt}.log"
+    local err=$(get_errors)
+    
+    warn "Fix #$attempt..."
+    
+    local prompt
+    if same_error "$err"; then
+        prompt="SAME ERROR - try different approach:
+$err
+
+Options: delete+recreate file, check all imports, use 'any' type."
+    else
+        save_error "$err"
+        prompt="FIX:
+$err"
+    fi
+    
+    run_claude "$prompt
+
+npm run build after." "$FIX_TURNS" "$FIX_TIMEOUT" "$logf"
+    
+    build_ok
+}
+
+#-------------------------------------------------------------------------------
+# Git
+#-------------------------------------------------------------------------------
+commit_push() {
+    git add -A
+    git diff --cached --quiet && return 0
+    git commit -m "$1"
+    [[ -n "$GIT_REMOTE" ]] && git push "$GIT_REMOTE" "$GIT_BRANCH" 2>/dev/null || true
+}
+
+#-------------------------------------------------------------------------------
+# Build Step
+#-------------------------------------------------------------------------------
+build_step() {
+    local part=$1 step=$2
+    local id="p${part}s${step}"
+    
+    is_done "$id" && { info "Already done"; return 0; }
+    
+    header "Part $part, Step $step"
+    set_state current_part "$part"
+    set_state current_step "$step"
+    
+    implement "$part" "$step"
+    
+    local try=0
+    while ! verify "$part" "$step"; do
+        ((try++))
+        [[ $try -ge $MAX_RETRIES ]] && { error "Failed after $MAX_RETRIES tries"; return 1; }
+        fix "$part" "$step" "$try"
+    done
+    
+    commit_push "Part $part Step $step: $(step_title "$part" "$step")"
+    add_completed "$id"
+    rm -f "$LAST_ERROR_FILE"
+    success "Done!"
 }
 
 #-------------------------------------------------------------------------------
@@ -372,31 +391,25 @@ build_step() {
 #-------------------------------------------------------------------------------
 build_part() {
     local part=$1
-    local total_steps=$(count_steps "$part")
+    local total=$(count_steps "$part")
     
-    if [[ $total_steps -eq 0 ]]; then
-        error "No steps found for part $part"
+    if [[ $total -eq 0 ]]; then
+        error "No steps found for part '$part' (looking in $PLANS_DIR/haven-hub-plan-part${part}.md)"
         return 1
     fi
     
-    header "Building Part $part ($total_steps steps)"
+    header "Part $part ($total steps)"
     
-    local start_step=1
-    if [[ "$(get_state 'current_part')" == "$part" ]]; then
-        start_step=$(get_state 'current_step')
-    fi
+    local start=1
+    [[ "$(get_state current_part)" == "$part" ]] && start=$(get_state current_step)
     
-    for ((step=start_step; step<=total_steps; step++)); do
-        if ! build_step "$part" "$step"; then
-            error "Failed at Part $part Step $step"
-            echo "Resume with: ./orchestrate.sh --resume"
-            return 1
-        fi
+    for ((s=start; s<=total; s++)); do
+        build_step "$part" "$s" || return 1
     done
     
-    add_to_array "completed_parts" "$part"
-    set_state "current_step" "1"
-    git tag -f "part-${part}-complete" 2>/dev/null || true
+    jq ".completed_parts += [$part]" "$STATE_FILE" > tmp.$$ && mv tmp.$$ "$STATE_FILE"
+    set_state current_step 1
+    git tag -f "part-$part" 2>/dev/null; git push "$GIT_REMOTE" "part-$part" -f 2>/dev/null || true
     
     header "Part $part Complete! 🎉"
 }
@@ -405,47 +418,122 @@ build_part() {
 # Main
 #-------------------------------------------------------------------------------
 main() {
-    init_state
-    
     case "${1:-}" in
-        --status) show_status; exit 0 ;;
-        --reset) rm -f "$STATE_FILE"; rm -rf "$EXTRACTED_DIR"; init_state; echo "Reset"; exit 0 ;;
-        --resume)
+        --status) init_state; show_status; exit ;;
+        --reset) rm -f "$STATE_FILE" "$LAST_ERROR_FILE"; rm -rf "$EXTRACTED_DIR"; echo "Reset"; exit ;;
+        --preflight) preflight; exit ;;
+        --verify) 
             shift
-            set -- $(seq "$(get_state 'current_part')" 11)
+            init_state
+            preflight || exit 1
+            ensure_dirs
+            if [[ $# -eq 0 ]]; then
+                verify_all 1 2 3 4 5 6 7 8 9 10 11
+            else
+                verify_all "$@"
+            fi
+            exit 
             ;;
-        --help|-h)
-            echo "Usage: $0 [--status|--reset|--resume] [parts...]"
-            exit 0
-            ;;
+        --resume) init_state; set -- $(seq "$(get_state current_part)" 11) ;;
+        -h|--help) echo "Usage: $0 [--status|--reset|--resume|--verify|--preflight] [parts...]"; exit ;;
     esac
     
-    local parts=("${@:-1 2 3 4 5 6 7 8 9 10 11}")
+    init_state
+    preflight || exit 1
+    ensure_dirs
+    [[ -d .git ]] || { git init; git add -A; git commit -m "Init" || true; }
     
-    header "Haven Hub v2 Builder (Optimized)"
-    echo "Parts: ${parts[*]}"
-    
-    # Prerequisites
-    command -v claude &> /dev/null || { error "Claude CLI not found"; exit 1; }
-    command -v npm &> /dev/null || { error "npm not found"; exit 1; }
-    
-    if [[ "$OSTYPE" == "darwin"* ]] && ! command -v gtimeout &> /dev/null; then
-        warn "Install gtimeout for timeouts: brew install coreutils"
+    local parts
+    if [[ $# -eq 0 ]]; then
+        parts=(1 2 3 4 5 6 7 8 9 10 11)
+    else
+        parts=("$@")
     fi
     
-    [[ -d ".git" ]] || { git init; git add -A; git commit -m "Initial" || true; }
+    header "Haven Hub v2 Builder"
+    echo "Parts: ${parts[*]}"
     
-    # Build
-    for part in ${parts[@]}; do
-        if jq -e ".completed_parts | index($part)" "$STATE_FILE" > /dev/null 2>&1; then
-            info "Part $part already complete"
-            continue
-        fi
-        build_part "$part" || exit 1
+    for p in "${parts[@]}"; do
+        jq -e ".completed_parts | index($p)" "$STATE_FILE" &>/dev/null && { info "Part $p done"; continue; }
+        build_part "$p" || exit 1
     done
     
-    header "🚀 Build Complete!"
-    echo "Completed: $(jq -r '.completed_parts | join(", ")' "$STATE_FILE")"
+    header "🚀 Complete!"
+    echo "Steps: $(jq '.completed_steps | length' "$STATE_FILE")"
+}
+
+#-------------------------------------------------------------------------------
+# Verify All (check existing work for accuracy)
+#-------------------------------------------------------------------------------
+verify_all() {
+    local total_missing=0
+    local total_files=0
+    local issues=()
+    
+    header "Verifying Existing Work"
+    
+    for part in "$@"; do
+        local steps=$(count_steps "$part")
+        [[ $steps -eq 0 ]] && { warn "Part $part: no steps found"; continue; }
+        
+        echo ""
+        log "Part $part ($steps steps)"
+        
+        for ((step=1; step<=steps; step++)); do
+            local sf=$(extract_step "$part" "$step") || continue
+            local title=$(step_title "$part" "$step")
+            local expected=$(get_expected_files "$sf")
+            local missing=""
+            local found=0
+            
+            for f in $expected; do
+                ((total_files++))
+                if [[ -f "$f" ]]; then
+                    ((found++))
+                else
+                    missing+=" $f"
+                    ((total_missing++))
+                fi
+            done
+            
+            if [[ -z "$missing" ]]; then
+                echo "  ✅ Step $step: $title ($found files)"
+            else
+                echo "  ❌ Step $step: $title (missing:$missing)"
+                issues+=("Part $part Step $step:$missing")
+            fi
+        done
+    done
+    
+    # Check build
+    echo ""
+    info "Checking build..."
+    if build_ok; then
+        success "Build passes"
+    else
+        error "Build fails"
+        echo ""
+        get_errors | head -20
+    fi
+    
+    # Summary
+    header "Verification Summary"
+    echo "Total files checked: $total_files"
+    echo "Missing files: $total_missing"
+    echo ""
+    
+    if [[ ${#issues[@]} -eq 0 ]] && build_ok; then
+        success "All files present and build passes!"
+    else
+        if [[ ${#issues[@]} -gt 0 ]]; then
+            warn "Missing files:"
+            for issue in "${issues[@]}"; do
+                echo "  - $issue"
+            done
+        fi
+        echo ""
+        echo "To fix issues, run: ./orchestrate.sh"
+    fi
 }
 
 main "$@"

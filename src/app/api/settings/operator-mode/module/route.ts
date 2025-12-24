@@ -27,8 +27,8 @@ export async function PATCH(request: NextRequest) {
 
     // Get current overrides
     // Use 'as any' to avoid TypeScript inference issues
-    const { data: settingsData, error: fetchError } = await (supabase
-      .from('user_settings') as any)
+    const { data: settingsData, error: fetchError } = await (supabase as any)
+      .from('user_settings')
       .select('module_overrides')
       .eq('user_id', userId)
       .single();
@@ -51,8 +51,8 @@ export async function PATCH(request: NextRequest) {
       newOverrides = { ...currentOverrides, [module]: mode };
     }
 
-    const { error } = await (supabase
-      .from('user_settings') as any)
+    const { error } = await (supabase as any)
+      .from('user_settings')
       .update({ module_overrides: newOverrides })
       .eq('user_id', userId);
 

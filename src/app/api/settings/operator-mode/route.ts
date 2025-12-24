@@ -14,8 +14,8 @@ export async function GET() {
     const userId = await getUserId();
 
     // Use 'as any' to avoid TypeScript inference issues
-    const { data, error } = await (supabase
-      .from('user_settings') as any)
+    const { data, error } = await (supabase as any)
+      .from('user_settings')
       .select('global_mode, module_overrides, transitioning_to, transition_started_at, guardrails')
       .eq('user_id', userId)
       .single();
@@ -42,14 +42,14 @@ export async function PATCH(request: NextRequest) {
     const { mode } = updateModeSchema.parse(body);
 
     // Check for in-flight operations
-    const { count: pendingCount } = await (supabase
-      .from('approval_items') as any)
+    const { count: pendingCount } = await (supabase as any)
+      .from('approval_items')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'processing');
 
-    const { count: publishingPins } = await (supabase
-      .from('pins') as any)
+    const { count: publishingPins } = await (supabase as any)
+      .from('pins')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'publishing');
@@ -58,8 +58,8 @@ export async function PATCH(request: NextRequest) {
 
     if (totalPending > 0) {
       // Start grace period
-      const { error } = await (supabase
-        .from('user_settings') as any)
+      const { error } = await (supabase as any)
+        .from('user_settings')
         .update({
           transitioning_to: mode,
           transition_started_at: new Date().toISOString(),
@@ -87,15 +87,15 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Get current mode for logging
-    const { data: currentSettings } = await (supabase
-      .from('user_settings') as any)
+    const { data: currentSettings } = await (supabase as any)
+      .from('user_settings')
       .select('global_mode')
       .eq('user_id', userId)
       .single();
 
     // Immediate switch
-    const { error } = await (supabase
-      .from('user_settings') as any)
+    const { error } = await (supabase as any)
+      .from('user_settings')
       .update({
         global_mode: mode,
         transitioning_to: null,

@@ -83,7 +83,7 @@ export function OperatorModeProvider({ children }: { children: ReactNode }) {
         .single();
 
       if (error) throw error;
-      return data as UserSettings;
+      return data as unknown as UserSettings;
     },
     staleTime: 60000, // 1 minute
   });

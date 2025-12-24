@@ -19,8 +19,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
 
   // Find scheduled exports due to run
   // Use 'as any' to avoid TypeScript inference issues
-  const { data: exports, error } = await (supabase
-    .from('scheduled_exports') as any)
+  const { data: exports, error } = await (supabase as any)
+    .from('scheduled_exports')
     .select('*')
     .eq('enabled', true)
     .lte('next_run_at', now);
@@ -70,8 +70,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
       }
 
       // Update scheduled export
-      await (supabase
-        .from('scheduled_exports') as any)
+      await (supabase as any)
+        .from('scheduled_exports')
         .update({
           last_run_at: now,
           next_run_at: nextRun.toISOString(),

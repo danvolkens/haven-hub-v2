@@ -15,8 +15,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
   const now = new Date().toISOString();
 
   // Use 'as any' to avoid TypeScript inference issues
-  const { data: pins, error } = await (supabase
-    .from('pins') as any)
+  const { data: pins, error } = await (supabase as any)
+    .from('pins')
     .select('*')
     .eq('status', 'scheduled')
     .lte('scheduled_time', now)
@@ -38,16 +38,16 @@ export const GET = cronHandler(async (_request: NextRequest) => {
   for (const pin of pins as Pin[]) {
     try {
       // Mark as publishing
-      await (supabase
-        .from('pins') as any)
+      await (supabase as any)
+        .from('pins')
         .update({ status: 'publishing' })
         .eq('id', pin.id);
 
       // Publish to Pinterest (implementation in Phase 12)
       // For now, just mark as published for testing
 
-      await (supabase
-        .from('pins') as any)
+      await (supabase as any)
+        .from('pins')
         .update({
           status: 'published',
           published_at: new Date().toISOString(),
@@ -58,8 +58,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
     } catch (err) {
       console.error(`Failed to publish pin ${pin.id}:`, err);
 
-      await (supabase
-        .from('pins') as any)
+      await (supabase as any)
+        .from('pins')
         .update({
           status: 'failed',
           error_message: err instanceof Error ? err.message : 'Unknown error',

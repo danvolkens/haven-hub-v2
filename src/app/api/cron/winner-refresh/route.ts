@@ -13,8 +13,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
 
   // Get all users with autopilot mode for winner refresh
   // Use 'as any' to avoid TypeScript inference issues
-  const { data: users, error } = await (supabase
-    .from('user_settings') as any)
+  const { data: users, error } = await (supabase as any)
+    .from('user_settings')
     .select('user_id, global_mode')
     .in('global_mode', ['assisted', 'autopilot']);
 

@@ -20,8 +20,8 @@ export async function GET() {
     const userId = await getUserId();
 
     // Use 'as any' to avoid TypeScript inference issues
-    const { data, error } = await (supabase
-      .from('user_settings') as any)
+    const { data, error } = await (supabase as any)
+      .from('user_settings')
       .select('global_mode, transitioning_to, transition_started_at')
       .eq('user_id', userId)
       .single();
@@ -33,14 +33,14 @@ export async function GET() {
     const settings = data as UserSettingsData | null;
 
     // Count pending operations
-    const { count: pendingApprovals } = await (supabase
-      .from('approval_items') as any)
+    const { count: pendingApprovals } = await (supabase as any)
+      .from('approval_items')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'processing');
 
-    const { count: publishingPins } = await (supabase
-      .from('pins') as any)
+    const { count: publishingPins } = await (supabase as any)
+      .from('pins')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
       .eq('status', 'publishing');
@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
 
     // Get current state
     // Use 'as any' to avoid TypeScript inference issues
-    const { data: settingsData, error: fetchError } = await (supabase
-      .from('user_settings') as any)
+    const { data: settingsData, error: fetchError } = await (supabase as any)
+      .from('user_settings')
       .select('global_mode, transitioning_to')
       .eq('user_id', userId)
       .single();
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
 
     if (action === 'complete') {
       // Force complete: switch to target mode
-      const { error } = await (supabase
-        .from('user_settings') as any)
+      const { error } = await (supabase as any)
+        .from('user_settings')
         .update({
           global_mode: settings.transitioning_to,
           transitioning_to: null,
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // Cancel: clear transition state
-      const { error } = await (supabase
-        .from('user_settings') as any)
+      const { error } = await (supabase as any)
+        .from('user_settings')
         .update({
           transitioning_to: null,
           transition_started_at: null,

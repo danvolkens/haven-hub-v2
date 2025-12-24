@@ -43,7 +43,7 @@ export async function GET() {
     }
 
     // Cast the data to the expected shape and return guardrails
-    const settings = data as { guardrails: Guardrails };
+    const settings = data as unknown as { guardrails: Guardrails };
     return NextResponse.json(settings.guardrails);
   } catch (error) {
     return NextResponse.json(
@@ -102,8 +102,8 @@ export async function PATCH(request: NextRequest) {
 
     // Use a direct update with the supabase client
     // Use 'as any' to avoid TypeScript inference issues
-    const { error: updateError } = await (supabase
-      .from('user_settings') as any)
+    const { error: updateError } = await (supabase as any)
+      .from('user_settings')
       .update({ guardrails: newGuardrails })
       .eq('user_id', userId);
 

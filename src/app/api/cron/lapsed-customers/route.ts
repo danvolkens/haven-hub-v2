@@ -27,8 +27,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
     const windowStart = new Date(now.getTime() - (days + 1) * 24 * 60 * 60 * 1000).toISOString();
 
     // Use 'as any' to avoid TypeScript inference issues with dynamic column names
-    const { data: customers, error } = await (supabase
-      .from('customers') as any)
+    const { data: customers, error } = await (supabase as any)
+      .from('customers')
       .select('id, email, last_order_at')
       .lt('last_order_at', cutoffDate)
       .gte('last_order_at', windowStart)
@@ -43,8 +43,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
     for (const customer of (customers || []) as LapsedCustomer[]) {
       try {
         // Mark win-back as sent
-        await (supabase
-          .from('customers') as any)
+        await (supabase as any)
+          .from('customers')
           .update({ [`winback_${tier}_sent_at`]: now.toISOString() })
           .eq('id', customer.id);
 
