@@ -7,3 +7,5 @@ export { Switch, type SwitchProps } from './switch';
 export { Select, type SelectProps, type SelectOption } from './select';
 export { Badge, badgeVariants, type BadgeProps } from './badge';
 export { Card, CardHeader, CardContent, CardFooter } from './card';
+export { Modal, ConfirmModal } from './modal';
+export { Sheet } from './sheet';
