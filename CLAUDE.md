@@ -200,14 +200,48 @@ Only these stay at root (no src/ prefix):
 - `supabase/migrations/` → `supabase/migrations/`
 - `plans/` → `plans/`
 
+### Known Type Issues & Fixes
+
+**Supabase table not in types:**
+```typescript
+// Error: Argument of type '...' is not assignable to parameter of type 'never'
+// Fix: Cast supabase client
+const { data } = await (supabase as any)
+  .from('table_name')
+  .select('*');
+```
+
+**Missing React Query types:**
+```typescript
+// Add explicit return type
+const { data } = useQuery<MyType[]>({
+  queryKey: ['key'],
+  queryFn: async () => { ... }
+});
+```
+
+**Import path errors:**
+```typescript
+// All imports use @/ which maps to src/
+import { Button } from '@/components/ui/button';
+import { createClient } from '@/lib/supabase/client';
+```
+
+### Common Build Fixes
+
+| Error | Fix |
+|-------|-----|
+| `Cannot find module '@/...'` | Check file exists in `src/` |
+| `Type 'never'` on Supabase | Use `as any` cast |
+| `Property does not exist` | Add to type definition or use `as any` |
+| `Module not found: canvas` | OK to skip, use sharp only |
+
 ### Implementation Guidelines
-- Follow the plan files exactly - they contain tested, working code
-- Remember to prepend `src/` to app code paths
-- Run `npm run build` after each step to verify
-- Run `npx supabase db push` after creating migration files
+- Create files exactly as shown in plans
+- Run `npm run build` after each step
+- Run `npx supabase db push` after migrations
+- Fix errors before moving to next step
 - Commit after each successful step
-- If build fails, read errors carefully and fix before proceeding
 
 ### React Compiler
-- Don't worry about `useMemo`, `useCallback`, or `React.memo` - they're auto-optimized
-- If plans include them, implement as written (they become no-ops but won't break anything)
+This project uses React Compiler. No need for manual `useMemo`, `useCallback`, or `React.memo` - they're auto-optimized. If plans include them, implement as written (they become no-ops).

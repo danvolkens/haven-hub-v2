@@ -157,12 +157,300 @@ export interface Database {
           updated_at?: string;
         };
       };
+      pins: {
+        Row: {
+          id: string;
+          user_id: string;
+          board_id: string | null;
+          asset_id: string | null;
+          pinterest_pin_id: string | null;
+          title: string;
+          description: string | null;
+          link: string | null;
+          image_url: string;
+          status: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'retired';
+          scheduled_time: string | null;
+          published_at: string | null;
+          error_message: string | null;
+          analytics: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          board_id?: string | null;
+          asset_id?: string | null;
+          pinterest_pin_id?: string | null;
+          title: string;
+          description?: string | null;
+          link?: string | null;
+          image_url: string;
+          status?: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'retired';
+          scheduled_time?: string | null;
+          published_at?: string | null;
+          error_message?: string | null;
+          analytics?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          board_id?: string | null;
+          asset_id?: string | null;
+          pinterest_pin_id?: string | null;
+          title?: string;
+          description?: string | null;
+          link?: string | null;
+          image_url?: string;
+          status?: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'retired';
+          scheduled_time?: string | null;
+          published_at?: string | null;
+          error_message?: string | null;
+          analytics?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      retry_queue: {
+        Row: {
+          id: string;
+          user_id: string;
+          operation_type: string;
+          operation_data: Json;
+          status: 'pending' | 'processing' | 'resolved' | 'failed';
+          attempts: number;
+          max_attempts: number;
+          last_error: string | null;
+          next_retry_at: string;
+          worker_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          operation_type: string;
+          operation_data: Json;
+          status?: 'pending' | 'processing' | 'resolved' | 'failed';
+          attempts?: number;
+          max_attempts?: number;
+          last_error?: string | null;
+          next_retry_at?: string;
+          worker_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          operation_type?: string;
+          operation_data?: Json;
+          status?: 'pending' | 'processing' | 'resolved' | 'failed';
+          attempts?: number;
+          max_attempts?: number;
+          last_error?: string | null;
+          next_retry_at?: string;
+          worker_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      abandoned_checkouts: {
+        Row: {
+          id: string;
+          user_id: string;
+          shopify_checkout_id: string;
+          customer_email: string | null;
+          order_id: string | null;
+          status: 'pending' | 'sequence_triggered' | 'recovered' | 'expired';
+          checkout_data: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          shopify_checkout_id: string;
+          customer_email?: string | null;
+          order_id?: string | null;
+          status?: 'pending' | 'sequence_triggered' | 'recovered' | 'expired';
+          checkout_data?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          shopify_checkout_id?: string;
+          customer_email?: string | null;
+          order_id?: string | null;
+          status?: 'pending' | 'sequence_triggered' | 'recovered' | 'expired';
+          checkout_data?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      customers: {
+        Row: {
+          id: string;
+          user_id: string;
+          email: string;
+          shopify_customer_id: string | null;
+          first_order_at: string | null;
+          last_order_at: string | null;
+          total_orders: number;
+          total_spent: number;
+          winback_tier1_sent_at: string | null;
+          winback_tier2_sent_at: string | null;
+          winback_tier3_sent_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          email: string;
+          shopify_customer_id?: string | null;
+          first_order_at?: string | null;
+          last_order_at?: string | null;
+          total_orders?: number;
+          total_spent?: number;
+          winback_tier1_sent_at?: string | null;
+          winback_tier2_sent_at?: string | null;
+          winback_tier3_sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          email?: string;
+          shopify_customer_id?: string | null;
+          first_order_at?: string | null;
+          last_order_at?: string | null;
+          total_orders?: number;
+          total_spent?: number;
+          winback_tier1_sent_at?: string | null;
+          winback_tier2_sent_at?: string | null;
+          winback_tier3_sent_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      campaigns: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          status: 'draft' | 'active' | 'paused' | 'completed';
+          start_date: string | null;
+          end_date: string | null;
+          ended_at: string | null;
+          settings: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          status?: 'draft' | 'active' | 'paused' | 'completed';
+          start_date?: string | null;
+          end_date?: string | null;
+          ended_at?: string | null;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          status?: 'draft' | 'active' | 'paused' | 'completed';
+          start_date?: string | null;
+          end_date?: string | null;
+          ended_at?: string | null;
+          settings?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      scheduled_exports: {
+        Row: {
+          id: string;
+          user_id: string;
+          export_type: string;
+          format: 'csv' | 'json';
+          frequency: 'weekly' | 'monthly';
+          date_range_type: string | null;
+          field_selection: string[] | null;
+          enabled: boolean;
+          last_run_at: string | null;
+          next_run_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          export_type: string;
+          format: 'csv' | 'json';
+          frequency: 'weekly' | 'monthly';
+          date_range_type?: string | null;
+          field_selection?: string[] | null;
+          enabled?: boolean;
+          last_run_at?: string | null;
+          next_run_at: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          export_type?: string;
+          format?: 'csv' | 'json';
+          frequency?: 'weekly' | 'monthly';
+          date_range_type?: string | null;
+          field_selection?: string[] | null;
+          enabled?: boolean;
+          last_run_at?: string | null;
+          next_run_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      log_activity: {
+        Args: {
+          p_user_id: string;
+          p_action_type: string;
+          p_details?: Json;
+          p_executed?: boolean;
+          p_module?: string;
+          p_previous_value?: Json;
+          p_new_value?: Json;
+        };
+        Returns: void;
+      };
+      claim_retry_items: {
+        Args: {
+          p_worker_id: string;
+          p_limit: number;
+        };
+        Returns: {
+          id: string;
+          operation_type: string;
+          operation_data: Json;
+          attempts: number;
+          max_attempts: number;
+        }[];
+      };
     };
     Enums: {
       [_ in never]: never;
