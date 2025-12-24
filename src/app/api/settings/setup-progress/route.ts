@@ -17,62 +17,34 @@ export async function GET() {
       integrations?.map((i: any) => [i.provider, i.status]) || []
     );
 
-    // Check for quotes
-    const { count: quotesCount } = await (supabase as any)
-      .from('quotes')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
     // Check for design rules
     const { count: rulesCount } = await (supabase as any)
       .from('design_rules')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId);
 
-    const steps = [
-      {
-        id: 'shopify',
-        name: 'Connect Shopify',
-        completed: integrationMap.get('shopify') === 'connected',
-        required: true,
-      },
-      {
-        id: 'pinterest',
-        name: 'Connect Pinterest',
-        completed: integrationMap.get('pinterest') === 'connected',
-        required: true,
-      },
-      {
-        id: 'quotes',
-        name: 'Import Quotes',
-        completed: (quotesCount || 0) > 0,
-        required: true,
-      },
-      {
-        id: 'design_rules',
-        name: 'Configure Design Rules',
-        completed: (rulesCount || 0) > 0,
-        required: false,
-      },
-      {
-        id: 'klaviyo',
-        name: 'Connect Klaviyo',
-        completed: integrationMap.get('klaviyo') === 'connected',
-        required: false,
-      },
-    ];
+    // Check user settings for operator mode
+    const { data: userSettings } = await (supabase as any)
+      .from('user_settings')
+      .select('global_mode')
+      .eq('user_id', userId)
+      .single();
 
-    const completedSteps = steps.filter((s) => s.completed).length;
-    const totalSteps = steps.length;
-    const progress = Math.round((completedSteps / totalSteps) * 100);
+    // Build setup_progress object matching page expectations
+    const getStatus = (connected: boolean) => connected ? 'completed' : 'pending';
 
-    return NextResponse.json({
-      steps,
-      completedSteps,
-      totalSteps,
-      progress,
-      isComplete: steps.filter((s) => s.required).every((s) => s.completed),
-    });
+    const setup_progress = {
+      shopify: getStatus(integrationMap.get('shopify') === 'connected'),
+      pinterest: getStatus(integrationMap.get('pinterest') === 'connected'),
+      klaviyo: getStatus(integrationMap.get('klaviyo') === 'connected'),
+      dynamic_mockups: getStatus(integrationMap.get('dynamic_mockups') === 'connected'),
+      resend: getStatus(integrationMap.get('resend') === 'connected'),
+      design_rules: getStatus((rulesCount || 0) > 0),
+      operator_mode: getStatus(userSettings?.global_mode !== 'supervised'),
+      import: 'pending', // Will be completed when quotes are imported
+    };
+
+    return NextResponse.json({ setup_progress });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
