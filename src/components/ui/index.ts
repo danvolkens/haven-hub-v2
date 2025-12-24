@@ -5,3 +5,5 @@ export { Label, type LabelProps } from './label';
 export { Checkbox, type CheckboxProps } from './checkbox';
 export { Switch, type SwitchProps } from './switch';
 export { Select, type SelectProps, type SelectOption } from './select';
+export { Badge, badgeVariants, type BadgeProps } from './badge';
+export { Card, CardHeader, CardContent, CardFooter } from './card';
