@@ -60,10 +60,11 @@ export default function SetupPage() {
   });
 
   // Fetch integrations
-  const { data: integrations } = useQuery({
+  const { data: integrationsData } = useQuery({
     queryKey: ['integrations'],
-    queryFn: () => api.get<Integration[]>('/integrations'),
+    queryFn: () => api.get<{ integrations: Integration[] }>('/integrations'),
   });
+  const integrations = integrationsData?.integrations ?? [];
 
   // Find first incomplete step
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function SetupPage() {
 
   const currentStepConfig = SETUP_STEPS[currentStep];
   const isComplete = progress?.setup_progress[currentStepConfig?.key as keyof SetupProgress] === 'completed';
-  const integration = integrations?.find(
+  const integration = integrations.find(
     (i) => i.provider === currentStepConfig?.key
   );
 
