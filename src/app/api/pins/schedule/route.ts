@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { schedulePins } from '@/lib/pinterest/pin-service';
 
 const scheduleSchema = z.object({
@@ -10,7 +10,7 @@ const scheduleSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const { pinIds, startFrom } = scheduleSchema.parse(body);

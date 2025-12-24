@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 const updateSchema = z.object({
   collection: z.enum(['grounding', 'wholeness', 'growth']).nullable().optional(),
@@ -11,7 +11,7 @@ const updateSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const { data, error } = await (supabase as any)
       .from('pinterest_boards')
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const { boardId, ...updates } = body;

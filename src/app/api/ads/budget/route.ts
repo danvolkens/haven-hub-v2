@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { checkAdSpendBudget, syncAdSpend } from '@/lib/pinterest/ads-service';
 
 export async function GET() {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const budgetStatus = await checkAdSpendBudget(userId, 0);
 
     return NextResponse.json(budgetStatus);
@@ -18,7 +18,7 @@ export async function GET() {
 
 export async function POST() {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const result = await syncAdSpend(userId);
 
     if (!result.success) {

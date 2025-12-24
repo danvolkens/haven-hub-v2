@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { PINTEREST_CONFIG } from '@/lib/integrations/pinterest/config';
 import { PinterestClient, PinterestBoard } from '@/lib/integrations/pinterest/client';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const searchParams = request.nextUrl.searchParams;
 
     const code = searchParams.get('code');

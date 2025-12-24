@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { invalidateUserCache } from '@/lib/cache/cache-utils';
 
 const updateModuleSchema = z.object({
@@ -20,7 +20,7 @@ interface UserSettings {
 export async function PATCH(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const { module, mode } = updateModuleSchema.parse(body);

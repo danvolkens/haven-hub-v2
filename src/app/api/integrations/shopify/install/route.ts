@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { getShopifyAuthUrl, SHOPIFY_CONFIG } from '@/lib/integrations/shopify/config';
 import { nanoid } from 'nanoid';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const searchParams = request.nextUrl.searchParams;
     const shop = searchParams.get('shop');
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 const retireSchema = z.object({
   reason: z.enum(['underperformer', 'manual', 'seasonal']).default('manual'),
@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
 

@@ -29,7 +29,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
           'rounded-lg',
           variantClasses[variant],
           paddingClasses[padding],
-          hoverable && 'transition-shadow hover:shadow-elevation-2',
+          hoverable && 'cursor-pointer transition-shadow hover:shadow-elevation-2',
           className
         )}
         {...props}

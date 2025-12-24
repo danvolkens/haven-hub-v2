@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 const createQuoteSchema = z.object({
   text: z.string().min(1).max(500),
@@ -25,7 +25,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
     const { collection, mood, status, search, limit, offset, sort, order } = querySchema.parse(searchParams);
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const validated = createQuoteSchema.parse(body);

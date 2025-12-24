@@ -27,7 +27,7 @@ export default function CalendarPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Badge>{selectedEvent.type.replace('_', ' ')}</Badge>
-              <Badge variant="outline">{selectedEvent.status}</Badge>
+              <Badge variant="secondary">{selectedEvent.status}</Badge>
             </div>
 
             <div>

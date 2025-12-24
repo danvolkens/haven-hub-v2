@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const { data, error } = await (supabase as any).rpc('get_credit_usage', {
       p_user_id: userId,

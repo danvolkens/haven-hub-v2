@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { nanoid } from 'nanoid';
 
 const importRowSchema = z.object({
@@ -19,7 +19,7 @@ const importSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const { quotes } = importSchema.parse(body);

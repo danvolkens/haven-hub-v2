@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { createLandingPage } from '@/lib/leads/lead-service';
 
 const createSchema = z.object({
@@ -29,7 +29,7 @@ const createSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const data = createSchema.parse(body);

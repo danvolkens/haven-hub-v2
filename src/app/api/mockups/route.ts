@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 const querySchema = z.object({
   scene: z.string().optional(),
@@ -14,7 +14,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
     const { scene, status, assetId, limit, offset } = querySchema.parse(searchParams);

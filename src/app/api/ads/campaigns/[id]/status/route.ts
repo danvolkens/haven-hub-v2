@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { updateCampaignStatus } from '@/lib/pinterest/ads-service';
 
 const statusSchema = z.object({
@@ -12,7 +12,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
     const { id } = await params;
 

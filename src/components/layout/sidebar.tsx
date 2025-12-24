@@ -144,7 +144,7 @@ function NavSectionComponent({
   return (
     <li>
       <button
-        className="flex w-full items-center justify-between px-3 py-2 text-overline text-[var(--color-text-tertiary)] uppercase tracking-wider"
+        className="flex w-full items-center justify-between px-3 py-2 text-overline text-[var(--color-text-tertiary)] uppercase tracking-wider cursor-pointer hover:text-charcoal transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         {section.name}
@@ -180,14 +180,23 @@ function NavItemComponent({
   collapsed: boolean;
   pathname: string;
 }) {
-  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+  // Use exact match to avoid highlighting multiple items
+  const isActive = pathname === item.href;
   const Icon = item.icon;
 
   // Fetch badge data if configured
   const { data: badgeData } = useQuery({
-    queryKey: item.badge?.queryKey ?? [],
-    enabled: !!item.badge,
+    queryKey: item.badge?.queryKey ?? ['_disabled'],
+    queryFn: async () => {
+      if (!item.badge?.queryKey?.length) return null;
+      const endpoint = `/api/${item.badge.queryKey.join('/')}`;
+      const res = await fetch(endpoint);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!item.badge?.queryKey?.length,
     refetchInterval: 30000,
+    staleTime: 10000,
   });
 
   const badgeCount = item.badge?.getValue(badgeData) ?? 0;

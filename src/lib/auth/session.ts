@@ -35,6 +35,25 @@ export async function getUserId(): Promise<string> {
   return user.id;
 }
 
+/**
+ * Get user ID for API routes - throws error instead of redirecting
+ * Use this in API routes instead of getUserId()
+ */
+export async function getApiUserId(): Promise<string> {
+  const user = await getUser();
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+  return user.id;
+}
+
+/**
+ * Helper for API routes - returns user or null (no redirect)
+ */
+export async function getApiUser(): Promise<User | null> {
+  return getUser();
+}
+
 export async function getUserSettings() {
   const supabase = await createServerSupabaseClient();
   const user = await requireUser();

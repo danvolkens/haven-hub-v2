@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { invalidate, cacheKey, CACHE_PREFIX } from '@/lib/cache/cache-utils';
 
 const actionSchema = z.object({
@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
 
     const { data, error } = await (supabase as any)
@@ -47,7 +47,7 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
     const body = await request.json();
 

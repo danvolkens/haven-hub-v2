@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 
 const updateQuoteSchema = z.object({
   text: z.string().min(1).max(500).optional(),
@@ -18,7 +18,7 @@ export async function GET(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
 
     const { data, error } = await (supabase as any)
@@ -50,7 +50,7 @@ export async function PATCH(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
     const body = await request.json();
 
@@ -90,7 +90,7 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const { id } = await params;
 
     const { error } = await (supabase as any)

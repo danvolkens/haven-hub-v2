@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { invalidateUserCache } from '@/lib/cache/cache-utils';
 
 const gracePeriodActionSchema = z.object({
@@ -17,7 +17,7 @@ interface UserSettingsData {
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     // Use 'as any' to avoid TypeScript inference issues
     const { data, error } = await (supabase as any)
@@ -63,7 +63,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const body = await request.json();
 
     const { action } = gracePeriodActionSchema.parse(body);

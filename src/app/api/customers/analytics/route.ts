@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { getJourneyAnalytics } from '@/lib/customers/journey-service';
 
 export async function GET() {
   try {
-    const userId = await getUserId();
+    const userId = await getApiUserId();
     const analytics = await getJourneyAnalytics(userId);
 
     return NextResponse.json(analytics);

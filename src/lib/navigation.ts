@@ -6,20 +6,20 @@ import {
   Pin,
   Megaphone,
   FlaskConical,
+  BarChart3,
   HelpCircle,
   Layers,
   MousePointerClick,
+  ShoppingBag,
   Users,
   UserPlus,
+  Heart,
   Gift,
   Ticket,
-  BarChart3,
   Calendar,
   Link as LinkIcon,
   Share2,
   Settings,
-  Heart,
-  ShoppingBag,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -46,10 +46,10 @@ export const navigation: (NavItem | NavSection)[] = [
   },
   {
     name: 'Approvals',
-    href: '/dashboard/approval-queue',
+    href: '/dashboard/approvals',
     icon: Inbox,
     badge: {
-      queryKey: ['approval-counts'],
+      queryKey: ['approvals', 'counts'],
       getValue: (data: unknown) => {
         if (data && typeof data === 'object' && 'total' in data) {
           return (data as { total: number }).total;
@@ -69,8 +69,9 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Pinterest',
     items: [
       { name: 'Manager', href: '/dashboard/pinterest', icon: Pin },
+      { name: 'Analytics', href: '/dashboard/pinterest/analytics', icon: BarChart3 },
       { name: 'Ads', href: '/dashboard/pinterest/ads', icon: Megaphone },
-      { name: 'Tests', href: '/dashboard/pinterest/tests', icon: FlaskConical },
+      { name: 'A/B Tests', href: '/dashboard/pinterest/tests', icon: FlaskConical },
     ],
   },
   {
@@ -85,7 +86,7 @@ export const navigation: (NavItem | NavSection)[] = [
   {
     name: 'Customers',
     items: [
-      { name: 'All', href: '/dashboard/customers', icon: Users },
+      { name: 'Overview', href: '/dashboard/customers', icon: Users },
       { name: 'Referrals', href: '/dashboard/customers/referrals', icon: UserPlus },
       { name: 'Win-Back', href: '/dashboard/customers/win-back', icon: Heart },
       { name: 'Gifts', href: '/dashboard/customers/gifts', icon: Gift },
@@ -94,22 +95,15 @@ export const navigation: (NavItem | NavSection)[] = [
   {
     name: 'Campaigns',
     items: [
-      { name: 'All', href: '/dashboard/campaigns', icon: Megaphone },
+      { name: 'Overview', href: '/dashboard/campaigns', icon: Megaphone },
       { name: 'Coupons', href: '/dashboard/campaigns/coupons', icon: Ticket },
-      { name: 'Calendar', href: '/dashboard/campaigns/calendar', icon: Calendar },
-    ],
-  },
-  {
-    name: 'Analytics',
-    items: [
-      { name: 'Attribution', href: '/dashboard/analytics/attribution', icon: BarChart3 },
-      { name: 'Collections', href: '/dashboard/analytics/collections', icon: Layers },
+      { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
     ],
   },
   {
     name: 'Content',
     items: [
-      { name: 'Link-in-Bio', href: '/dashboard/content/link-in-bio', icon: LinkIcon },
+      { name: 'Link-in-Bio', href: '/dashboard/links', icon: LinkIcon },
       { name: 'Cross-Platform', href: '/dashboard/content/cross-platform', icon: Share2 },
     ],
   },

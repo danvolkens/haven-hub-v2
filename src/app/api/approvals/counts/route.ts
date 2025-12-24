@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getUserId } from '@/lib/auth/session';
+import { getApiUserId } from '@/lib/auth/session';
 import { getOrSet, cacheKey, CACHE_PREFIX, TTL } from '@/lib/cache/cache-utils';
 
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient();
-    const userId = await getUserId();
+    const userId = await getApiUserId();
 
     const counts = await getOrSet(
       cacheKey(CACHE_PREFIX.APPROVAL_COUNTS, userId),
