@@ -23,6 +23,36 @@ const publicApiRoutes = [
   '/api/public',
 ];
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  // Security headers
+  response.headers.set('X-Frame-Options', 'DENY');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=()'
+  );
+
+  // CSP for production
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set(
+      'Content-Security-Policy',
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: https: blob:",
+        "font-src 'self' data:",
+        "connect-src 'self' https://*.supabase.co https://api.klaviyo.com https://api.pinterest.com",
+        "frame-ancestors 'none'",
+      ].join('; ')
+    );
+  }
+
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -37,11 +67,20 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes and API webhooks
   if (isPublicRoute || isPublicApiRoute) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    return addSecurityHeaders(response);
   }
 
   // Update session and check authentication
   const { response, session } = await updateSession(request);
+
+  // Add security headers to the response
+  addSecurityHeaders(response);
+
+  // API rate limiting headers
+  if (pathname.startsWith('/api/')) {
+    response.headers.set('X-RateLimit-Policy', 'sliding-window');
+  }
 
   // Redirect to login if no session on protected routes
   if (!session && pathname.startsWith('/dashboard')) {
