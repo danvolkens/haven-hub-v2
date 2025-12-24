@@ -5,6 +5,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
 import { Sheet } from '@/components/ui';
 import { cn } from '@/lib/utils';
+import { CommandPalette } from '@/components/command-palette/command-palette';
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -12,6 +13,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <CommandPalette />
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <Sidebar />
