@@ -249,12 +249,28 @@ function IntegrationStep({
   const config = INTEGRATION_CONFIGS.find((c) => c.provider === provider)!;
   const isConnected = integration?.status === 'connected';
   const [apiKey, setApiKey] = useState('');
+  const [shopDomain, setShopDomain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const handleOAuthConnect = () => {
-    window.location.href = `/api/integrations/${provider}/install`;
+    if (provider === 'shopify') {
+      if (!shopDomain) {
+        toast('Please enter your Shopify store domain', 'error');
+        return;
+      }
+      // Clean up the domain - accept various formats
+      let cleanDomain = shopDomain.trim().toLowerCase();
+      cleanDomain = cleanDomain.replace(/^https?:\/\//, '');
+      cleanDomain = cleanDomain.replace(/\/$/, '');
+      if (!cleanDomain.includes('.myshopify.com')) {
+        cleanDomain = cleanDomain.replace('.myshopify.com', '') + '.myshopify.com';
+      }
+      window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(cleanDomain)}`;
+    } else {
+      window.location.href = `/api/integrations/${provider}/install`;
+    }
   };
 
   const handleApiKeyConnect = async () => {
@@ -295,9 +311,25 @@ function IntegrationStep({
       </p>
 
       {config.authType === 'oauth' ? (
-        <Button onClick={handleOAuthConnect} rightIcon={<ExternalLink className="h-4 w-4" />}>
-          Connect {config.name}
-        </Button>
+        <div className="space-y-3">
+          {provider === 'shopify' && (
+            <div>
+              <Label htmlFor="shopDomain">Store Domain</Label>
+              <Input
+                id="shopDomain"
+                value={shopDomain}
+                onChange={(e) => setShopDomain(e.target.value)}
+                placeholder="your-store.myshopify.com"
+              />
+              <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                Enter your Shopify store domain (e.g., your-store or your-store.myshopify.com)
+              </p>
+            </div>
+          )}
+          <Button onClick={handleOAuthConnect} rightIcon={<ExternalLink className="h-4 w-4" />}>
+            Connect {config.name}
+          </Button>
+        </div>
       ) : (
         <div className="space-y-3">
           <div>
