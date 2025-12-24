@@ -10,10 +10,10 @@ export interface DesignEnginePayload {
 }
 
 export interface MockupGeneratorPayload {
-  quoteId: string;
   userId: string;
   assetIds: string[];
   scenes: string[];
+  skipApproval?: boolean;
 }
 
 export interface WinnerRefreshPayload {
