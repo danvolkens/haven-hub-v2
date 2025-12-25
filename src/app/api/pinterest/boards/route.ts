@@ -32,7 +32,6 @@ export async function GET() {
 export async function POST() {
   try {
     const userId = await getApiUserId();
-
     const boards = await syncPinterestBoards(userId);
 
     return NextResponse.json({
@@ -40,6 +39,7 @@ export async function POST() {
       synced: boards.length,
     });
   } catch (error) {
+    console.error('Pinterest boards sync error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal error' },
       { status: 500 }

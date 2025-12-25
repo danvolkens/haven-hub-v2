@@ -43,8 +43,11 @@ export class PinterestClient {
 
   // Boards
   async getBoards(params?: { page_size?: number; bookmark?: string }): Promise<PinterestPagedResponse<PinterestBoard>> {
-    const query = new URLSearchParams(params as Record<string, string>);
-    return this.request(`/boards?${query}`);
+    const query = new URLSearchParams();
+    if (params?.page_size) query.set('page_size', String(params.page_size));
+    if (params?.bookmark) query.set('bookmark', params.bookmark);
+    const queryString = query.toString();
+    return this.request(`/boards${queryString ? `?${queryString}` : ''}`);
   }
 
   async createBoard(board: CreateBoardRequest): Promise<PinterestBoard> {
