@@ -110,7 +110,10 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in"
+        className={cn(
+          "fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in",
+          closeOnOverlayClick && "cursor-pointer"
+        )}
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />

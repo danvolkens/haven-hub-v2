@@ -136,7 +136,7 @@ export function ContentCalendar({ onEventClick }: ContentCalendarProps) {
                       <button
                         key={event.id}
                         onClick={() => onEventClick?.(event)}
-                        className={`w-full text-left text-xs p-1.5 rounded border truncate flex items-center gap-1 hover:opacity-80 transition-opacity ${EVENT_COLORS[event.type]}`}
+                        className={`w-full text-left text-xs p-1.5 rounded border truncate flex items-center gap-1 hover:opacity-80 transition-opacity cursor-pointer ${EVENT_COLORS[event.type]}`}
                       >
                         <Icon className="h-3 w-3 flex-shrink-0" />
                         <span className="truncate">{event.title}</span>

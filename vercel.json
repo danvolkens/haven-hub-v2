@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/scheduled-exports",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/budget-recommendations",
+      "schedule": "0 7 * * *"
     }
   ]
 }

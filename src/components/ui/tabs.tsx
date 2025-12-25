@@ -72,9 +72,9 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
       onClick={() => onValueChange(value)}
       className={cn(
         `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-body-sm font-medium
-         ring-offset-background transition-all
+         ring-offset-background transition-all cursor-pointer
          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-focus focus-visible:ring-offset-2
-         disabled:pointer-events-none disabled:opacity-50`,
+         disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed`,
         isSelected
           ? 'bg-surface text-charcoal shadow-sm'
           : 'hover:bg-surface/50 hover:text-charcoal',

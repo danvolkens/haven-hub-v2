@@ -130,7 +130,7 @@ export function ModeSelector() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'flex items-center gap-2 rounded-md px-3 py-1.5 text-body-sm font-medium transition-colors',
+            'flex items-center gap-2 rounded-md px-3 py-1.5 text-body-sm font-medium transition-colors cursor-pointer',
             currentMode.bgColor,
             currentMode.color,
             'hover:opacity-80'
@@ -148,7 +148,7 @@ export function ModeSelector() {
         {isOpen && (
           <>
             <div
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-40 cursor-pointer"
               onClick={() => setIsOpen(false)}
             />
             <div className="absolute right-0 top-full mt-2 z-50 w-80 rounded-lg border bg-surface shadow-elevation-3 animate-fade-in">
@@ -163,7 +163,7 @@ export function ModeSelector() {
                       key={mode.id}
                       onClick={() => handleModeSelect(mode.id)}
                       className={cn(
-                        'flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors',
+                        'flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors cursor-pointer',
                         isSelected ? 'bg-sage-pale' : 'hover:bg-elevated',
                         isTarget && 'ring-2 ring-warning ring-offset-2'
                       )}
