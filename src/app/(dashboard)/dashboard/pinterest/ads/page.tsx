@@ -40,7 +40,9 @@ import {
   XCircle,
   Clock,
   Sparkles,
+  Trophy,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AdAccount {
   id: string;
@@ -108,6 +110,75 @@ interface RecommendationSummary {
   pending_count: number;
   potential_savings: number;
   growth_opportunity: number;
+}
+
+// Performance thresholds
+const THRESHOLDS = {
+  SCALE: { maxCpa: 8, minRoas: 3 },
+  MAINTAIN: { maxCpa: 12, minRoas: 2 },
+  OPTIMIZE: { maxCpa: 15, minRoas: 1.5 },
+};
+
+type PerformanceStatus = 'scale' | 'maintain' | 'optimize' | 'pause';
+
+const performanceConfig: Record<PerformanceStatus, {
+  label: string;
+  bgClass: string;
+  borderClass: string;
+  textClass: string;
+  recommendation: string;
+}> = {
+  scale: {
+    label: 'Winner',
+    bgClass: 'bg-green-50',
+    borderClass: 'border-green-200',
+    textClass: 'text-green-700',
+    recommendation: 'This campaign is performing excellently! Consider +25% budget.',
+  },
+  maintain: {
+    label: 'On Track',
+    bgClass: 'bg-blue-50',
+    borderClass: 'border-blue-200',
+    textClass: 'text-blue-700',
+    recommendation: 'Solid performance. Monitor for consistency.',
+  },
+  optimize: {
+    label: 'Optimize',
+    bgClass: 'bg-amber-50',
+    borderClass: 'border-amber-200',
+    textClass: 'text-amber-700',
+    recommendation: 'Review targeting and creatives to improve efficiency.',
+  },
+  pause: {
+    label: 'Review',
+    bgClass: 'bg-red-50',
+    borderClass: 'border-red-200',
+    textClass: 'text-red-700',
+    recommendation: 'Performance below threshold. Consider pausing.',
+  },
+};
+
+function getCampaignPerformance(campaign: Campaign): { status: PerformanceStatus; cpa: number; roas: number } {
+  const cpa = campaign.conversions > 0
+    ? campaign.total_spend / campaign.conversions
+    : campaign.total_spend > 0 ? campaign.total_spend : 0;
+
+  // Estimate ROAS assuming $35 average order value
+  const estimatedRevenue = campaign.conversions * 35;
+  const roas = campaign.total_spend > 0 ? estimatedRevenue / campaign.total_spend : 0;
+
+  let status: PerformanceStatus;
+  if (cpa > 0 && cpa <= THRESHOLDS.SCALE.maxCpa && roas >= THRESHOLDS.SCALE.minRoas) {
+    status = 'scale';
+  } else if (cpa <= THRESHOLDS.MAINTAIN.maxCpa && roas >= THRESHOLDS.MAINTAIN.minRoas) {
+    status = 'maintain';
+  } else if (cpa <= THRESHOLDS.OPTIMIZE.maxCpa && roas >= THRESHOLDS.OPTIMIZE.minRoas) {
+    status = 'optimize';
+  } else {
+    status = 'pause';
+  }
+
+  return { status, cpa, roas };
 }
 
 export default function PinterestAdsPage() {
@@ -422,87 +493,134 @@ export default function PinterestAdsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {campaigns.map((campaign) => (
-                <Card key={campaign.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold">{campaign.name}</h3>
-                          {getStatusBadge(campaign.status)}
-                          {getObjectiveBadge(campaign.objective)}
-                          {campaign.collection && (
-                            <Badge variant="secondary">{campaign.collection}</Badge>
+              {campaigns.map((campaign) => {
+                const perf = campaign.total_spend > 0 ? getCampaignPerformance(campaign) : null;
+                const config = perf ? performanceConfig[perf.status] : null;
+
+                return (
+                  <Card
+                    key={campaign.id}
+                    className={cn(
+                      'transition-all',
+                      config && perf?.status === 'scale' && 'border-2 border-green-300 shadow-md'
+                    )}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {/* Winner Trophy Badge */}
+                            {perf?.status === 'scale' && (
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-100">
+                                <Trophy className="h-4 w-4 text-green-600" />
+                              </div>
+                            )}
+                            <h3 className="text-lg font-semibold">{campaign.name}</h3>
+                            {getStatusBadge(campaign.status)}
+                            {getObjectiveBadge(campaign.objective)}
+                            {campaign.collection && (
+                              <Badge variant="secondary">{campaign.collection}</Badge>
+                            )}
+                            {/* Performance Status Badge */}
+                            {config && (
+                              <Badge
+                                variant={
+                                  perf?.status === 'scale' ? 'success' :
+                                  perf?.status === 'maintain' ? 'info' :
+                                  perf?.status === 'optimize' ? 'warning' : 'error'
+                                }
+                              >
+                                {config.label}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Metrics */}
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Spent</p>
+                                <p className="font-medium">{formatCurrency(campaign.total_spend)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Impressions</p>
+                                <p className="font-medium">{campaign.impressions.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MousePointer className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Clicks</p>
+                                <p className="font-medium">{campaign.clicks.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Conversions</p>
+                                <p className="font-medium">{campaign.conversions.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            {/* CPA & ROAS */}
+                            {perf && perf.cpa > 0 && (
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="text-xs text-[var(--color-text-tertiary)]">CPA / ROAS</p>
+                                  <p className={cn('font-medium', config?.textClass)}>
+                                    {formatCurrency(perf.cpa)} / {perf.roas.toFixed(1)}x
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {campaign.daily_spend_cap && (
+                            <p className="text-sm text-[var(--color-text-secondary)] mt-3">
+                              Daily cap: {formatCurrency(campaign.daily_spend_cap)}
+                            </p>
+                          )}
+
+                          {/* Performance Recommendation */}
+                          {config && perf && perf.cpa > 0 && (
+                            <div className={cn('mt-3 p-2 rounded-md text-sm', config.bgClass, config.textClass)}>
+                              {config.recommendation}
+                            </div>
                           )}
                         </div>
 
-                        {/* Metrics */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Spent</p>
-                              <p className="font-medium">{formatCurrency(campaign.total_spend)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Impressions</p>
-                              <p className="font-medium">{campaign.impressions.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MousePointer className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Clicks</p>
-                              <p className="font-medium">{campaign.clicks.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Conversions</p>
-                              <p className="font-medium">{campaign.conversions.toLocaleString()}</p>
-                            </div>
-                          </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {campaign.status === 'ACTIVE' ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'PAUSED' })}
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <Pause className="h-4 w-4 mr-1" />
+                              Pause
+                            </Button>
+                          ) : campaign.status === 'PAUSED' ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'ACTIVE' })}
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              Activate
+                            </Button>
+                          ) : null}
                         </div>
-
-                        {campaign.daily_spend_cap && (
-                          <p className="text-sm text-[var(--color-text-secondary)] mt-3">
-                            Daily cap: {formatCurrency(campaign.daily_spend_cap)}
-                          </p>
-                        )}
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {campaign.status === 'ACTIVE' ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'PAUSED' })}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <Pause className="h-4 w-4 mr-1" />
-                            Pause
-                          </Button>
-                        ) : campaign.status === 'PAUSED' ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'ACTIVE' })}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Activate
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

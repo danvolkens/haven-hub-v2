@@ -5,6 +5,7 @@ import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { RecentActivity } from '@/components/dashboard/recent-activity';
 import { PendingApprovals } from '@/components/dashboard/pending-approvals';
 import { PerformanceActionsWidget } from '@/components/dashboard/performance-actions';
+import { CampaignPerformanceWidget } from '@/components/dashboard/campaign-performance-widget';
 import { QuickActions } from '@/components/dashboard/quick-actions';
 import { TodaysTasks } from '@/components/dashboard/todays-tasks';
 import { TopPerformers } from '@/components/dashboard/top-performers';
@@ -64,6 +65,11 @@ export default async function DashboardPage() {
           <div className="space-y-6">
             {/* Quick Actions */}
             <QuickActions />
+
+            {/* Campaign Performance Widget */}
+            <Suspense fallback={<CardSkeleton title="Campaign Performance" />}>
+              <CampaignPerformanceWidget userId={user.id} />
+            </Suspense>
 
             {/* Performance Actions */}
             <Suspense fallback={<CardSkeleton title="Performance Actions" />}>
