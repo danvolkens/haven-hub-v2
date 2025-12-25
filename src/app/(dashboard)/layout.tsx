@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         side="left"
-        size="sm"
+        size="md"
         showCloseButton={false}
       >
         <Sidebar />
@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         )}
       >
         <Header onMenuClick={() => setMobileMenuOpen(true)} />
-        <main className="p-4 lg:p-6">{children}</main>
+        <main id="main-content" className="p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );

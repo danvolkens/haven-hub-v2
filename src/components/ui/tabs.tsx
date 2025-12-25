@@ -65,9 +65,11 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
 
   return (
     <button
+      id={`tab-${value}`}
       role="tab"
       type="button"
       aria-selected={isSelected}
+      aria-controls={`tabpanel-${value}`}
       disabled={disabled}
       onClick={() => onValueChange(value)}
       className={cn(
@@ -99,7 +101,10 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
 
   return (
     <div
+      id={`tabpanel-${value}`}
       role="tabpanel"
+      tabIndex={0}
+      aria-labelledby={`tab-${value}`}
       className={cn(
         'mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-focus focus-visible:ring-offset-2',
         className

@@ -59,28 +59,28 @@ export async function DashboardStats({ userId }: DashboardStatsProps) {
       value: `$${recentRevenue.toLocaleString()}`,
       change: revenueChange,
       icon: DollarSign,
-      color: 'text-green-600 bg-green-100',
+      color: 'text-success bg-success/10',
     },
     {
       title: 'Orders (30d)',
       value: orderCount.toLocaleString(),
       change: orderChange,
       icon: ShoppingCart,
-      color: 'text-blue-600 bg-blue-100',
+      color: 'text-info bg-info/10',
     },
     {
       title: 'New Customers',
       value: (newCustomers || 0).toLocaleString(),
       change: undefined,
       icon: Users,
-      color: 'text-purple-600 bg-purple-100',
+      color: 'text-sage bg-sage/10',
     },
     {
       title: 'Active Pins',
       value: (activePins || 0).toLocaleString(),
       change: undefined,
       icon: Pin,
-      color: 'text-red-600 bg-red-100',
+      color: 'text-error bg-error/10',
     },
   ];
 
@@ -94,7 +94,7 @@ export async function DashboardStats({ userId }: DashboardStatsProps) {
               <p className="text-2xl font-bold mt-1">{stat.value}</p>
               {stat.change !== undefined && (
                 <div className={`flex items-center gap-1 mt-1 text-sm ${
-                  stat.change >= 0 ? 'text-green-600' : 'text-red-600'
+                  stat.change >= 0 ? 'text-success' : 'text-error'
                 }`}>
                   {stat.change >= 0 ? (
                     <TrendingUp className="h-3 w-3" />

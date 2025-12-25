@@ -37,6 +37,7 @@ export function Select({
 }: SelectProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [highlightedIndex, setHighlightedIndex] = React.useState(-1);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -67,6 +68,7 @@ export function Select({
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchQuery('');
+        setHighlightedIndex(-1);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -112,11 +114,57 @@ export function Select({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-      setSearchQuery('');
-    } else if (e.key === 'Enter' && !isOpen) {
-      setIsOpen(true);
+    switch (e.key) {
+      case 'Escape':
+        setIsOpen(false);
+        setSearchQuery('');
+        setHighlightedIndex(-1);
+        break;
+      case 'Enter':
+      case ' ':
+        if (!isOpen) {
+          e.preventDefault();
+          setIsOpen(true);
+          setHighlightedIndex(0);
+        } else if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+          e.preventDefault();
+          handleSelect(filteredOptions[highlightedIndex].value);
+        }
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        if (!isOpen) {
+          setIsOpen(true);
+          setHighlightedIndex(0);
+        } else {
+          setHighlightedIndex((prev) =>
+            prev < filteredOptions.length - 1 ? prev + 1 : 0
+          );
+        }
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        if (!isOpen) {
+          setIsOpen(true);
+          setHighlightedIndex(filteredOptions.length - 1);
+        } else {
+          setHighlightedIndex((prev) =>
+            prev > 0 ? prev - 1 : filteredOptions.length - 1
+          );
+        }
+        break;
+      case 'Home':
+        if (isOpen) {
+          e.preventDefault();
+          setHighlightedIndex(0);
+        }
+        break;
+      case 'End':
+        if (isOpen) {
+          e.preventDefault();
+          setHighlightedIndex(filteredOptions.length - 1);
+        }
+        break;
     }
   };
 
@@ -150,10 +198,14 @@ export function Select({
                   className="inline-flex items-center gap-1 rounded bg-sage-pale px-2 py-0.5 text-body-sm"
                 >
                   {option?.label}
-                  <X
-                    className="h-3 w-3 cursor-pointer hover:text-error"
+                  <button
+                    type="button"
+                    aria-label={`Remove ${option?.label}`}
+                    className="flex items-center justify-center hover:text-error focus:outline-none focus:ring-1 focus:ring-teal-focus rounded"
                     onClick={(e) => handleRemoveValue(v, e)}
-                  />
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </span>
               );
             })
@@ -165,10 +217,14 @@ export function Select({
         </div>
         <div className="flex items-center gap-1">
           {selectedValues.length > 0 && !disabled && (
-            <X
-              className="h-4 w-4 text-[var(--color-text-tertiary)] hover:text-charcoal"
+            <button
+              type="button"
+              aria-label="Clear selection"
+              className="flex items-center justify-center min-h-6 min-w-6 text-[var(--color-text-tertiary)] hover:text-charcoal focus:outline-none focus:ring-1 focus:ring-teal-focus rounded"
               onClick={handleClear}
-            />
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
           <ChevronDown
             className={cn(
@@ -206,8 +262,9 @@ export function Select({
                 No options found
               </li>
             ) : (
-              filteredOptions.map((option) => {
+              filteredOptions.map((option, index) => {
                 const isSelected = selectedValues.includes(option.value);
+                const isHighlighted = index === highlightedIndex;
                 return (
                   <li
                     key={option.value}
@@ -215,12 +272,15 @@ export function Select({
                     aria-selected={isSelected}
                     aria-disabled={option.disabled}
                     className={cn(
-                      `flex cursor-pointer items-center gap-2 px-3 py-2 text-body
-                       hover:bg-elevated`,
-                      isSelected && 'bg-sage-pale',
+                      `flex cursor-pointer items-center gap-2 px-3 py-2 text-body`,
+                      isHighlighted && 'bg-elevated',
+                      isSelected && !isHighlighted && 'bg-sage-pale',
+                      isSelected && isHighlighted && 'bg-sage-pale',
+                      !isSelected && !isHighlighted && 'hover:bg-elevated',
                       option.disabled && 'cursor-not-allowed opacity-50'
                     )}
                     onClick={() => !option.disabled && handleSelect(option.value)}
+                    onMouseEnter={() => setHighlightedIndex(index)}
                   >
                     {multiple && (
                       <div

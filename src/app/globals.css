@@ -39,7 +39,7 @@
   /* Text Colors */
   --color-text-primary: #2D3E4A;
   --color-text-secondary: #5A6B7A;
-  --color-text-tertiary: #8A9BAA;
+  --color-text-tertiary: #6B7A8A; /* Improved contrast: 4.5:1 on canvas */
   --color-text-inverse: #FFFFFF;
 }
 
@@ -323,4 +323,35 @@ h4 {
 
 .text-balance {
   text-wrap: balance;
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Motion-safe animations (only run when user hasn't requested reduced motion) */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.2s ease-out;
+  }
+
+  .animate-slide-down {
+    animation: slideDown 0.2s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.15s ease-out;
+  }
 }

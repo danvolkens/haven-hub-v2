@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@/components/layout/page-container';
-import { Card, CardContent, Button, Input, Label } from '@/components/ui';
+import { Card, CardContent, Button, Input, Label, Textarea } from '@/components/ui';
 import {
   ArrowLeft,
   ArrowRight,
@@ -243,9 +243,8 @@ function CampaignWizardContent() {
 
           <div className="space-y-2">
             <Label htmlFor="description">Description (optional)</Label>
-            <textarea
+            <Textarea
               id="description"
-              className="w-full px-3 py-2 rounded-md border bg-surface text-body placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-sage/50"
               rows={3}
               placeholder="Describe the campaign's goals and target audience..."
               value={campaign.description}

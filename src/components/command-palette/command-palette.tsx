@@ -272,6 +272,7 @@ export function CommandPalette() {
         <div
           role="dialog"
           aria-modal="true"
+          aria-label="Command palette - search commands and navigate"
           className="relative z-50 w-full max-w-lg mx-4 rounded-lg bg-surface shadow-elevation-3 overflow-hidden"
         >
           {/* Search Input */}
@@ -288,7 +289,7 @@ export function CommandPalette() {
               placeholder="Search commands..."
               className="flex-1 bg-transparent border-0 outline-none text-base placeholder:text-[var(--color-text-tertiary)]"
             />
-            <kbd className="px-1.5 py-0.5 text-xs bg-gray-100 rounded border">
+            <kbd className="px-1.5 py-0.5 text-xs bg-elevated rounded border">
               ESC
             </kbd>
           </div>
@@ -349,14 +350,14 @@ export function CommandPalette() {
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-2 border-t bg-gray-50 flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
+          <div className="px-4 py-2 border-t bg-elevated flex items-center justify-between text-xs text-[var(--color-text-secondary)]">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 bg-white rounded border">↑↓</kbd>
+                <kbd className="px-1 py-0.5 bg-surface rounded border">↑↓</kbd>
                 navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1 py-0.5 bg-white rounded border">↵</kbd>
+                <kbd className="px-1 py-0.5 bg-surface rounded border">↵</kbd>
                 select
               </span>
             </div>
@@ -384,15 +385,16 @@ function CommandRow({
   return (
     <button
       onClick={onSelect}
-      className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${
-        isSelected ? 'bg-sage-100 text-sage-900' : 'hover:bg-gray-50'
-      }`}
+      className={cn(
+        'w-full flex items-center gap-3 px-4 py-2 text-left transition-colors cursor-pointer',
+        isSelected ? 'bg-sage-pale text-charcoal' : 'hover:bg-elevated'
+      )}
     >
-      <Icon className={`h-4 w-4 ${isSelected ? 'text-sage-600' : 'text-muted-foreground'}`} />
+      <Icon className={cn('h-4 w-4', isSelected ? 'text-sage' : 'text-[var(--color-text-tertiary)]')} />
       <div className="flex-1 min-w-0">
         <div className="font-medium">{command.title}</div>
         {command.description && (
-          <div className="text-sm text-muted-foreground truncate">
+          <div className="text-sm text-[var(--color-text-secondary)] truncate">
             {command.description}
           </div>
         )}
