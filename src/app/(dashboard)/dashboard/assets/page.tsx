@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
-import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal } from '@/components/ui';
-import { Image, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
+import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send } from 'lucide-react';
 
 interface Mockup {
   id: string;
@@ -49,11 +49,39 @@ interface PreviewItem {
   subtitle?: string;
   collection?: string;
   date: string;
+  referenceId?: string;
+}
+
+interface PinterestBoard {
+  id: string;
+  pinterest_board_id: string;
+  name: string;
+  collection: string | null;
+  is_primary: boolean;
+}
+
+interface CreatePinData {
+  boardId: string;
+  title: string;
+  description: string;
+  link: string;
+  publishNow: boolean;
+  scheduledFor?: string;
 }
 
 export default function AssetsPage() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('mockups');
   const [previewItem, setPreviewItem] = useState<PreviewItem | null>(null);
+  const [showCreatePin, setShowCreatePin] = useState(false);
+  const [pinItem, setPinItem] = useState<PreviewItem | null>(null);
+  const [pinForm, setPinForm] = useState<CreatePinData>({
+    boardId: '',
+    title: '',
+    description: '',
+    link: '',
+    publishNow: false,
+  });
 
   // Fetch approved items from approval_items
   const { data: approvedData, isLoading: loadingApproved } = useQuery({
@@ -72,6 +100,58 @@ export default function AssetsPage() {
       const res = await fetch('/api/mockups?limit=100');
       if (!res.ok) throw new Error('Failed to fetch mockups');
       return res.json();
+    },
+  });
+
+  // Fetch Pinterest status and boards
+  const { data: pinterestData } = useQuery({
+    queryKey: ['pinterest-boards'],
+    queryFn: async () => {
+      const res = await fetch('/api/pinterest/boards');
+      if (!res.ok) return { boards: [], connected: false };
+      return res.json();
+    },
+  });
+
+  const pinterestConnected = pinterestData?.connected || false;
+  const boards: PinterestBoard[] = pinterestData?.boards || [];
+
+  // Create pin mutation
+  const createPinMutation = useMutation({
+    mutationFn: async (data: {
+      boardId: string;
+      imageUrl: string;
+      title: string;
+      description?: string;
+      link?: string;
+      mockupId?: string;
+      assetId?: string;
+      collection?: string;
+      publishNow?: boolean;
+      scheduledFor?: string;
+    }) => {
+      const res = await fetch('/api/pinterest/pins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create pin');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest-pins'] });
+      setShowCreatePin(false);
+      setPinItem(null);
+      setPinForm({
+        boardId: '',
+        title: '',
+        description: '',
+        link: '',
+        publishNow: false,
+      });
     },
   });
 
@@ -112,6 +192,7 @@ export default function AssetsPage() {
       subtitle: mockup.scene.replace('dm_', '').slice(0, 20),
       collection: mockup.assets?.quotes?.collection,
       date: mockup.created_at,
+      referenceId: mockup.id,
     });
   };
 
@@ -125,6 +206,36 @@ export default function AssetsPage() {
       subtitle: asset.payload.format || asset.payload.size,
       collection: asset.payload.collection || asset.collection,
       date: asset.created_at,
+      referenceId: asset.reference_id,
+    });
+  };
+
+  const openCreatePinModal = (item: PreviewItem) => {
+    setPinItem(item);
+    setPinForm({
+      boardId: '',
+      title: item.title.slice(0, 100),
+      description: '',
+      link: '',
+      publishNow: false,
+    });
+    setShowCreatePin(true);
+  };
+
+  const handleCreatePin = () => {
+    if (!pinItem || !pinForm.boardId) return;
+
+    createPinMutation.mutate({
+      boardId: pinForm.boardId,
+      imageUrl: pinItem.imageUrl,
+      title: pinForm.title,
+      description: pinForm.description || undefined,
+      link: pinForm.link || undefined,
+      mockupId: pinItem.type === 'mockup' ? pinItem.referenceId : undefined,
+      assetId: pinItem.type === 'asset' ? pinItem.referenceId : undefined,
+      collection: pinItem.collection as 'grounding' | 'wholeness' | 'growth' | undefined,
+      publishNow: pinForm.publishNow,
+      scheduledFor: pinForm.scheduledFor,
     });
   };
 
@@ -187,14 +298,14 @@ export default function AssetsPage() {
                       </div>
                       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => window.open(mockup.file_url, '_blank')}
                         >
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleDownload(mockup.file_url, `mockup-${mockup.id}.png`)}
                         >
@@ -259,14 +370,14 @@ export default function AssetsPage() {
                           {imageUrl && (
                             <>
                               <Button
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => window.open(imageUrl, '_blank')}
                               >
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="secondary"
                                 size="sm"
                                 onClick={() => handleDownload(imageUrl, `asset-${asset.id}.png`)}
                               >
@@ -319,8 +430,20 @@ export default function AssetsPage() {
               </div>
 
               <div className="flex gap-2">
+                {pinterestConnected && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setPreviewItem(null);
+                      openCreatePinModal(previewItem);
+                    }}
+                  >
+                    <Pin className="h-4 w-4 mr-2" />
+                    Create Pin
+                  </Button>
+                )}
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => window.open(previewItem.imageUrl, '_blank')}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
@@ -336,6 +459,176 @@ export default function AssetsPage() {
                   Download
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Create Pin Modal */}
+      <Modal
+        isOpen={showCreatePin}
+        onClose={() => {
+          setShowCreatePin(false);
+          setPinItem(null);
+        }}
+        title="Create Pinterest Pin"
+        size="lg"
+        showCloseButton={true}
+      >
+        {pinItem && (
+          <div className="space-y-6">
+            {/* Preview */}
+            <div className="flex gap-4">
+              <div className="w-32 h-32 bg-[var(--color-bg-secondary)] rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  src={pinItem.imageUrl}
+                  alt={pinItem.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {pinItem.type === 'mockup' ? 'Mockup' : 'Asset'}
+                </p>
+                <p className="font-medium truncate">{pinItem.title}</p>
+                {pinItem.collection && (
+                  <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-[var(--color-bg-secondary)]">
+                    {pinItem.collection}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Board Selection */}
+            <div>
+              <Label>Board *</Label>
+              <select
+                className="w-full mt-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg"
+                value={pinForm.boardId}
+                onChange={(e) => setPinForm({ ...pinForm, boardId: e.target.value })}
+              >
+                <option value="">Select a board...</option>
+                {boards.map((board) => (
+                  <option key={board.id} value={board.id}>
+                    {board.name}
+                    {board.collection && ` (${board.collection})`}
+                  </option>
+                ))}
+              </select>
+              {boards.length === 0 && (
+                <p className="text-sm text-[var(--color-text-tertiary)] mt-2">
+                  No boards found. Go to Pinterest Manager to sync your boards.
+                </p>
+              )}
+            </div>
+
+            {/* Title */}
+            <div>
+              <Label>Title *</Label>
+              <Input
+                value={pinForm.title}
+                onChange={(e) => setPinForm({ ...pinForm, title: e.target.value })}
+                placeholder="Pin title"
+                maxLength={100}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Description */}
+            <div>
+              <Label>Description</Label>
+              <textarea
+                className="w-full mt-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg resize-none"
+                rows={3}
+                value={pinForm.description}
+                onChange={(e) => setPinForm({ ...pinForm, description: e.target.value })}
+                placeholder="Add a description (optional)"
+                maxLength={500}
+              />
+            </div>
+
+            {/* Link */}
+            <div>
+              <Label>Destination Link</Label>
+              <Input
+                value={pinForm.link}
+                onChange={(e) => setPinForm({ ...pinForm, link: e.target.value })}
+                placeholder="https://..."
+                type="url"
+                className="mt-1"
+              />
+            </div>
+
+            {/* Publish Options */}
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={pinForm.publishNow}
+                  onChange={(e) => setPinForm({ ...pinForm, publishNow: e.target.checked, scheduledFor: undefined })}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">Publish immediately</span>
+              </label>
+            </div>
+
+            {!pinForm.publishNow && (
+              <div>
+                <Label>Schedule for later</Label>
+                <Input
+                  type="datetime-local"
+                  value={pinForm.scheduledFor || ''}
+                  onChange={(e) => setPinForm({ ...pinForm, scheduledFor: e.target.value })}
+                  className="mt-1"
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+              </div>
+            )}
+
+            {/* Error */}
+            {createPinMutation.error && (
+              <p className="text-sm text-red-500">
+                {createPinMutation.error.message}
+              </p>
+            )}
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border-primary)]">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowCreatePin(false);
+                  setPinItem(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreatePin}
+                disabled={!pinForm.boardId || !pinForm.title || createPinMutation.isPending}
+              >
+                {createPinMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : pinForm.publishNow ? (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Publish Now
+                  </>
+                ) : pinForm.scheduledFor ? (
+                  <>
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Schedule Pin
+                  </>
+                ) : (
+                  <>
+                    <Pin className="h-4 w-4 mr-2" />
+                    Save as Draft
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         )}

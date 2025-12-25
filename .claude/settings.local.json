@@ -41,7 +41,8 @@
       "Bash(npm install:*)",
       "Bash(npm view:*)",
       "Bash(npm uninstall:*)",
-      "WebFetch(domain:trigger.dev)"
+      "WebFetch(domain:trigger.dev)",
+      "Bash(wc:*)"
     ]
   }
 }

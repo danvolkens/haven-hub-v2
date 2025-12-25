@@ -21,6 +21,7 @@ import {
   Link as LinkIcon,
   Share2,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -108,6 +109,11 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Link-in-Bio', href: '/dashboard/links', icon: LinkIcon },
       { name: 'Cross-Platform', href: '/dashboard/content/cross-platform', icon: Share2 },
     ],
+  },
+  {
+    name: 'Documentation',
+    href: '/dashboard/docs',
+    icon: BookOpen,
   },
   {
     name: 'Settings',

@@ -1,66 +1,576 @@
 'use client';
 
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PageContainer } from '@/components/layout/page-container';
-import { Card, CardHeader, CardContent, Button } from '@/components/ui';
-import { Pin, BarChart3, Megaphone, FlaskConical, ArrowRight } from 'lucide-react';
+import {
+  Card,
+  CardHeader,
+  CardContent,
+  Button,
+  Badge,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Modal,
+  Select,
+} from '@/components/ui';
+import {
+  Pin,
+  RefreshCw,
+  ExternalLink,
+  Plus,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  Send,
+  Trash2,
+  BarChart3,
+  Link as LinkIcon,
+} from 'lucide-react';
 
-const features = [
-  {
-    title: 'Analytics',
-    description: 'Track pin performance, engagement rates, and top performers',
-    icon: BarChart3,
-    href: '/dashboard/pinterest/analytics',
-  },
-  {
-    title: 'Ads Manager',
-    description: 'Create and manage Pinterest advertising campaigns',
-    icon: Megaphone,
-    href: '/dashboard/pinterest/ads',
-  },
-  {
-    title: 'A/B Tests',
-    description: 'Test different copy variants to optimize engagement',
-    icon: FlaskConical,
-    href: '/dashboard/pinterest/tests',
-  },
-];
+interface Board {
+  id: string;
+  pinterest_board_id: string;
+  name: string;
+  description: string;
+  privacy: string;
+  pin_count: number;
+  follower_count: number;
+  collection: string | null;
+  is_primary: boolean;
+  synced_at: string;
+}
+
+interface PinRecord {
+  id: string;
+  pinterest_pin_id: string | null;
+  pinterest_board_id: string;
+  title: string;
+  description: string;
+  image_url: string;
+  link: string;
+  status: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'retired';
+  scheduled_for: string | null;
+  published_at: string | null;
+  impressions: number;
+  saves: number;
+  clicks: number;
+  last_error: string | null;
+  created_at: string;
+  pinterest_boards?: { name: string };
+}
 
 export default function PinterestPage() {
+  const [activeTab, setActiveTab] = useState('boards');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedPin, setSelectedPin] = useState<PinRecord | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  // Fetch Pinterest status
+  const { data: status } = useQuery({
+    queryKey: ['pinterest', 'status'],
+    queryFn: async () => {
+      const res = await fetch('/api/pinterest/status');
+      if (!res.ok) throw new Error('Failed to fetch status');
+      return res.json();
+    },
+  });
+
+  // Fetch boards
+  const { data: boardsData, isLoading: loadingBoards } = useQuery({
+    queryKey: ['pinterest', 'boards'],
+    queryFn: async () => {
+      const res = await fetch('/api/pinterest/boards');
+      if (!res.ok) throw new Error('Failed to fetch boards');
+      return res.json();
+    },
+  });
+
+  // Fetch pins
+  const { data: pinsData, isLoading: loadingPins } = useQuery({
+    queryKey: ['pinterest', 'pins', statusFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: '100' });
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const res = await fetch(`/api/pinterest/pins?${params}`);
+      if (!res.ok) throw new Error('Failed to fetch pins');
+      return res.json();
+    },
+  });
+
+  // Sync boards mutation
+  const syncBoardsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/pinterest/boards', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to sync boards');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'boards'] });
+    },
+  });
+
+  // Update board collection mutation
+  const updateBoardMutation = useMutation({
+    mutationFn: async ({ boardId, collection }: { boardId: string; collection: string | null }) => {
+      const res = await fetch('/api/pinterest/boards', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boardId, collection }),
+      });
+      if (!res.ok) throw new Error('Failed to update board');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'boards'] });
+    },
+  });
+
+  // Publish pin mutation
+  const publishPinMutation = useMutation({
+    mutationFn: async (pinId: string) => {
+      const res = await fetch('/api/pinterest/pins/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinId }),
+      });
+      if (!res.ok) throw new Error('Failed to publish pin');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'pins'] });
+    },
+  });
+
+  // Delete pin mutation
+  const deletePinMutation = useMutation({
+    mutationFn: async (pinId: string) => {
+      const res = await fetch('/api/pinterest/pins', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pinId }),
+      });
+      if (!res.ok) throw new Error('Failed to delete pin');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'pins'] });
+      setShowDeleteConfirm(null);
+    },
+  });
+
+  const boards: Board[] = boardsData?.boards || [];
+  const pins: PinRecord[] = pinsData?.pins || [];
+
+  const getStatusBadge = (status: PinRecord['status']) => {
+    const config: Record<PinRecord['status'], { variant: 'default' | 'success' | 'error' | 'secondary'; icon: React.ReactNode }> = {
+      draft: { variant: 'secondary', icon: <Clock className="h-3 w-3" /> },
+      scheduled: { variant: 'default', icon: <Clock className="h-3 w-3" /> },
+      publishing: { variant: 'default', icon: <Loader2 className="h-3 w-3 animate-spin" /> },
+      published: { variant: 'success', icon: <CheckCircle className="h-3 w-3" /> },
+      failed: { variant: 'error', icon: <XCircle className="h-3 w-3" /> },
+      retired: { variant: 'secondary', icon: <AlertCircle className="h-3 w-3" /> },
+    };
+    const { variant, icon } = config[status];
+    return (
+      <Badge variant={variant} className="flex items-center gap-1">
+        {icon}
+        {status}
+      </Badge>
+    );
+  };
+
+  if (!status?.connected) {
+    return (
+      <PageContainer
+        title="Pinterest Manager"
+        description="Connect your Pinterest account to manage pins and boards"
+      >
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="rounded-full bg-red-100 p-4 mb-4">
+              <Pin className="h-8 w-8 text-red-600" />
+            </div>
+            <h3 className="text-h3 mb-2">Pinterest Not Connected</h3>
+            <p className="text-body text-[var(--color-text-secondary)] max-w-md mb-6">
+              Connect your Pinterest Business account to start managing your pins, boards, and publishing schedule.
+            </p>
+            <Link href="/api/auth/pinterest/connect">
+              <Button>
+                <Pin className="h-4 w-4 mr-2" />
+                Connect Pinterest
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer
       title="Pinterest Manager"
-      description="Manage your Pinterest presence and publishing"
+      description={`Connected as @${status.username || 'user'}`}
+      actions={
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/pinterest/analytics">
+            <Button variant="secondary">
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Analytics
+            </Button>
+          </Link>
+          <Link href="/dashboard/assets">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Pin
+            </Button>
+          </Link>
+        </div>
+      }
     >
-      <div className="grid gap-6 md:grid-cols-3">
-        {features.map((feature) => {
-          const Icon = feature.icon;
-          return (
-            <Card key={feature.title}>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-sage-pale p-2">
-                    <Icon className="h-5 w-5 text-sage" />
-                  </div>
-                  <div>
-                    <h3 className="text-h3">{feature.title}</h3>
-                    <p className="text-body-sm text-[var(--color-text-secondary)]">
-                      {feature.description}
-                    </p>
-                  </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-6">
+          <TabsTrigger value="boards">Boards ({boards.length})</TabsTrigger>
+          <TabsTrigger value="pins">Pins ({pins.length})</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="boards">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Pinterest Boards</h3>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Assign boards to collections for organized publishing
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => syncBoardsMutation.mutate()}
+                disabled={syncBoardsMutation.isPending}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncBoardsMutation.isPending ? 'animate-spin' : ''}`} />
+                Sync Boards
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loadingBoards ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-tertiary)]" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Link href={feature.href}>
-                  <Button variant="secondary" className="w-full">
-                    Open <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              ) : boards.length === 0 ? (
+                <div className="text-center py-8 text-[var(--color-text-secondary)]">
+                  No boards found. Click "Sync Boards" to fetch your Pinterest boards.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {boards.map((board) => (
+                    <div
+                      key={board.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{board.name}</h4>
+                          {board.is_primary && (
+                            <Badge variant="success">Primary</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-[var(--color-text-secondary)]">
+                          {board.pin_count} pins • {board.follower_count} followers
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Select
+                          value={board.collection || ''}
+                          onChange={(value) =>
+                            updateBoardMutation.mutate({
+                              boardId: board.id,
+                              collection: (typeof value === 'string' ? value : null) || null,
+                            })
+                          }
+                          options={[
+                            { value: '', label: 'No Collection' },
+                            { value: 'grounding', label: 'Grounding' },
+                            { value: 'wholeness', label: 'Wholeness' },
+                            { value: 'growth', label: 'Growth' },
+                          ]}
+                        />
+                        <a
+                          href={`https://pinterest.com/pin/${board.pinterest_board_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pins">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">Your Pins</h3>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  Manage all your pins across boards
+                </p>
+              </div>
+              <Select
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(typeof value === 'string' ? value : 'all')}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  { value: 'draft', label: 'Draft' },
+                  { value: 'scheduled', label: 'Scheduled' },
+                  { value: 'published', label: 'Published' },
+                  { value: 'failed', label: 'Failed' },
+                ]}
+              />
+            </CardHeader>
+            <CardContent>
+              {loadingPins ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-tertiary)]" />
+                </div>
+              ) : pins.length === 0 ? (
+                <div className="text-center py-8 text-[var(--color-text-secondary)]">
+                  No pins found. Create pins from the Assets library.
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {pins.map((pin) => (
+                    <Card key={pin.id} className="overflow-hidden">
+                      <div
+                        className="aspect-square relative bg-[var(--color-bg-secondary)] cursor-pointer"
+                        onClick={() => setSelectedPin(pin)}
+                      >
+                        <img
+                          src={pin.image_url}
+                          alt={pin.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                      </div>
+                      <CardContent className="p-3">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h4 className="font-medium text-sm truncate flex-1">
+                            {pin.title}
+                          </h4>
+                          {getStatusBadge(pin.status)}
+                        </div>
+                        <p className="text-xs text-[var(--color-text-tertiary)] mb-2">
+                          {pin.pinterest_boards?.name || 'Unknown board'}
+                        </p>
+                        {pin.status === 'published' && (
+                          <div className="flex gap-3 text-xs text-[var(--color-text-secondary)]">
+                            <span>{pin.impressions} views</span>
+                            <span>{pin.saves} saves</span>
+                            <span>{pin.clicks} clicks</span>
+                          </div>
+                        )}
+                        {pin.status === 'failed' && pin.last_error && (
+                          <p className="text-xs text-red-600 truncate">{pin.last_error}</p>
+                        )}
+                        <div className="flex gap-2 mt-3">
+                          {(pin.status === 'draft' || pin.status === 'failed') && (
+                            <Button
+                              size="sm"
+                              onClick={() => publishPinMutation.mutate(pin.id)}
+                              disabled={publishPinMutation.isPending}
+                            >
+                              <Send className="h-3 w-3 mr-1" />
+                              Publish
+                            </Button>
+                          )}
+                          {pin.pinterest_pin_id && (
+                            <a
+                              href={`https://pinterest.com/pin/${pin.pinterest_pin_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Button size="sm" variant="secondary">
+                                <ExternalLink className="h-3 w-3 mr-1" />
+                                View
+                              </Button>
+                            </a>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowDeleteConfirm(pin.id)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="scheduled">
+          <Card>
+            <CardHeader>
+              <h3 className="text-lg font-semibold">Scheduled Pins</h3>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Pins waiting to be published
+              </p>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const scheduledPins = pins.filter((p) => p.status === 'scheduled');
+                if (scheduledPins.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-[var(--color-text-secondary)]">
+                      No scheduled pins. Schedule pins from the Assets library.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-3">
+                    {scheduledPins.map((pin) => (
+                      <div
+                        key={pin.id}
+                        className="flex items-center gap-4 p-4 border rounded-lg"
+                      >
+                        <img
+                          src={pin.image_url}
+                          alt={pin.title}
+                          className="w-16 h-16 rounded object-cover"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-medium">{pin.title}</h4>
+                          <p className="text-sm text-[var(--color-text-secondary)]">
+                            {pin.pinterest_boards?.name}
+                          </p>
+                          {pin.scheduled_for && (
+                            <p className="text-xs text-[var(--color-text-tertiary)]">
+                              Scheduled for {new Date(pin.scheduled_for).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => publishPinMutation.mutate(pin.id)}
+                            disabled={publishPinMutation.isPending}
+                          >
+                            Publish Now
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowDeleteConfirm(pin.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Pin Detail Modal */}
+      <Modal
+        isOpen={!!selectedPin}
+        onClose={() => setSelectedPin(null)}
+        title={selectedPin?.title || 'Pin Details'}
+        size="lg"
+      >
+        {selectedPin && (
+          <div className="space-y-4">
+            <img
+              src={selectedPin.image_url}
+              alt={selectedPin.title}
+              className="w-full max-h-96 object-contain rounded-lg bg-[var(--color-bg-secondary)]"
+            />
+            <div className="flex items-center justify-between">
+              <div>{getStatusBadge(selectedPin.status)}</div>
+              <div className="text-sm text-[var(--color-text-secondary)]">
+                {selectedPin.pinterest_boards?.name}
+              </div>
+            </div>
+            {selectedPin.description && (
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {selectedPin.description}
+              </p>
+            )}
+            {selectedPin.link && (
+              <div className="flex items-center gap-2 text-sm">
+                <LinkIcon className="h-4 w-4" />
+                <a
+                  href={selectedPin.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-teal-600 hover:underline truncate"
+                >
+                  {selectedPin.link}
+                </a>
+              </div>
+            )}
+            {selectedPin.status === 'published' && (
+              <div className="grid grid-cols-3 gap-4 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{selectedPin.impressions}</div>
+                  <div className="text-sm text-[var(--color-text-secondary)]">Impressions</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{selectedPin.saves}</div>
+                  <div className="text-sm text-[var(--color-text-secondary)]">Saves</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold">{selectedPin.clicks}</div>
+                  <div className="text-sm text-[var(--color-text-secondary)]">Clicks</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation */}
+      <Modal
+        isOpen={!!showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(null)}
+        title="Delete Pin"
+        size="sm"
+      >
+        <p className="text-[var(--color-text-secondary)] mb-4">
+          Are you sure you want to delete this pin? This will also remove it from Pinterest if published.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => showDeleteConfirm && deletePinMutation.mutate(showDeleteConfirm)}
+            disabled={deletePinMutation.isPending}
+          >
+            {deletePinMutation.isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }

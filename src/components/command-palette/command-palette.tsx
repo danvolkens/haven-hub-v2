@@ -252,35 +252,13 @@ export function CommandPalette() {
     };
   }, [isOpen]);
 
+  // Don't render anything when closed - Header has the trigger
   if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-      >
-        <Search className="h-4 w-4" />
-        <span>Search...</span>
-        <kbd className="ml-2 px-1.5 py-0.5 text-xs bg-white rounded border">
-          ⌘K
-        </kbd>
-      </button>
-    );
+    return null;
   }
 
   return (
     <>
-      {/* Trigger hint (visible when closed) */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className="hidden md:flex items-center gap-2 px-3 py-1.5 text-sm text-[var(--color-text-secondary)] bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-      >
-        <Search className="h-4 w-4" />
-        <span>Search...</span>
-        <kbd className="ml-2 px-1.5 py-0.5 text-xs bg-white rounded border">
-          ⌘K
-        </kbd>
-      </button>
-
       {/* Modal Overlay */}
       <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
         {/* Backdrop */}
