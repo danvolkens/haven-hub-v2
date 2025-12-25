@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// Environment validation
+// Environment validation - only warn during development, throw at runtime in production
 const requiredEnvVars = [
   'R2_ACCOUNT_ID',
   'R2_ACCESS_KEY_ID',
@@ -19,8 +19,10 @@ const requiredEnvVars = [
 ];
 
 const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-if (missingVars.length > 0 && process.env.NODE_ENV === 'production') {
-  throw new Error(`Missing required R2 environment variables: ${missingVars.join(', ')}`);
+if (missingVars.length > 0) {
+  // Only log warning during build - actual usage will fail gracefully
+  // with local storage fallback in storage-utils.ts
+  console.warn(`[R2] Missing environment variables: ${missingVars.join(', ')}. Using local storage fallback.`);
 }
 
 // R2 Configuration

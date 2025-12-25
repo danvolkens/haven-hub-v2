@@ -7,6 +7,7 @@ export interface DesignEnginePayload {
   userId: string;
   outputFormats: string[];
   generateMockups: boolean;
+  mockupScenes?: string[];
 }
 
 export interface MockupGeneratorPayload {

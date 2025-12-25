@@ -24,14 +24,22 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
 
     // Store state in user's integration record
-    await (supabase as any)
+    const { error: upsertError } = await (supabase as any)
       .from('integrations')
-      .upsert({
-        user_id: userId,
-        provider: 'shopify',
-        status: 'connecting',
-        metadata: { shop_domain: shop, oauth_state: state },
-      });
+      .upsert(
+        {
+          user_id: userId,
+          provider: 'shopify',
+          status: 'connecting',
+          metadata: { shop_domain: shop, oauth_state: state },
+        },
+        { onConflict: 'user_id,provider' }
+      );
+
+    if (upsertError) {
+      console.error('Failed to store OAuth state:', upsertError);
+      throw new Error('Failed to initialize Shopify connection');
+    }
 
     // Generate OAuth URL
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/shopify/callback`;
@@ -41,7 +49,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Shopify install error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/integrations?error=shopify_install_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/setup?error=shopify_install_failed`
     );
   }
 }

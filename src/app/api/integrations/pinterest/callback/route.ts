@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     // Calculate token expiration
     const tokenExpiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
 
-    // Update integration record
+    // Update integration record (store tokens in metadata as fallback for local dev)
     await (supabase as any)
       .from('integrations')
       .update({
@@ -86,6 +86,9 @@ export async function GET(request: NextRequest) {
           account_name: user.business_name || user.username,
           account_id: user.username,
           board_count: boards.length,
+          // Store tokens in metadata as fallback when vault is unavailable
+          _access_token: access_token,
+          _refresh_token: refresh_token,
         },
         token_expires_at: tokenExpiresAt,
         connected_at: new Date().toISOString(),
@@ -99,12 +102,20 @@ export async function GET(request: NextRequest) {
     await syncPinterestBoards(userId, boards);
 
     // Update setup progress
-    await (supabase as any)
+    const { data: settings } = await (supabase as any)
       .from('user_settings')
-      .update({
-        setup_progress: (supabase as any).sql`jsonb_set(setup_progress, '{pinterest}', '"completed"')`,
-      })
-      .eq('user_id', userId);
+      .select('setup_progress')
+      .eq('user_id', userId)
+      .single();
+
+    if (settings) {
+      await (supabase as any)
+        .from('user_settings')
+        .update({
+          setup_progress: { ...settings.setup_progress, pinterest: 'completed' },
+        })
+        .eq('user_id', userId);
+    }
 
     // Log activity
     await (supabase as any).rpc('log_activity', {
@@ -116,12 +127,12 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/integrations?success=pinterest_connected`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/setup?success=pinterest_connected`
     );
   } catch (error) {
     console.error('Pinterest callback error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/integrations?error=pinterest_callback_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/setup?error=pinterest_callback_failed`
     );
   }
 }

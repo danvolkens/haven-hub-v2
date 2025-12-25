@@ -25,13 +25,14 @@ import type { Quote } from '@/types/quotes';
 import { useToast } from '@/components/providers/toast-provider';
 import Link from 'next/link';
 
-const MOCKUP_SCENES = [
-  { id: 'bedroom', name: 'Bedroom', description: 'Framed on bedside table' },
-  { id: 'therapy_office', name: 'Therapy Office', description: 'Wall art in counseling setting' },
-  { id: 'living_room', name: 'Living Room', description: 'Gallery wall display' },
-  { id: 'reading_nook', name: 'Reading Nook', description: 'Cozy corner setting' },
-  { id: 'home_office', name: 'Home Office', description: 'Desk or shelf display' },
-];
+interface MockupTemplate {
+  id: string;
+  scene_key: string;
+  name: string;
+  description: string | null;
+  preview_url: string | null;
+  dm_template_id: string | null;
+}
 
 export default function GenerateAssetsPage() {
   const router = useRouter();
@@ -46,12 +47,19 @@ export default function GenerateAssetsPage() {
     'print_11x14',
   ]);
   const [generateMockups, setGenerateMockups] = useState(false);
-  const [selectedScenes, setSelectedScenes] = useState<string[]>(['bedroom', 'living_room']);
+  const [selectedScenes, setSelectedScenes] = useState<string[]>([]);
 
   const { data: quote, isLoading: quoteLoading } = useQuery({
     queryKey: ['quote', quoteId],
     queryFn: () => api.get<Quote>(`/quotes/${quoteId}`),
   });
+
+  // Fetch synced mockup templates
+  const { data: templatesData } = useQuery({
+    queryKey: ['mockup-templates'],
+    queryFn: () => api.get<{ templates: MockupTemplate[] }>('/mockups/templates/sync'),
+  });
+  const mockupTemplates = templatesData?.templates || [];
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -62,7 +70,7 @@ export default function GenerateAssetsPage() {
       }),
     onSuccess: () => {
       toast('Asset generation started! Check the approval queue for results.', 'success');
-      router.push('/dashboard/approval-queue');
+      router.push('/dashboard/approvals');
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to start generation', 'error');
@@ -209,55 +217,92 @@ export default function GenerateAssetsPage() {
         <Card>
           <CardHeader
             title="Generate Mockups"
-            description="Create lifestyle mockups using Dynamic Mockups API"
+            description="Create lifestyle mockups using Dynamic Mockups"
           />
           <CardContent className="p-6 pt-0">
-            <div className="mb-4">
-              <Checkbox
-                checked={generateMockups}
-                onChange={() => setGenerateMockups(!generateMockups)}
-                label="Generate mockups for approved assets"
-                description="Credits will be charged when mockups are generated"
-              />
-            </div>
-
-            {generateMockups && (
-              <div className="mt-4 pt-4 border-t">
-                <p className="text-body-sm font-medium mb-3">Select Scenes</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {MOCKUP_SCENES.map((scene) => (
-                    <button
-                      key={scene.id}
-                      onClick={() => toggleScene(scene.id)}
-                      className={cn(
-                        'flex items-center gap-3 rounded-md border p-3 text-left transition-colors',
-                        selectedScenes.includes(scene.id)
-                          ? 'border-sage bg-sage-pale'
-                          : 'hover:bg-elevated'
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          'h-5 w-5 rounded border flex items-center justify-center',
-                          selectedScenes.includes(scene.id)
-                            ? 'bg-sage border-sage'
-                            : 'border-[var(--color-border)]'
-                        )}
-                      >
-                        {selectedScenes.includes(scene.id) && (
-                          <Check className="h-3 w-3 text-white" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-body-sm font-medium">{scene.name}</p>
-                        <p className="text-caption text-[var(--color-text-tertiary)]">
-                          {scene.description}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            {mockupTemplates.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-body text-[var(--color-text-secondary)] mb-3">
+                  No mockup templates synced yet.
+                </p>
+                <Link href="/dashboard/settings">
+                  <Button variant="secondary" size="sm">
+                    Sync Templates in Settings
+                  </Button>
+                </Link>
               </div>
+            ) : (
+              <>
+                <div className="mb-4">
+                  <Checkbox
+                    checked={generateMockups}
+                    onChange={() => setGenerateMockups(!generateMockups)}
+                    label="Generate mockups for approved assets"
+                    description={`${mockupTemplates.length} templates available • Credits charged per mockup`}
+                  />
+                </div>
+
+                {generateMockups && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-body-sm font-medium">Select Templates ({selectedScenes.length} selected)</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const allSceneKeys = mockupTemplates.map((t) => t.scene_key);
+                          setSelectedScenes(
+                            selectedScenes.length === mockupTemplates.length ? [] : allSceneKeys
+                          );
+                        }}
+                      >
+                        {selectedScenes.length === mockupTemplates.length ? 'Deselect All' : 'Select All'}
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+                      {mockupTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => toggleScene(template.scene_key)}
+                          className={cn(
+                            'flex flex-col rounded-md border overflow-hidden text-left transition-colors cursor-pointer',
+                            selectedScenes.includes(template.scene_key)
+                              ? 'border-sage ring-2 ring-sage/20 bg-sage-pale'
+                              : 'hover:bg-elevated hover:border-[var(--color-border-hover)]'
+                          )}
+                        >
+                          <div className="aspect-[4/3] bg-elevated relative">
+                            {template.preview_url ? (
+                              <img
+                                src={template.preview_url}
+                                alt={template.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[var(--color-text-tertiary)]">
+                                <Sparkles className="h-8 w-8" />
+                              </div>
+                            )}
+                            {selectedScenes.includes(template.scene_key) && (
+                              <div className="absolute top-2 right-2 h-6 w-6 rounded-full bg-sage flex items-center justify-center">
+                                <Check className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="p-2">
+                            <p className="text-body-sm font-medium truncate">{template.name}</p>
+                            {template.description && (
+                              <p className="text-caption text-[var(--color-text-tertiary)] truncate">
+                                {template.description}
+                              </p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

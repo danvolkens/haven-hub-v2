@@ -20,7 +20,7 @@ export async function POST(
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
 
-    const { outputFormats, generateMockups } = generateSchema.parse(body);
+    const { outputFormats, generateMockups, mockupScenes } = generateSchema.parse(body);
 
     // Verify quote exists and belongs to user
     const { data: quote, error } = await (supabase as any)
@@ -47,6 +47,7 @@ export async function POST(
       userId,
       outputFormats,
       generateMockups,
+      mockupScenes,
     });
 
     return NextResponse.json({

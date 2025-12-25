@@ -37,15 +37,31 @@ export async function GET(request: NextRequest) {
 
     // Verify state matches stored state
     const supabase = await createServerSupabaseClient();
-    const { data: integration } = await (supabase as any)
+    const { data: integration, error: selectError } = await (supabase as any)
       .from('integrations')
       .select('metadata')
       .eq('user_id', userId)
       .eq('provider', 'shopify')
       .single();
 
-    if (!integration || integration.metadata.oauth_state !== state) {
-      throw new Error('Invalid state parameter');
+    if (selectError) {
+      console.error('Failed to retrieve integration record:', selectError);
+      throw new Error('Failed to verify state - database error');
+    }
+
+    if (!integration) {
+      console.error('No integration record found for user:', userId);
+      throw new Error('Invalid state parameter - no record');
+    }
+
+    if (integration.metadata.oauth_state !== state) {
+      console.error('State mismatch:', {
+        expected: integration.metadata.oauth_state,
+        received: state,
+        shop: integration.metadata.shop_domain,
+        callbackShop: shop,
+      });
+      throw new Error('Invalid state parameter - mismatch');
     }
 
     // Exchange code for access token
@@ -99,12 +115,20 @@ export async function GET(request: NextRequest) {
     await registerShopifyWebhooks(userId, shop, access_token, supabase);
 
     // Update setup progress
-    await (supabase as any)
+    const { data: settings } = await (supabase as any)
       .from('user_settings')
-      .update({
-        setup_progress: (supabase as any).sql`jsonb_set(setup_progress, '{shopify}', '"completed"')`,
-      })
-      .eq('user_id', userId);
+      .select('setup_progress')
+      .eq('user_id', userId)
+      .single();
+
+    if (settings) {
+      await (supabase as any)
+        .from('user_settings')
+        .update({
+          setup_progress: { ...settings.setup_progress, shopify: 'completed' },
+        })
+        .eq('user_id', userId);
+    }
 
     // Log activity
     await (supabase as any).rpc('log_activity', {
@@ -116,12 +140,12 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/integrations?success=shopify_connected`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/setup?success=shopify_connected`
     );
   } catch (error) {
     console.error('Shopify callback error:', error);
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/integrations?error=shopify_callback_failed`
+      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/setup?error=shopify_callback_failed`
     );
   }
 }

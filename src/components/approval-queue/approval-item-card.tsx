@@ -1,6 +1,7 @@
 'use client';
 
-import { Check, X, SkipForward } from 'lucide-react';
+import { useState } from 'react';
+import { Check, X, SkipForward, ImageOff } from 'lucide-react';
 import { Button, Card, Checkbox, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import type { ApprovalItem } from '@/types/approval';
@@ -27,6 +28,7 @@ export function ApprovalItemCard({
   isActioning,
 }: ApprovalItemCardProps) {
   const thumbnailUrl = getThumbnailUrl(item);
+  const [imageError, setImageError] = useState(false);
 
   return (
     <Card
@@ -43,15 +45,18 @@ export function ApprovalItemCard({
           aria-label={`Select ${item.type} item`}
         />
 
-        {thumbnailUrl && (
-          <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-elevated">
+        <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-elevated flex items-center justify-center">
+          {thumbnailUrl && !imageError ? (
             <img
               src={thumbnailUrl}
               alt=""
               className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
             />
-          </div>
-        )}
+          ) : (
+            <ImageOff className="h-6 w-6 text-[var(--color-text-tertiary)]" />
+          )}
+        </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">

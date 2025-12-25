@@ -42,13 +42,44 @@ export function useCreateQuote() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       text: string;
       attribution?: string;
       collection: Collection;
       mood: Mood;
       temporal_tags?: string[];
-    }) => api.post<Quote>('/quotes', data),
+      masterImage?: File;
+    }) => {
+      // First create the quote
+      const quote = await api.post<Quote>('/quotes', {
+        text: data.text,
+        attribution: data.attribution,
+        collection: data.collection,
+        mood: data.mood,
+        temporal_tags: data.temporal_tags,
+      });
+
+      // Then upload master image if provided
+      if (data.masterImage) {
+        const formData = new FormData();
+        formData.append('image', data.masterImage);
+
+        const response = await fetch(`/api/quotes/${quote.id}/image`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to upload image');
+        }
+
+        const result = await response.json();
+        return result.quote as Quote;
+      }
+
+      return quote;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast('Quote created', 'success');

@@ -1,0 +1,15 @@
+name = "Haven Hub Integration"
+client_id = "2398250d6e91f5cfd3c96c79f13fd6fe"
+application_url = "http://localhost:3000"
+embedded = true
+
+[auth]
+redirect_urls = [
+  "http://localhost:3000/api/integrations/shopify/callback"
+]
+
+[access_scopes]
+scopes = "read_products,write_products,read_orders,read_customers,write_customers,read_inventory,write_inventory,read_content,write_content"
+
+[webhooks]
+api_version = "2024-01"

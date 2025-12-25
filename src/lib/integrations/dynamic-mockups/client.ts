@@ -28,17 +28,29 @@ interface RenderResponse {
   completed_at?: string;
 }
 
-interface TemplateInfo {
-  id: string;
+interface MockupInfo {
+  uuid: string;
   name: string;
-  preview_url: string;
-  layers: Array<{
+  thumbnail: string;
+  smart_objects: Array<{
+    uuid: string;
     name: string;
-    type: 'image' | 'text' | 'shape';
-    is_smart_object: boolean;
-    default_size: { width: number; height: number };
+    width: number;
+    height: number;
   }>;
+  text_layers: Array<{
+    uuid: string;
+    name: string;
+  }>;
+  collections: Array<{
+    uuid: string;
+    name: string;
+  }>;
+  thumbnails: Array<{ width: number; url: string }>;
 }
+
+// Legacy alias for compatibility
+type TemplateInfo = MockupInfo;
 
 export class DynamicMockupsClient {
   private apiKey: string;
@@ -68,7 +80,8 @@ export class DynamicMockupsClient {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          Accept: 'application/json',
+          'x-api-key': this.apiKey,
           ...options.headers,
         },
       });
@@ -172,15 +185,36 @@ export class DynamicMockupsClient {
   }
 
   /**
-   * List available templates
+   * List available mockups (templates)
+   */
+  async listMockups(params?: {
+    collection_uuid?: string;
+    catalog_uuid?: string;
+    name?: string;
+    include_all_catalogs?: boolean;
+  }): Promise<{ data: MockupInfo[]; success: boolean; message: string }> {
+    const query = new URLSearchParams();
+    if (params?.collection_uuid) query.set('collection_uuid', params.collection_uuid);
+    if (params?.catalog_uuid) query.set('catalog_uuid', params.catalog_uuid);
+    if (params?.name) query.set('name', params.name);
+    if (params?.include_all_catalogs) query.set('include_all_catalogs', 'true');
+    return this.request(`/mockups?${query}`);
+  }
+
+  /**
+   * List available templates (alias for listMockups)
    */
   async listTemplates(params?: {
     page?: number;
     limit?: number;
     category?: string;
-  }): Promise<{ templates: TemplateInfo[]; total: number }> {
-    const query = new URLSearchParams(params as Record<string, string>);
-    return this.request(`/templates?${query}`);
+  }): Promise<{ templates: MockupInfo[]; total: number }> {
+    // Use the new mockups endpoint and transform response
+    const response = await this.listMockups({ include_all_catalogs: true });
+    return {
+      templates: response.data || [],
+      total: response.data?.length || 0,
+    };
   }
 
   /**
@@ -189,6 +223,76 @@ export class DynamicMockupsClient {
   async getCredits(): Promise<{ remaining: number; total: number }> {
     return this.request('/account/credits');
   }
+
+  /**
+   * List collections
+   */
+  async listCollections(params?: {
+    catalog_uuid?: string;
+    include_all_catalogs?: boolean;
+  }): Promise<{ collections: CollectionInfo[]; total: number }> {
+    const query = new URLSearchParams();
+    if (params?.catalog_uuid) query.set('catalog_uuid', params.catalog_uuid);
+    if (params?.include_all_catalogs) query.set('include_all_catalogs', 'true');
+
+    const response = await this.request<{ data: any[]; success: boolean; message: string }>(`/collections?${query}`);
+
+    // Transform API response to our format
+    const collections: CollectionInfo[] = (response.data || []).map((c: any) => ({
+      id: c.uuid,
+      name: c.name,
+      description: c.description,
+      preview_url: c.thumbnail,
+      template_count: c.mockup_count || 0,
+    }));
+
+    return { collections, total: collections.length };
+  }
+
+  /**
+   * Get mockups from a collection
+   */
+  async getCollectionMockups(collectionUuid: string): Promise<CollectionDetail> {
+    // Include all catalogs to find mockups in non-default catalogs
+    const response = await this.listMockups({
+      collection_uuid: collectionUuid,
+      include_all_catalogs: true,
+    });
+
+    return {
+      id: collectionUuid,
+      name: '', // Will be filled by caller if needed
+      template_count: response.data?.length || 0,
+      templates: (response.data || []).map((m: any) => ({
+        uuid: m.uuid,
+        name: m.name,
+        thumbnail: m.thumbnail,
+        smart_objects: m.smart_objects || [],
+        text_layers: m.text_layers || [],
+        collections: m.collections || [],
+        thumbnails: m.thumbnails || [],
+      })),
+    };
+  }
+
+  /**
+   * Get collection details with its templates (legacy method)
+   */
+  async getCollection(collectionId: string): Promise<CollectionDetail> {
+    return this.getCollectionMockups(collectionId);
+  }
+}
+
+export interface CollectionInfo {
+  id: string;
+  name: string;
+  description?: string;
+  preview_url?: string;
+  template_count: number;
+}
+
+export interface CollectionDetail extends CollectionInfo {
+  templates: MockupInfo[];
 }
 
 export class DynamicMockupsError extends Error {

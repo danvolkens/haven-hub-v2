@@ -8,6 +8,19 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { r2Client, R2_CONFIG, STORAGE_PATHS, type StoragePath } from './r2-client';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Check if R2 is properly configured
+const isR2Configured = Boolean(
+  R2_CONFIG.accountId &&
+  R2_CONFIG.accessKeyId &&
+  R2_CONFIG.secretAccessKey
+);
+
+// Local storage config for development fallback
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'public', 'uploads');
+const LOCAL_STORAGE_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Allowed MIME types
 const ALLOWED_IMAGE_TYPES = [
@@ -53,7 +66,31 @@ export function generateStorageKey(
 }
 
 /**
- * Upload a file to R2
+ * Upload a file to local storage (development fallback)
+ */
+async function uploadToLocalStorage(
+  key: string,
+  body: Buffer | Uint8Array,
+  contentType: string
+): Promise<string> {
+  const filePath = path.join(LOCAL_STORAGE_DIR, key);
+  const dirPath = path.dirname(filePath);
+
+  // Ensure directory exists
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  // Write file
+  const buffer = body instanceof Buffer ? body : Buffer.from(body);
+  fs.writeFileSync(filePath, buffer);
+
+  console.log(`[Local Storage] Saved file to: ${filePath}`);
+  return `${LOCAL_STORAGE_URL}/uploads/${key}`;
+}
+
+/**
+ * Upload a file to R2 (or local storage in development)
  */
 export async function uploadFile(
   key: string,
@@ -61,6 +98,15 @@ export async function uploadFile(
   contentType: string,
   metadata?: Record<string, string>
 ): Promise<string> {
+  // Use local storage fallback if R2 is not configured
+  if (!isR2Configured) {
+    console.log('[Storage] R2 not configured, using local storage fallback');
+    const buffer = body instanceof Buffer ? body :
+      body instanceof Uint8Array ? Buffer.from(body) :
+      Buffer.from(await new Response(body as ReadableStream).arrayBuffer());
+    return uploadToLocalStorage(key, buffer, contentType);
+  }
+
   const command = new PutObjectCommand({
     Bucket: R2_CONFIG.bucketName,
     Key: key,

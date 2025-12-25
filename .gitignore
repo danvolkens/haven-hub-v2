@@ -51,3 +51,6 @@ supabase/.temp
 
 # Build logs
 build-logs/
+
+# Local uploads (dev storage)
+public/uploads/

@@ -1,9 +1,10 @@
-import { task, logger } from '@trigger.dev/sdk/v3';
+import { task, logger, tasks } from '@trigger.dev/sdk/v3';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { renderQuoteImage } from '@/lib/design-engine/canvas-renderer';
+import { resizeMasterImage } from '@/lib/design-engine/master-image-resizer';
 import { checkImageQuality } from '@/lib/design-engine/quality-checker';
 import { getFormatSpec, SOCIAL_FORMATS, PRINT_FORMATS } from '@/lib/design-engine/format-specs';
-import { uploadImage } from '@/lib/storage/storage-utils';
+import { uploadImage, getFileBuffer } from '@/lib/storage/storage-utils';
 import { STORAGE_PATHS } from '@/lib/storage/r2-client';
 import type { DesignEnginePayload } from '@/lib/trigger/client';
 import type { DesignConfig, ColorConfig, QualityScores } from '@/types/quotes';
@@ -23,7 +24,7 @@ export const designEngineTask = task({
 
   run: async (payload: DesignEnginePayload, { ctx }) => {
     const supabase = getAdminClient();
-    const { quoteId, userId, outputFormats, generateMockups } = payload;
+    const { quoteId, userId, outputFormats, generateMockups, mockupScenes } = payload;
 
     logger.info('Starting design engine pipeline', { quoteId, userId });
 
@@ -77,8 +78,30 @@ export const designEngineTask = task({
 
     logger.info(`Generating ${formatsToGenerate.length} formats`);
 
+    // Check if quote has a master image
+    const hasMasterImage = Boolean(quote.master_image_url && quote.master_image_key);
+    let masterImageBuffer: Buffer | null = null;
+
+    if (hasMasterImage) {
+      logger.info('Quote has master image, will resize instead of rendering text');
+      try {
+        // For local storage URLs, read the file directly
+        if (quote.master_image_url.includes('/uploads/')) {
+          const fs = await import('fs');
+          const path = await import('path');
+          const localPath = path.join(process.cwd(), 'public', 'uploads', quote.master_image_key);
+          masterImageBuffer = fs.readFileSync(localPath);
+        } else {
+          // For R2 URLs, fetch the file
+          masterImageBuffer = await getFileBuffer(quote.master_image_key);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch master image, falling back to text rendering', { error: err });
+      }
+    }
+
     // Step 3: Generate assets for each format
-    logger.info('Step 3: Generating assets');
+    logger.info('Step 3: Generating assets', { usingMasterImage: Boolean(masterImageBuffer) });
 
     const generatedAssets: Array<{
       format: string;
@@ -96,14 +119,27 @@ export const designEngineTask = task({
       logger.info(`Generating ${format.name}`);
 
       try {
-        // Render image
-        const { buffer, metadata } = await renderQuoteImage({
-          width: format.width,
-          height: format.height,
-          text: quote.text,
-          attribution: quote.attribution || undefined,
-          config,
-        });
+        let buffer: Buffer;
+        let metadata: { textBounds?: any } = {};
+
+        if (masterImageBuffer) {
+          // Resize master image to target dimensions
+          buffer = await resizeMasterImage(masterImageBuffer, {
+            width: format.width,
+            height: format.height,
+          });
+        } else {
+          // Render image from text
+          const result = await renderQuoteImage({
+            width: format.width,
+            height: format.height,
+            text: quote.text,
+            attribution: quote.attribution || undefined,
+            config,
+          });
+          buffer = result.buffer;
+          metadata = result.metadata;
+        }
 
         // Quality check
         const qualityResult = await checkImageQuality(buffer, metadata.textBounds);
@@ -255,8 +291,36 @@ export const designEngineTask = task({
       }
     }
 
-    // Step 6: Update quote
-    logger.info('Step 6: Updating quote');
+    // Step 6: Trigger mockup generation if requested
+    let mockupsTriggered = false;
+    if (generateMockups && mockupScenes && mockupScenes.length > 0 && insertedAssets && insertedAssets.length > 0) {
+      logger.info('Step 6: Triggering mockup generation', {
+        assetCount: insertedAssets.length,
+        sceneCount: mockupScenes.length,
+      });
+
+      // Trigger mockup generator task for approved assets only (or all if auto-approved)
+      const assetIdsForMockups = assetsToAutoApprove.length > 0
+        ? assetsToAutoApprove
+        : insertedAssets.map((a: any) => a.id);
+
+      if (assetIdsForMockups.length > 0) {
+        await tasks.trigger('mockup-generator', {
+          userId,
+          assetIds: assetIdsForMockups,
+          scenes: mockupScenes,
+          skipApproval: false,
+        });
+        mockupsTriggered = true;
+        logger.info('Mockup generation triggered', {
+          assetIds: assetIdsForMockups,
+          scenes: mockupScenes,
+        });
+      }
+    }
+
+    // Step 7: Update quote
+    logger.info('Step 7: Updating quote');
 
     await (supabase as any)
       .from('quotes')
@@ -268,6 +332,7 @@ export const designEngineTask = task({
           designRuleId: designRule.id,
           outputFormats: formatsToGenerate.map((f) => f?.id),
           generateMockups,
+          mockupScenes: mockupScenes || [],
         },
       })
       .eq('id', quoteId);
@@ -302,7 +367,8 @@ export const designEngineTask = task({
       assetsGenerated: generatedAssets.length,
       autoApproved: assetsToAutoApprove.length,
       pendingApproval: assetsToPendingApproval.length,
-      mockupsQueued: generateMockups,
+      mockupsTriggered,
+      mockupScenes: mockupsTriggered ? mockupScenes?.length : 0,
     };
   },
 });

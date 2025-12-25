@@ -3,6 +3,7 @@ import {
   Inbox,
   Quote,
   Image,
+  Frame,
   Pin,
   Megaphone,
   FlaskConical,
@@ -63,6 +64,7 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Quotes', href: '/dashboard/quotes', icon: Quote },
       { name: 'Assets', href: '/dashboard/assets', icon: Image },
+      { name: 'Mockups', href: '/dashboard/settings/mockups', icon: Frame },
     ],
   },
   {

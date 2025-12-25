@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle,
@@ -48,10 +48,59 @@ const SETUP_STEPS = [
 ] as const;
 
 export default function SetupPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageContainer title="Setup" description="Loading setup...">
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-8 w-8 animate-spin text-sage" />
+          </div>
+        </PageContainer>
+      }
+    >
+      <SetupPageContent />
+    </Suspense>
+  );
+}
+
+function SetupPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
+
+  // Handle OAuth callback results
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+
+    if (error) {
+      const errorMessages: Record<string, string> = {
+        shopify_install_failed: 'Failed to start Shopify connection. Please try again.',
+        shopify_callback_failed: 'Shopify connection failed. Make sure you\'re logged into the correct store and try again.',
+        pinterest_not_configured: 'Pinterest API credentials are not configured. Add PINTEREST_CLIENT_ID and PINTEREST_CLIENT_SECRET to your environment.',
+        pinterest_install_failed: 'Failed to start Pinterest connection.',
+        pinterest_callback_failed: 'Pinterest connection failed.',
+      };
+      toast(errorMessages[error] || 'Connection failed. Please try again.', 'error');
+      // Clear the error from URL
+      router.replace('/dashboard/setup', { scroll: false });
+    }
+
+    if (success) {
+      const successMessages: Record<string, string> = {
+        shopify_connected: 'Shopify connected successfully!',
+        pinterest_connected: 'Pinterest connected successfully!',
+      };
+      toast(successMessages[success] || 'Connected successfully!', 'success');
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['setup-progress'] });
+      // Clear the success from URL
+      router.replace('/dashboard/setup', { scroll: false });
+    }
+  }, [searchParams, toast, router, queryClient]);
 
   // Fetch setup progress
   const { data: progress, isLoading: progressLoading } = useQuery({
@@ -251,8 +300,23 @@ function IntegrationStep({
   const [apiKey, setApiKey] = useState('');
   const [shopDomain, setShopDomain] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const handleDisconnect = async () => {
+    setIsDisconnecting(true);
+    try {
+      await api.post(`/integrations/${provider}/disconnect`);
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      queryClient.invalidateQueries({ queryKey: ['setup-progress'] });
+      toast(`${config.name} disconnected`, 'success');
+    } catch (error) {
+      toast(`Failed to disconnect ${config.name}`, 'error');
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
 
   const handleOAuthConnect = () => {
     if (provider === 'shopify') {
@@ -290,16 +354,29 @@ function IntegrationStep({
 
   if (isConnected) {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-md bg-success/10 border border-success/20">
-        <CheckCircle className="h-5 w-5 text-success" />
-        <div>
-          <p className="text-body font-medium">Connected to {config.name}</p>
-          {integration?.metadata && (
-            <p className="text-body-sm text-[var(--color-text-secondary)]">
-              {JSON.stringify(integration.metadata).slice(0, 50)}...
-            </p>
-          )}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 p-4 rounded-md bg-success/10 border border-success/20">
+          <CheckCircle className="h-5 w-5 text-success" />
+          <div className="flex-1">
+            <p className="text-body font-medium">Connected to {config.name}</p>
+            {integration?.metadata && (
+              <p className="text-body-sm text-[var(--color-text-secondary)]">
+                {(integration.metadata as any).account_name ||
+                  (integration.metadata as any).shop_name ||
+                  'Connected'}
+              </p>
+            )}
+          </div>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleDisconnect}
+          isLoading={isDisconnecting}
+          className="text-error hover:text-error"
+        >
+          Disconnect & Reconnect
+        </Button>
       </div>
     );
   }
@@ -313,17 +390,25 @@ function IntegrationStep({
       {config.authType === 'oauth' ? (
         <div className="space-y-3">
           {provider === 'shopify' && (
-            <div>
-              <Label htmlFor="shopDomain">Store Domain</Label>
-              <Input
-                id="shopDomain"
-                value={shopDomain}
-                onChange={(e) => setShopDomain(e.target.value)}
-                placeholder="your-store.myshopify.com"
-              />
-              <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
-                Enter your Shopify store domain (e.g., your-store or your-store.myshopify.com)
-              </p>
+            <div className="space-y-2">
+              <div>
+                <Label htmlFor="shopDomain">Store Domain</Label>
+                <Input
+                  id="shopDomain"
+                  value={shopDomain}
+                  onChange={(e) => setShopDomain(e.target.value)}
+                  placeholder="your-store.myshopify.com"
+                />
+                <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                  Enter your Shopify store domain (e.g., your-store or your-store.myshopify.com)
+                </p>
+              </div>
+              <div className="p-3 rounded-md bg-elevated border border-[var(--color-border)]">
+                <p className="text-caption text-[var(--color-text-secondary)]">
+                  <strong>Tip:</strong> Make sure you&apos;re logged into this Shopify store in your browser before connecting.
+                  If you have multiple stores, try using an incognito window.
+                </p>
+              </div>
             </div>
           )}
           <Button onClick={handleOAuthConnect} rightIcon={<ExternalLink className="h-4 w-4" />}>

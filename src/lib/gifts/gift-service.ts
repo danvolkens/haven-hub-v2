@@ -102,7 +102,7 @@ export async function processScheduledGifts(): Promise<number> {
 
 async function sendGiftNotification(gift: Gift): Promise<void> {
   // Trigger Klaviyo event for gift notification
-  const klaviyoApiKey = process.env.KLAVIYO_API_KEY;
+  const klaviyoApiKey = process.env.KLAVIYO_PRIVATE_KEY;
   if (!klaviyoApiKey) return;
 
   await fetch('https://a.klaviyo.com/api/events/', {

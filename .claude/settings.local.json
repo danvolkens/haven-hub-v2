@@ -29,7 +29,19 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nFix database migrations, API auth, and UI issues\n\nDatabase:\n- Add missing design_rules table migration \\(013_design_rules.sql\\)\n- Fix duplicate index names in campaigns migration\n- Add SET search_path = public to trigger functions for auth context\n- Remove duplicate migration files\n\nAPI:\n- Add getApiUserId\\(\\) function that throws instead of redirecting\n- Update all API routes to use getApiUserId\\(\\) for proper error handling\n- Add missing API routes: design-rules, integrations, setup-progress, pinterest analytics\n\nUI:\n- Add 14 missing dashboard pages \\(approvals, assets, pinterest/*, leads/*, etc.\\)\n- Fix navigation.ts to match actual page routes\n- Add cursor-pointer to Button, Card \\(hoverable\\), and interactive elements\n- Implement notifications dropdown with mock data\n- Fix sidebar active state to use exact matching \\(prevents multiple highlights\\)\n- Add cursor-pointer and hover effect to sidebar section headers\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git push)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(1 <<'EOF'\nSELECT table_name FROM information_schema.tables \nWHERE table_schema = 'public' AND table_name = 'integrations';\nEOF)",
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.dynamicmockups.com)",
+      "Bash(npx trigger.dev@latest init -p proj_cyfanzukafepxdcjftcm)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:trigger.dev)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import { defineConfig } from '@trigger.dev/sdk/v3';
 
 export default defineConfig({
-  project: 'haven-hub',
+  project: 'proj_cyfanzukafepxdcjftcm',
   runtime: 'node',
   logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
 

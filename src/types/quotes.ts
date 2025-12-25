@@ -19,6 +19,8 @@ export interface Quote {
   best_performing_asset_id: string | null;
   imported_from: 'csv' | 'manual' | 'api' | null;
   import_batch_id: string | null;
+  master_image_url: string | null;
+  master_image_key: string | null;
   created_at: string;
   updated_at: string;
 }
