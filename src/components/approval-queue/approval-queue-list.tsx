@@ -235,8 +235,8 @@ export function ApprovalQueueList() {
         </Card>
       )}
 
-      {/* Items list */}
-      <div className="space-y-3">
+      {/* Items grid */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item, index) => (
           <ApprovalItemCard
             key={item.id}

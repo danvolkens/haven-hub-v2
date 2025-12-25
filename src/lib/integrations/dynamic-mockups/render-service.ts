@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { getDynamicMockupsClient } from './client';
 import { uploadFile, generateStorageKey } from '@/lib/storage/storage-utils';
 import { STORAGE_PATHS } from '@/lib/storage/r2-client';
@@ -18,7 +18,7 @@ interface RenderOptions {
 }
 
 export async function renderMockup(options: RenderOptions): Promise<MockupGenerationResult> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = getAdminClient();
   const client = getDynamicMockupsClient();
 
   try {
@@ -134,7 +134,7 @@ export async function renderMockupBatch(
   scenes: string[],
   userId: string
 ): Promise<MockupGenerationResult[]> {
-  const supabase = await createServerSupabaseClient();
+  const supabase = getAdminClient();
   const results: MockupGenerationResult[] = [];
 
   // Get scene templates
