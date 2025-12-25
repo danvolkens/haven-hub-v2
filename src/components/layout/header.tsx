@@ -190,13 +190,15 @@ export function Header({ onMenuClick }: HeaderProps) {
               </div>
 
               <div className="border-t px-4 py-3">
-                <Link
-                  href="/dashboard/approvals"
-                  onClick={() => setIsOpen(false)}
+                <button
+                  onClick={() => {
+                    markAllRead();
+                    setIsOpen(false);
+                  }}
                   className="text-body-sm text-sage hover:text-sage/80 cursor-pointer"
                 >
-                  View all notifications
-                </Link>
+                  Dismiss all
+                </button>
               </div>
             </div>
           )}

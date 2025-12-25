@@ -136,3 +136,16 @@ export interface SegmentMembership {
   added_at: string;
   removed_at: string | null;
 }
+
+export interface JourneyAnalytics {
+  stageDistribution: Record<string, number>;
+  collectionDistribution: Record<string, number>;
+  conversionFunnel: {
+    visitors: number;
+    leads: number;
+    customers: number;
+    repeat: number;
+  };
+  atRiskCount: number;
+  avgLifetimeValue: number;
+}

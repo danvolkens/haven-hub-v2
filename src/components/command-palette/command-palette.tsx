@@ -116,7 +116,7 @@ export function CommandPalette() {
       title: 'Create New Pin',
       description: 'Schedule a new Pinterest pin',
       icon: PlusCircle,
-      action: () => router.push('/dashboard/pins/new'),
+      action: () => router.push('/dashboard/pinterest'),
       keywords: ['add', 'pinterest'],
       category: 'action',
     },

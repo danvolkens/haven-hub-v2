@@ -12,7 +12,7 @@ export function QuickActions() {
     {
       label: 'New Pin',
       icon: PlusCircle,
-      onClick: () => router.push('/dashboard/pins/new'),
+      onClick: () => router.push('/dashboard/pinterest'),
       color: 'text-red-600',
     },
     {

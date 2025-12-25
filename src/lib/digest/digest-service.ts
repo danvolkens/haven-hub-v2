@@ -1,6 +1,7 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { getActiveInsights, getPendingRecommendations } from '@/lib/intelligence/intelligence-service';
+import { sendDigestEmail } from '@/lib/email/resend-client';
 
 interface DigestContent {
   insights_count: number;
@@ -154,7 +155,7 @@ export async function sendDigest(userId: string): Promise<{ success: boolean; er
 
     // Send via configured method
     if (prefs.delivery_method === 'email' || prefs.delivery_method === 'both') {
-      await sendDigestEmail(user.email, content);
+      await sendDigestEmailToUser(user.email, content);
     }
 
     // Record in history
@@ -174,19 +175,11 @@ export async function sendDigest(userId: string): Promise<{ success: boolean; er
   }
 }
 
-async function sendDigestEmail(_email: string, _content: DigestContent): Promise<void> {
-  // This would integrate with Resend or Klaviyo
-  // For now, just log
-  console.log(`Sending digest to ${_email}:`, _content);
-
-  // TODO: Implement actual email sending
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({
-  //   from: 'Haven Hub <digest@havenhub.com>',
-  //   to: email,
-  //   subject: 'Your Daily Haven Hub Digest',
-  //   html: generateDigestHtml(content),
-  // });
+async function sendDigestEmailToUser(email: string, content: DigestContent): Promise<void> {
+  const result = await sendDigestEmail(email, content);
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to send digest email');
+  }
 }
 
 export async function processScheduledDigests(): Promise<{ sent: number; errors: number }> {
