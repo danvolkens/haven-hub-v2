@@ -71,6 +71,10 @@
     {
       "path": "/api/cron/content-pillar-aggregation",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/ab-test-significance",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
