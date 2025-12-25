@@ -75,6 +75,7 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Analytics', href: '/dashboard/pinterest/analytics', icon: BarChart3 },
       { name: 'Ads', href: '/dashboard/pinterest/ads', icon: Megaphone },
       { name: 'A/B Tests', href: '/dashboard/pinterest/tests', icon: FlaskConical },
+      { name: 'Rules', href: '/dashboard/pinterest/settings/performance-rules', icon: Settings },
     ],
   },
   {

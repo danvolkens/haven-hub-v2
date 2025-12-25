@@ -1,6 +1,8 @@
 {
   "framework": "nextjs",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 60
@@ -13,6 +15,10 @@
     {
       "path": "/api/cron/pinterest-publish",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/performance-evaluation",
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/pinterest-insights",

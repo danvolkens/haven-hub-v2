@@ -117,6 +117,18 @@ export class PinterestClient {
       body: JSON.stringify(campaign),
     });
   }
+
+  async updateAdCampaign(
+    adAccountId: string,
+    campaign: { campaign_id: string; daily_spend_cap?: number; status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED' }
+  ): Promise<PinterestCampaign> {
+    return this.request(`/ad_accounts/${adAccountId}/campaigns`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        items: [campaign]
+      }),
+    });
+  }
 }
 
 // Types
@@ -209,6 +221,13 @@ export interface PinterestCampaign {
   status: string;
   lifetime_spend_cap: number;
   daily_spend_cap: number;
+}
+
+export interface UpdateCampaignRequest {
+  ad_account_id: string;
+  campaign_id: string;
+  daily_spend_cap?: number;
+  status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
 }
 
 export interface CreateCampaignRequest {

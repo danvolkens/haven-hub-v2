@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { PageContainer } from '@/components/layout/page-container';
@@ -75,7 +75,7 @@ const scheduleOptions = [
   { id: 'custom', label: 'Custom', description: 'Set your own schedule' },
 ];
 
-export default function NewCampaignPage() {
+function CampaignWizardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1);
@@ -143,10 +143,7 @@ export default function NewCampaignPage() {
   const selectedType = campaignTypes.find((t) => t.id === campaign.type);
 
   return (
-    <PageContainer
-      title="Create Campaign"
-      description="Set up a new marketing campaign"
-    >
+    <>
       {/* Progress indicator */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
@@ -447,6 +444,19 @@ export default function NewCampaignPage() {
           )}
         </div>
       </div>
+    </>
+  );
+}
+
+export default function NewCampaignPage() {
+  return (
+    <PageContainer
+      title="Create Campaign"
+      description="Set up a new marketing campaign"
+    >
+      <Suspense fallback={<div className="animate-pulse h-96 bg-elevated rounded-lg" />}>
+        <CampaignWizardContent />
+      </Suspense>
     </PageContainer>
   );
 }
