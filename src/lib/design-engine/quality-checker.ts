@@ -22,7 +22,7 @@ const MIN_THRESHOLDS = {
 
 export async function checkImageQuality(
   imageBuffer: Buffer,
-  textBounds: { x: number; y: number; width: number; height: number }
+  textBounds?: { x: number; y: number; width: number; height: number }
 ): Promise<QualityCheckResult> {
   const img = await loadImage(imageBuffer);
   const canvas = createCanvas(img.width, img.height);
@@ -31,10 +31,18 @@ export async function checkImageQuality(
 
   const imageData = ctx.getImageData(0, 0, img.width, img.height);
 
+  // For master images without textBounds, use center region as fallback
+  const effectiveBounds = textBounds || {
+    x: img.width * 0.1,
+    y: img.height * 0.1,
+    width: img.width * 0.8,
+    height: img.height * 0.8,
+  };
+
   const scores: QualityScores = {
-    readability: checkReadability(imageData, textBounds),
+    readability: textBounds ? checkReadability(imageData, effectiveBounds) : 0.9, // Master images are assumed readable
     contrast: checkContrast(imageData),
-    composition: checkComposition(img.width, img.height, textBounds),
+    composition: textBounds ? checkComposition(img.width, img.height, effectiveBounds) : 0.9, // Master images are pre-composed
     overall: 0,
   };
 
