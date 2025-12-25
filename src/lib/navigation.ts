@@ -111,7 +111,7 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Content',
     items: [
       { name: 'Link-in-Bio', href: '/dashboard/links', icon: LinkIcon },
-      { name: 'Cross-Platform', href: '/dashboard/content/cross-platform', icon: Share2 },
+      { name: 'Cross-Platform', href: '/dashboard/analytics/cross-platform', icon: Share2 },
     ],
   },
   {

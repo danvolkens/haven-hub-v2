@@ -79,6 +79,10 @@
     {
       "path": "/api/cron/update-milestones",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/cross-platform-sync",
+      "schedule": "0 10 * * *"
     }
   ]
 }
