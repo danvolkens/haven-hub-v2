@@ -75,6 +75,10 @@
     {
       "path": "/api/cron/ab-test-significance",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/update-milestones",
+      "schedule": "0 5 * * *"
     }
   ]
 }
