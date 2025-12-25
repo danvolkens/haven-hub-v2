@@ -5,6 +5,7 @@ import { getApiUserId } from '@/lib/auth/session';
 
 const querySchema = z.object({
   type: z.enum(['asset', 'mockup', 'pin', 'ugc', 'product']).optional(),
+  status: z.enum(['pending', 'approved', 'rejected', 'skipped', 'processing']).optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
   flagged: z.coerce.boolean().optional(),
   limit: z.coerce.number().min(1).max(100).default(20),
@@ -17,15 +18,15 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const { type, collection, flagged, limit, offset } = querySchema.parse(searchParams);
+    const { type, status, collection, flagged, limit, offset } = querySchema.parse(searchParams);
 
     let query = (supabase as any)
       .from('approval_items')
       .select('*', { count: 'exact' })
       .eq('user_id', userId)
-      .eq('status', 'pending')
+      .eq('status', status || 'pending')
       .order('priority', { ascending: false })
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: status === 'approved' ? false : true })
       .range(offset, offset + limit - 1);
 
     if (type) {

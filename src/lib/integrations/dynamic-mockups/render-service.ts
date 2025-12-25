@@ -9,9 +9,8 @@ interface RenderOptions {
   assetUrl: string;
   scene: string;
   sceneConfig: {
-    dm_template_id: string;
-    smart_object: string;
-    default_size: { width: number; height: number };
+    dm_template_id: string;      // mockup_uuid
+    smart_object_uuid: string;   // smart object uuid
   };
   userId: string;
   quoteId?: string;
@@ -22,6 +21,19 @@ export async function renderMockup(options: RenderOptions): Promise<MockupGenera
   const client = getDynamicMockupsClient();
 
   try {
+    // Dynamic Mockups API requires HTTPS URLs - check if asset URL is accessible
+    if (!options.assetUrl.startsWith('https://')) {
+      console.log('[Mockup] Skipping render - asset URL not HTTPS:', options.assetUrl);
+      return {
+        mockupId: '',
+        assetId: options.assetId,
+        scene: options.scene,
+        status: 'failed',
+        error: 'Mockup generation requires R2 storage (HTTPS URLs). Configure R2 credentials or use production environment.',
+        creditsUsed: 0,
+      };
+    }
+
     // Reserve credits
     const { data: creditCheck } = await (supabase as any).rpc('reserve_mockup_credits', {
       p_user_id: options.userId,
@@ -39,21 +51,18 @@ export async function renderMockup(options: RenderOptions): Promise<MockupGenera
       };
     }
 
-    // Create render request
+    // Create render request using Dynamic Mockups API format
     const renderResponse = await client.renderAndWait({
-      template_id: options.sceneConfig.dm_template_id,
-      layers: [
+      mockup_uuid: options.sceneConfig.dm_template_id,
+      smart_objects: [
         {
-          name: options.sceneConfig.smart_object,
-          image_url: options.assetUrl,
-          fit: 'contain',
-          size: options.sceneConfig.default_size,
+          uuid: options.sceneConfig.smart_object_uuid,
+          asset: {
+            url: options.assetUrl,
+            fit: 'cover', // Fill the smart object area, cropping if needed
+          },
         },
       ],
-      output: {
-        format: 'png',
-        quality: 95,
-      },
     });
 
     if (!renderResponse.result_url) {
@@ -172,14 +181,30 @@ export async function renderMockupBatch(
         continue;
       }
 
+      // Get smart object UUID from template config
+      // Templates store smart_objects inside config JSON field
+      const smartObjects = template.config?.smart_objects || [];
+      const smartObjectUuid = smartObjects[0]?.uuid;
+
+      if (!smartObjectUuid) {
+        results.push({
+          mockupId: '',
+          assetId: asset.id,
+          scene,
+          status: 'failed',
+          error: `No smart object UUID found for template: ${scene}`,
+          creditsUsed: 0,
+        });
+        continue;
+      }
+
       const result = await renderMockup({
         assetId: asset.id,
         assetUrl: asset.file_url,
         scene,
         sceneConfig: {
           dm_template_id: template.dm_template_id,
-          smart_object: template.config.smart_object || 'artwork',
-          default_size: template.config.default_size || { width: 800, height: 1000 },
+          smart_object_uuid: smartObjectUuid,
         },
         userId,
         quoteId: asset.quote_id,

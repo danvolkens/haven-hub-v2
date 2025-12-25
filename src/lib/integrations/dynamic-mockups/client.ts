@@ -1,20 +1,15 @@
 import { DM_CONFIG } from './config';
 
 interface RenderRequest {
-  template_id: string;
-  layers: Array<{
-    name: string;
-    image_url: string;
-    fit?: 'contain' | 'cover' | 'fill';
-    position?: { x: number; y: number };
-    size?: { width: number; height: number };
+  mockup_uuid: string;
+  smart_objects: Array<{
+    uuid: string;
+    asset: {
+      url: string;
+      fit?: 'cover' | 'contain' | 'stretch';
+    };
+    color?: string;
   }>;
-  output?: {
-    format?: 'png' | 'jpg';
-    quality?: number;
-    width?: number;
-    height?: number;
-  };
 }
 
 interface RenderResponse {
@@ -119,12 +114,41 @@ export class DynamicMockupsClient {
 
   /**
    * Create a new render job
+   * Note: Dynamic Mockups API v1 returns synchronous results - no polling needed
    */
   async createRender(request: RenderRequest): Promise<RenderResponse> {
-    return this.request('/renders', {
+    const response = await this.request<{
+      data: {
+        export_path: string;
+        export_label?: string | null;
+      };
+      success: boolean;
+      message: string;
+    }>('/renders', {
       method: 'POST',
       body: JSON.stringify(request),
     });
+
+    console.log('[DynamicMockups] createRender response:', JSON.stringify(response, null, 2));
+
+    if (!response.success) {
+      throw new DynamicMockupsError(
+        response.message || 'Render failed',
+        500,
+        'RENDER_FAILED'
+      );
+    }
+
+    // API returns synchronous result - export_path is the final rendered image
+    return {
+      id: 'sync', // No ID needed - result is immediate
+      status: 'completed',
+      result_url: response.data.export_path,
+      thumbnail_url: response.data.export_path,
+      credits_used: 1,
+      created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
+    };
   }
 
   /**
@@ -171,10 +195,11 @@ export class DynamicMockupsClient {
 
   /**
    * Create render and wait for completion
+   * Note: Dynamic Mockups API v1 returns synchronous results, so this just calls createRender
    */
   async renderAndWait(request: RenderRequest): Promise<RenderResponse> {
-    const render = await this.createRender(request);
-    return this.waitForRender(render.id);
+    // API returns synchronous result - no polling needed
+    return this.createRender(request);
   }
 
   /**

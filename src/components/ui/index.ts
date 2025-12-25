@@ -9,3 +9,4 @@ export { Badge, badgeVariants, type BadgeProps } from './badge';
 export { Card, CardHeader, CardContent, CardFooter } from './card';
 export { Modal, ConfirmModal } from './modal';
 export { Sheet } from './sheet';
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
