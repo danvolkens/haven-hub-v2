@@ -8,6 +8,7 @@ import {
   Megaphone,
   FlaskConical,
   BarChart3,
+  PieChart,
   HelpCircle,
   Layers,
   MousePointerClick,
@@ -73,6 +74,7 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Manager', href: '/dashboard/pinterest', icon: Pin },
       { name: 'Analytics', href: '/dashboard/pinterest/analytics', icon: BarChart3 },
+      { name: 'Content Mix', href: '/dashboard/pinterest/analytics/content-mix', icon: PieChart },
       { name: 'Ads', href: '/dashboard/pinterest/ads', icon: Megaphone },
       { name: 'A/B Tests', href: '/dashboard/pinterest/tests', icon: FlaskConical },
       { name: 'Rules', href: '/dashboard/pinterest/settings/performance-rules', icon: Settings },
