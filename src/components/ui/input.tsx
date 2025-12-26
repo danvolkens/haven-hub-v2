@@ -10,7 +10,9 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, error, helperText, leftIcon, rightIcon, onRightIconClick, ...props }, ref) => {
+  ({ className, type, error, helperText, leftIcon, rightIcon, onRightIconClick, id, ...props }, ref) => {
+    const generatedId = React.useId();
+    const inputId = id || generatedId;
     const hasError = !!error;
 
     return (
@@ -22,12 +24,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             </div>
           )}
           <input
+            id={inputId}
             type={type}
             className={cn(
               `flex h-10 w-full rounded-md border bg-surface px-3 py-2 text-body
                placeholder:text-[var(--color-text-tertiary)]
                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-focus
-               disabled:cursor-not-allowed disabled:opacity-50`,
+               disabled:cursor-not-allowed disabled:opacity-50
+               read-only:bg-elevated read-only:cursor-default`,
               leftIcon && 'pl-10',
               rightIcon && 'pr-10',
               hasError && 'border-error focus-visible:ring-error',
@@ -35,7 +39,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             )}
             ref={ref}
             aria-invalid={hasError}
-            aria-describedby={error ? `${props.id}-error` : helperText ? `${props.id}-helper` : undefined}
+            aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
             {...props}
           />
           {rightIcon && (
@@ -51,12 +55,12 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           )}
         </div>
         {error && (
-          <p id={`${props.id}-error`} className="mt-1.5 text-caption text-error">
+          <p id={`${inputId}-error`} className="mt-1.5 text-caption text-error" role="alert">
             {error}
           </p>
         )}
         {!error && helperText && (
-          <p id={`${props.id}-helper`} className="mt-1.5 text-caption text-[var(--color-text-secondary)]">
+          <p id={`${inputId}-helper`} className="mt-1.5 text-caption text-[var(--color-text-secondary)]">
             {helperText}
           </p>
         )}

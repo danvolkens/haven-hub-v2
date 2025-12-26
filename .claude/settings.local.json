@@ -42,7 +42,10 @@
       "Bash(npm view:*)",
       "Bash(npm uninstall:*)",
       "WebFetch(domain:trigger.dev)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 log --oneline -20)",
+      "Bash(lsof:*)",
+      "Skill(example-skills:frontend-design)"
     ]
   }
 }

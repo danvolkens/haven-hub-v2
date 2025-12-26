@@ -80,7 +80,7 @@ export function Sheet({
     <div className="fixed inset-0 z-50">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in"
+        className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />

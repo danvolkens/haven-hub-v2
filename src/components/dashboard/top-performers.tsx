@@ -100,7 +100,7 @@ export async function TopPerformers({ userId }: TopPerformersProps) {
       </div>
 
       <Link
-        href="/dashboard/analytics"
+        href="/dashboard/pinterest/analytics"
         className="block text-sm text-primary hover:underline mt-4"
       >
         View full analytics →

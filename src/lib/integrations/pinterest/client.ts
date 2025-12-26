@@ -117,6 +117,95 @@ export class PinterestClient {
       body: JSON.stringify(campaign),
     });
   }
+
+  async updateAdCampaign(
+    adAccountId: string,
+    campaign: { campaign_id: string; daily_spend_cap?: number; status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED' }
+  ): Promise<PinterestCampaign> {
+    return this.request(`/ad_accounts/${adAccountId}/campaigns`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        items: [campaign]
+      }),
+    });
+  }
+
+  // Ad Groups
+  async createAdGroup(
+    adAccountId: string,
+    adGroup: CreateAdGroupRequest
+  ): Promise<PinterestAdGroup> {
+    return this.request(`/ad_accounts/${adAccountId}/ad_groups`, {
+      method: 'POST',
+      body: JSON.stringify(adGroup),
+    });
+  }
+
+  async updateAdGroup(
+    adAccountId: string,
+    adGroup: { ad_group_id: string; status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED' }
+  ): Promise<PinterestAdGroup> {
+    return this.request(`/ad_accounts/${adAccountId}/ad_groups`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        items: [adGroup]
+      }),
+    });
+  }
+
+  async getAdGroups(
+    adAccountId: string,
+    campaignIds?: string[]
+  ): Promise<PinterestPagedResponse<PinterestAdGroup>> {
+    const query = new URLSearchParams();
+    if (campaignIds?.length) {
+      query.set('campaign_ids', campaignIds.join(','));
+    }
+    const queryString = query.toString();
+    return this.request(`/ad_accounts/${adAccountId}/ad_groups${queryString ? `?${queryString}` : ''}`);
+  }
+
+  // Promoted Pins (Ads)
+  async createAd(
+    adAccountId: string,
+    ad: CreateAdRequest
+  ): Promise<PinterestAd> {
+    return this.request(`/ad_accounts/${adAccountId}/ads`, {
+      method: 'POST',
+      body: JSON.stringify(ad),
+    });
+  }
+
+  async updateAd(
+    adAccountId: string,
+    ad: { ad_id: string; status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED' }
+  ): Promise<PinterestAd> {
+    return this.request(`/ad_accounts/${adAccountId}/ads`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        items: [ad]
+      }),
+    });
+  }
+
+  async getAds(
+    adAccountId: string,
+    adGroupIds?: string[]
+  ): Promise<PinterestPagedResponse<PinterestAd>> {
+    const query = new URLSearchParams();
+    if (adGroupIds?.length) {
+      query.set('ad_group_ids', adGroupIds.join(','));
+    }
+    const queryString = query.toString();
+    return this.request(`/ad_accounts/${adAccountId}/ads${queryString ? `?${queryString}` : ''}`);
+  }
+
+  // Audiences
+  async getAudiences(
+    adAccountId: string
+  ): Promise<PinterestPagedResponse<PinterestAudience>> {
+    return this.request(`/ad_accounts/${adAccountId}/audiences`);
+  }
 }
 
 // Types
@@ -211,6 +300,13 @@ export interface PinterestCampaign {
   daily_spend_cap: number;
 }
 
+export interface UpdateCampaignRequest {
+  ad_account_id: string;
+  campaign_id: string;
+  daily_spend_cap?: number;
+  status?: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+}
+
 export interface CreateCampaignRequest {
   name: string;
   status: 'ACTIVE' | 'PAUSED';
@@ -222,4 +318,57 @@ export interface CreateCampaignRequest {
 export interface PinterestPagedResponse<T> {
   items: T[];
   bookmark?: string;
+}
+
+export interface PinterestAdGroup {
+  id: string;
+  name: string;
+  status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+  campaign_id: string;
+  billable_event: string;
+  bid_in_micro_currency?: number;
+  budget_in_micro_currency?: number;
+  budget_type?: 'DAILY' | 'LIFETIME' | 'CBO_ADGROUP';
+  targeting_spec?: Record<string, any>;
+  auto_targeting_enabled?: boolean;
+}
+
+export interface CreateAdGroupRequest {
+  name: string;
+  campaign_id: string;
+  status?: 'ACTIVE' | 'PAUSED';
+  billable_event?: 'CLICKTHROUGH' | 'IMPRESSION' | 'VIDEO_V_50_MRC';
+  bid_in_micro_currency?: number;
+  budget_in_micro_currency?: number;
+  budget_type?: 'DAILY' | 'LIFETIME' | 'CBO_ADGROUP';
+  targeting_spec?: Record<string, any>;
+  auto_targeting_enabled?: boolean;
+}
+
+export interface PinterestAd {
+  id: string;
+  ad_group_id: string;
+  pin_id: string;
+  status: 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | 'DRAFT' | 'DELETED_DRAFT';
+  creative_type: string;
+  destination_url?: string;
+  tracking_urls?: Record<string, string>;
+}
+
+export interface CreateAdRequest {
+  ad_group_id: string;
+  pin_id: string;
+  status?: 'ACTIVE' | 'PAUSED';
+  creative_type: 'REGULAR' | 'VIDEO' | 'SHOPPING' | 'CAROUSEL' | 'MAX_VIDEO' | 'SHOP_THE_PIN' | 'COLLECTION' | 'IDEA';
+  destination_url?: string;
+  tracking_urls?: Record<string, string>;
+}
+
+export interface PinterestAudience {
+  id: string;
+  name: string;
+  audience_type: 'VISITOR' | 'ENGAGEMENT' | 'CUSTOMER_LIST' | 'ACTALIKE';
+  description?: string;
+  size?: number;
+  status: string;
 }

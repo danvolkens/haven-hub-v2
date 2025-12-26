@@ -239,18 +239,18 @@ function QuoteCard({
             {showMenu && (
               <>
                 <div
-                  className="fixed inset-0 z-10"
+                  className="fixed inset-0 z-10 cursor-pointer"
                   onClick={() => setShowMenu(false)}
                 />
                 <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-md border bg-surface shadow-elevation-2 py-1">
                   <Link href={`/dashboard/quotes/${quote.id}/generate`}>
-                    <button className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2">
+                    <button className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2 cursor-pointer">
                       <Sparkles className="h-4 w-4" />
                       Generate Assets
                     </button>
                   </Link>
                   <Link href={`/dashboard/quotes/${quote.id}/edit`}>
-                    <button className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2">
+                    <button className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2 cursor-pointer">
                       <Edit className="h-4 w-4" />
                       Edit
                     </button>
@@ -260,7 +260,7 @@ function QuoteCard({
                       setShowMenu(false);
                       onArchive();
                     }}
-                    className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2"
+                    className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2 cursor-pointer"
                   >
                     <Archive className="h-4 w-4" />
                     Archive
@@ -271,7 +271,7 @@ function QuoteCard({
                       setShowMenu(false);
                       onDelete();
                     }}
-                    className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2 text-error"
+                    className="w-full px-3 py-2 text-left text-body-sm hover:bg-elevated flex items-center gap-2 text-error cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                     Delete

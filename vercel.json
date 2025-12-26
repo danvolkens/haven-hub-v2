@@ -1,6 +1,8 @@
 {
   "framework": "nextjs",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 60
@@ -13,6 +15,10 @@
     {
       "path": "/api/cron/pinterest-publish",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/performance-evaluation",
+      "schedule": "0 6 * * *"
     },
     {
       "path": "/api/cron/pinterest-insights",
@@ -53,6 +59,30 @@
     {
       "path": "/api/cron/scheduled-exports",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/budget-recommendations",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/creative-health",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/content-pillar-aggregation",
+      "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/cron/ab-test-significance",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/update-milestones",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/cross-platform-sync",
+      "schedule": "0 10 * * *"
     }
   ]
 }

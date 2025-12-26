@@ -31,7 +31,18 @@ import {
   MousePointer,
   Loader2,
   AlertCircle,
+  Lightbulb,
+  ThumbsUp,
+  ThumbsDown,
+  ArrowUp,
+  ArrowDown,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Sparkles,
+  Trophy,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AdAccount {
   id: string;
@@ -69,6 +80,105 @@ interface BudgetInfo {
   monthly_cap: number | null;
   weekly_spent: number;
   monthly_spent: number;
+}
+
+interface BudgetRecommendation {
+  id: string;
+  campaign_id: string;
+  campaign_name: string;
+  current_daily_budget: number;
+  current_cpa: number | null;
+  current_roas: number | null;
+  current_spend_7d: number;
+  recommendation_type: 'increase' | 'decrease' | 'pause' | 'maintain' | 'test_increase';
+  recommended_daily_budget: number;
+  recommended_change_percentage: number;
+  confidence_score: number;
+  reasoning: {
+    primary: string;
+    supporting: string[];
+    risks: string[];
+  };
+  projected_additional_spend: number;
+  projected_additional_conversions: number | null;
+  status: string;
+  valid_until: string;
+  created_at: string;
+}
+
+interface RecommendationSummary {
+  pending_count: number;
+  potential_savings: number;
+  growth_opportunity: number;
+}
+
+// Performance thresholds
+const THRESHOLDS = {
+  SCALE: { maxCpa: 8, minRoas: 3 },
+  MAINTAIN: { maxCpa: 12, minRoas: 2 },
+  OPTIMIZE: { maxCpa: 15, minRoas: 1.5 },
+};
+
+type PerformanceStatus = 'scale' | 'maintain' | 'optimize' | 'pause';
+
+const performanceConfig: Record<PerformanceStatus, {
+  label: string;
+  bgClass: string;
+  borderClass: string;
+  textClass: string;
+  recommendation: string;
+}> = {
+  scale: {
+    label: 'Winner',
+    bgClass: 'bg-green-50',
+    borderClass: 'border-green-200',
+    textClass: 'text-green-700',
+    recommendation: 'This campaign is performing excellently! Consider +25% budget.',
+  },
+  maintain: {
+    label: 'On Track',
+    bgClass: 'bg-blue-50',
+    borderClass: 'border-blue-200',
+    textClass: 'text-blue-700',
+    recommendation: 'Solid performance. Monitor for consistency.',
+  },
+  optimize: {
+    label: 'Optimize',
+    bgClass: 'bg-amber-50',
+    borderClass: 'border-amber-200',
+    textClass: 'text-amber-700',
+    recommendation: 'Review targeting and creatives to improve efficiency.',
+  },
+  pause: {
+    label: 'Review',
+    bgClass: 'bg-red-50',
+    borderClass: 'border-red-200',
+    textClass: 'text-red-700',
+    recommendation: 'Performance below threshold. Consider pausing.',
+  },
+};
+
+function getCampaignPerformance(campaign: Campaign): { status: PerformanceStatus; cpa: number; roas: number } {
+  const cpa = campaign.conversions > 0
+    ? campaign.total_spend / campaign.conversions
+    : campaign.total_spend > 0 ? campaign.total_spend : 0;
+
+  // Estimate ROAS assuming $35 average order value
+  const estimatedRevenue = campaign.conversions * 35;
+  const roas = campaign.total_spend > 0 ? estimatedRevenue / campaign.total_spend : 0;
+
+  let status: PerformanceStatus;
+  if (cpa > 0 && cpa <= THRESHOLDS.SCALE.maxCpa && roas >= THRESHOLDS.SCALE.minRoas) {
+    status = 'scale';
+  } else if (cpa <= THRESHOLDS.MAINTAIN.maxCpa && roas >= THRESHOLDS.MAINTAIN.minRoas) {
+    status = 'maintain';
+  } else if (cpa <= THRESHOLDS.OPTIMIZE.maxCpa && roas >= THRESHOLDS.OPTIMIZE.minRoas) {
+    status = 'optimize';
+  } else {
+    status = 'pause';
+  }
+
+  return { status, cpa, roas };
 }
 
 export default function PinterestAdsPage() {
@@ -113,9 +223,79 @@ export default function PinterestAdsPage() {
     },
   });
 
+  // Fetch budget recommendations
+  const { data: recommendationsData, isLoading: loadingRecommendations, refetch: refetchRecommendations } = useQuery({
+    queryKey: ['budget-recommendations'],
+    queryFn: async () => {
+      const res = await fetch('/api/budget-recommendations?history=true');
+      if (!res.ok) throw new Error('Failed to fetch recommendations');
+      return res.json();
+    },
+  });
+
+  // Apply recommendation mutation
+  const applyRecommendationMutation = useMutation({
+    mutationFn: async (recommendationId: string) => {
+      const res = await fetch(`/api/budget-recommendations/${recommendationId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'apply' }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to apply recommendation');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-recommendations'] });
+      queryClient.invalidateQueries({ queryKey: ['ad-campaigns'] });
+    },
+  });
+
+  // Reject recommendation mutation
+  const rejectRecommendationMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason?: string }) => {
+      const res = await fetch(`/api/budget-recommendations/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', reason }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to reject recommendation');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-recommendations'] });
+    },
+  });
+
+  // Generate recommendations mutation
+  const generateRecommendationsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/budget-recommendations', {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error('Failed to generate recommendations');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budget-recommendations'] });
+    },
+  });
+
   const adAccounts: AdAccount[] = accountsData?.ad_accounts || [];
   const campaigns: Campaign[] = campaignsData?.campaigns || [];
   const budget: BudgetInfo | null = budgetData || null;
+  const recommendations: BudgetRecommendation[] = recommendationsData?.recommendations || [];
+  const recommendationHistory: BudgetRecommendation[] = recommendationsData?.history || [];
+  const recommendationSummary: RecommendationSummary = recommendationsData?.summary || {
+    pending_count: 0,
+    potential_savings: 0,
+    growth_opportunity: 0,
+  };
 
   // Create campaign mutation
   const createCampaignMutation = useMutation({
@@ -193,6 +373,40 @@ export default function PinterestAdsPage() {
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  };
+
+  const getRecommendationIcon = (type: string) => {
+    switch (type) {
+      case 'increase':
+        return <ArrowUp className="h-4 w-4 text-green-600" />;
+      case 'decrease':
+        return <ArrowDown className="h-4 w-4 text-amber-600" />;
+      case 'pause':
+        return <Pause className="h-4 w-4 text-red-600" />;
+      default:
+        return <Lightbulb className="h-4 w-4 text-blue-600" />;
+    }
+  };
+
+  const getRecommendationBadge = (type: string) => {
+    switch (type) {
+      case 'increase':
+        return <Badge variant="success">Scale Up</Badge>;
+      case 'decrease':
+        return <Badge variant="warning">Reduce</Badge>;
+      case 'pause':
+        return <Badge variant="error">Pause</Badge>;
+      case 'test_increase':
+        return <Badge variant="primary">Test Increase</Badge>;
+      default:
+        return <Badge variant="secondary">Maintain</Badge>;
+    }
+  };
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 80) return 'text-green-600';
+    if (score >= 60) return 'text-amber-600';
+    return 'text-[var(--color-text-tertiary)]';
   };
 
   if (loadingAccounts) {
@@ -279,87 +493,134 @@ export default function PinterestAdsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {campaigns.map((campaign) => (
-                <Card key={campaign.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold">{campaign.name}</h3>
-                          {getStatusBadge(campaign.status)}
-                          {getObjectiveBadge(campaign.objective)}
-                          {campaign.collection && (
-                            <Badge variant="secondary">{campaign.collection}</Badge>
+              {campaigns.map((campaign) => {
+                const perf = campaign.total_spend > 0 ? getCampaignPerformance(campaign) : null;
+                const config = perf ? performanceConfig[perf.status] : null;
+
+                return (
+                  <Card
+                    key={campaign.id}
+                    className={cn(
+                      'transition-all',
+                      config && perf?.status === 'scale' && 'border-2 border-green-300 shadow-md'
+                    )}
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            {/* Winner Trophy Badge */}
+                            {perf?.status === 'scale' && (
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-green-100">
+                                <Trophy className="h-4 w-4 text-green-600" />
+                              </div>
+                            )}
+                            <h3 className="text-lg font-semibold">{campaign.name}</h3>
+                            {getStatusBadge(campaign.status)}
+                            {getObjectiveBadge(campaign.objective)}
+                            {campaign.collection && (
+                              <Badge variant="secondary">{campaign.collection}</Badge>
+                            )}
+                            {/* Performance Status Badge */}
+                            {config && (
+                              <Badge
+                                variant={
+                                  perf?.status === 'scale' ? 'success' :
+                                  perf?.status === 'maintain' ? 'info' :
+                                  perf?.status === 'optimize' ? 'warning' : 'error'
+                                }
+                              >
+                                {config.label}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Metrics */}
+                          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Spent</p>
+                                <p className="font-medium">{formatCurrency(campaign.total_spend)}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Eye className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Impressions</p>
+                                <p className="font-medium">{campaign.impressions.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <MousePointer className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Clicks</p>
+                                <p className="font-medium">{campaign.clicks.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                              <div>
+                                <p className="text-xs text-[var(--color-text-tertiary)]">Conversions</p>
+                                <p className="font-medium">{campaign.conversions.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            {/* CPA & ROAS */}
+                            {perf && perf.cpa > 0 && (
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="text-xs text-[var(--color-text-tertiary)]">CPA / ROAS</p>
+                                  <p className={cn('font-medium', config?.textClass)}>
+                                    {formatCurrency(perf.cpa)} / {perf.roas.toFixed(1)}x
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {campaign.daily_spend_cap && (
+                            <p className="text-sm text-[var(--color-text-secondary)] mt-3">
+                              Daily cap: {formatCurrency(campaign.daily_spend_cap)}
+                            </p>
+                          )}
+
+                          {/* Performance Recommendation */}
+                          {config && perf && perf.cpa > 0 && (
+                            <div className={cn('mt-3 p-2 rounded-md text-sm', config.bgClass, config.textClass)}>
+                              {config.recommendation}
+                            </div>
                           )}
                         </div>
 
-                        {/* Metrics */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                          <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Spent</p>
-                              <p className="font-medium">{formatCurrency(campaign.total_spend)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Eye className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Impressions</p>
-                              <p className="font-medium">{campaign.impressions.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MousePointer className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Clicks</p>
-                              <p className="font-medium">{campaign.clicks.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <TrendingUp className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                            <div>
-                              <p className="text-xs text-[var(--color-text-tertiary)]">Conversions</p>
-                              <p className="font-medium">{campaign.conversions.toLocaleString()}</p>
-                            </div>
-                          </div>
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                          {campaign.status === 'ACTIVE' ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'PAUSED' })}
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <Pause className="h-4 w-4 mr-1" />
+                              Pause
+                            </Button>
+                          ) : campaign.status === 'PAUSED' ? (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'ACTIVE' })}
+                              disabled={updateStatusMutation.isPending}
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              Activate
+                            </Button>
+                          ) : null}
                         </div>
-
-                        {campaign.daily_spend_cap && (
-                          <p className="text-sm text-[var(--color-text-secondary)] mt-3">
-                            Daily cap: {formatCurrency(campaign.daily_spend_cap)}
-                          </p>
-                        )}
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-2">
-                        {campaign.status === 'ACTIVE' ? (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'PAUSED' })}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <Pause className="h-4 w-4 mr-1" />
-                            Pause
-                          </Button>
-                        ) : campaign.status === 'PAUSED' ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ campaignId: campaign.id, status: 'ACTIVE' })}
-                            disabled={updateStatusMutation.isPending}
-                          >
-                            <Play className="h-4 w-4 mr-1" />
-                            Activate
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
@@ -407,73 +668,298 @@ export default function PinterestAdsPage() {
 
         {/* Budget Tab */}
         <TabsContent value="budget">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader title="Weekly Budget" description="Reset every Sunday" />
-              <CardContent>
-                {budget ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Cap</span>
-                      <span className="font-medium">{formatCurrency(budget.weekly_cap)}</span>
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-blue-100 p-2">
+                      <Lightbulb className="h-5 w-5 text-blue-600" />
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Spent</span>
-                      <span className="font-medium">{formatCurrency(budget.weekly_spent)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Remaining</span>
-                      <span className={`font-medium ${(budget.weekly_remaining || 0) < 20 ? 'text-warning' : 'text-success'}`}>
-                        {formatCurrency(budget.weekly_remaining || 0)}
-                      </span>
-                    </div>
-                    {/* Progress bar */}
-                    <div className="h-2 bg-[var(--color-bg-secondary)] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-sage transition-all"
-                        style={{ width: `${Math.min((budget.weekly_spent / budget.weekly_cap) * 100, 100)}%` }}
-                      />
+                    <div>
+                      <p className="text-sm text-[var(--color-text-secondary)]">Pending Recommendations</p>
+                      <p className="text-2xl font-semibold">{recommendationSummary.pending_count}</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-amber-100 p-2">
+                      <DollarSign className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-[var(--color-text-secondary)]">Potential Savings</p>
+                      <p className="text-2xl font-semibold">{formatCurrency(recommendationSummary.potential_savings)}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-full bg-green-100 p-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-[var(--color-text-secondary)]">Growth Opportunity</p>
+                      <p className="text-2xl font-semibold">+{recommendationSummary.growth_opportunity} conversions</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Budget Caps */}
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader title="Weekly Budget" description="Reset every Sunday" />
+                <CardContent>
+                  {budget ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Cap</span>
+                        <span className="font-medium">{formatCurrency(budget.weekly_cap)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Spent</span>
+                        <span className="font-medium">{formatCurrency(budget.weekly_spent)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Remaining</span>
+                        <span className={`font-medium ${(budget.weekly_remaining || 0) < 20 ? 'text-warning' : 'text-success'}`}>
+                          {formatCurrency(budget.weekly_remaining || 0)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[var(--color-bg-secondary)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-sage transition-all"
+                          style={{ width: `${Math.min((budget.weekly_spent / budget.weekly_cap) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-secondary)]">Loading budget info...</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader title="Monthly Budget" description="Reset on the 1st" />
+                <CardContent>
+                  {budget && budget.monthly_cap ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Cap</span>
+                        <span className="font-medium">{formatCurrency(budget.monthly_cap)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Spent</span>
+                        <span className="font-medium">{formatCurrency(budget.monthly_spent)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-[var(--color-text-secondary)]">Remaining</span>
+                        <span className={`font-medium ${(budget.monthly_remaining || 0) < 50 ? 'text-warning' : 'text-success'}`}>
+                          {formatCurrency(budget.monthly_remaining || 0)}
+                        </span>
+                      </div>
+                      <div className="h-2 bg-[var(--color-bg-secondary)] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-sage transition-all"
+                          style={{ width: `${Math.min((budget.monthly_spent / budget.monthly_cap) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      No monthly cap configured. Set one in Settings &gt; Guardrails.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Budget Recommendations */}
+            <Card>
+              <CardHeader
+                title="Budget Recommendations"
+                description="AI-powered suggestions to optimize your ad spend"
+              />
+              <CardContent>
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    Based on the last 7 days of performance data
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => generateRecommendationsMutation.mutate()}
+                    disabled={generateRecommendationsMutation.isPending}
+                  >
+                    {generateRecommendationsMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Sparkles className="h-4 w-4 mr-2" />
+                    )}
+                    Generate Recommendations
+                  </Button>
+                </div>
+
+                {loadingRecommendations ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-[var(--color-text-tertiary)]" />
+                  </div>
+                ) : recommendations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Lightbulb className="h-12 w-12 text-[var(--color-text-tertiary)] mx-auto mb-3" />
+                    <p className="text-[var(--color-text-secondary)]">
+                      No pending recommendations. Your campaigns are performing well!
+                    </p>
+                  </div>
                 ) : (
-                  <p className="text-sm text-[var(--color-text-secondary)]">Loading budget info...</p>
+                  <div className="space-y-4">
+                    {recommendations.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="border rounded-lg p-4 bg-[var(--color-bg-secondary)]"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              {getRecommendationIcon(rec.recommendation_type)}
+                              <h4 className="font-medium">{rec.campaign_name}</h4>
+                              {getRecommendationBadge(rec.recommendation_type)}
+                              <span className={`text-sm font-medium ${getConfidenceColor(rec.confidence_score)}`}>
+                                {rec.confidence_score}% confidence
+                              </span>
+                            </div>
+
+                            <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+                              {rec.reasoning.primary}
+                            </p>
+
+                            {rec.reasoning.supporting.length > 0 && (
+                              <ul className="text-xs text-[var(--color-text-tertiary)] mb-3 space-y-1">
+                                {rec.reasoning.supporting.map((point, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <CheckCircle className="h-3 w-3 mt-0.5 text-green-500 flex-shrink-0" />
+                                    {point}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+
+                            {rec.reasoning.risks.length > 0 && (
+                              <ul className="text-xs text-[var(--color-text-tertiary)] mb-3 space-y-1">
+                                {rec.reasoning.risks.map((risk, i) => (
+                                  <li key={i} className="flex items-start gap-2">
+                                    <AlertCircle className="h-3 w-3 mt-0.5 text-amber-500 flex-shrink-0" />
+                                    {risk}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="text-[var(--color-text-secondary)]">
+                                Current: {formatCurrency(rec.current_daily_budget)}/day
+                              </span>
+                              {rec.recommendation_type !== 'pause' && (
+                                <>
+                                  <span className="text-[var(--color-text-tertiary)]">&rarr;</span>
+                                  <span className="font-medium">
+                                    Recommended: {formatCurrency(rec.recommended_daily_budget)}/day
+                                    <span className={`ml-1 ${rec.recommended_change_percentage > 0 ? 'text-green-600' : 'text-amber-600'}`}>
+                                      ({rec.recommended_change_percentage > 0 ? '+' : ''}{rec.recommended_change_percentage}%)
+                                    </span>
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            {rec.projected_additional_conversions !== null && rec.projected_additional_conversions > 0 && (
+                              <p className="text-xs text-green-600 mt-2">
+                                Projected: +{rec.projected_additional_conversions} additional conversions
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col gap-2">
+                            <Button
+                              size="sm"
+                              onClick={() => applyRecommendationMutation.mutate(rec.id)}
+                              disabled={applyRecommendationMutation.isPending}
+                            >
+                              {applyRecommendationMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <ThumbsUp className="h-4 w-4 mr-1" />
+                              )}
+                              Apply
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => rejectRecommendationMutation.mutate({ id: rec.id })}
+                              disabled={rejectRecommendationMutation.isPending}
+                            >
+                              <ThumbsDown className="h-4 w-4 mr-1" />
+                              Reject
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-3 pt-3 border-t text-xs text-[var(--color-text-tertiary)]">
+                          <Clock className="h-3 w-3" />
+                          Expires {new Date(rec.valid_until).toLocaleDateString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader title="Monthly Budget" description="Reset on the 1st" />
-              <CardContent>
-                {budget && budget.monthly_cap ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Cap</span>
-                      <span className="font-medium">{formatCurrency(budget.monthly_cap)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Spent</span>
-                      <span className="font-medium">{formatCurrency(budget.monthly_spent)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-[var(--color-text-secondary)]">Remaining</span>
-                      <span className={`font-medium ${(budget.monthly_remaining || 0) < 50 ? 'text-warning' : 'text-success'}`}>
-                        {formatCurrency(budget.monthly_remaining || 0)}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-[var(--color-bg-secondary)] rounded-full overflow-hidden">
+            {/* Recommendation History */}
+            {recommendationHistory.length > 0 && (
+              <Card>
+                <CardHeader title="Recommendation History" description="Previously processed recommendations" />
+                <CardContent>
+                  <div className="space-y-3">
+                    {recommendationHistory.slice(0, 10).map((rec) => (
                       <div
-                        className="h-full bg-sage transition-all"
-                        style={{ width: `${Math.min((budget.monthly_spent / budget.monthly_cap) * 100, 100)}%` }}
-                      />
-                    </div>
+                        key={rec.id}
+                        className="flex items-center justify-between py-2 border-b last:border-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          {rec.status === 'applied' ? (
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                          ) : rec.status === 'rejected' ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <Clock className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium">{rec.campaign_name}</p>
+                            <p className="text-xs text-[var(--color-text-tertiary)]">
+                              {rec.recommendation_type === 'increase' ? 'Budget increase' :
+                               rec.recommendation_type === 'decrease' ? 'Budget decrease' :
+                               rec.recommendation_type === 'pause' ? 'Pause campaign' : rec.recommendation_type}
+                              {' '}• {new Date(rec.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant={rec.status === 'applied' ? 'success' : rec.status === 'rejected' ? 'error' : 'secondary'}>
+                          {rec.status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    No monthly cap configured. Set one in Settings &gt; Guardrails.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

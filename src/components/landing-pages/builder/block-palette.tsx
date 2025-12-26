@@ -18,7 +18,7 @@ export function BlockPalette({ onAddBlock }: BlockPaletteProps) {
             <button
               key={config.type}
               onClick={() => onAddBlock(config.type)}
-              className="w-full flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50 hover:border-sage-300 transition-colors text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50 hover:border-sage-300 transition-colors text-left cursor-pointer"
             >
               <Icon className="h-5 w-5 text-sage-600" />
               <span className="text-sm font-medium">{config.label}</span>

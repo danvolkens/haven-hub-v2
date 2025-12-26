@@ -29,9 +29,8 @@ export async function GET() {
 
     return NextResponse.json(counts);
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Internal error';
+    const status = message === 'Unauthorized' ? 401 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

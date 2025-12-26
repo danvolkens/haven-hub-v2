@@ -65,16 +65,18 @@ export function TabsTrigger({ value, children, className, disabled }: TabsTrigge
 
   return (
     <button
+      id={`tab-${value}`}
       role="tab"
       type="button"
       aria-selected={isSelected}
+      aria-controls={`tabpanel-${value}`}
       disabled={disabled}
       onClick={() => onValueChange(value)}
       className={cn(
         `inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-body-sm font-medium
-         ring-offset-background transition-all
+         ring-offset-background transition-all cursor-pointer
          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-focus focus-visible:ring-offset-2
-         disabled:pointer-events-none disabled:opacity-50`,
+         disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed`,
         isSelected
           ? 'bg-surface text-charcoal shadow-sm'
           : 'hover:bg-surface/50 hover:text-charcoal',
@@ -99,7 +101,10 @@ export function TabsContent({ value, children, className }: TabsContentProps) {
 
   return (
     <div
+      id={`tabpanel-${value}`}
       role="tabpanel"
+      tabIndex={0}
+      aria-labelledby={`tab-${value}`}
       className={cn(
         'mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-focus focus-visible:ring-offset-2',
         className

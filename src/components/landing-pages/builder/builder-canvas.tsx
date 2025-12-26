@@ -40,7 +40,7 @@ function SortableBlock({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative group ${
+      className={`relative group cursor-pointer ${
         isSelected ? 'ring-2 ring-sage-500' : ''
       }`}
       onClick={onSelect}
@@ -63,7 +63,7 @@ function SortableBlock({
             e.stopPropagation();
             onDuplicate();
           }}
-          className="p-1.5 rounded bg-white border shadow-sm hover:bg-gray-50"
+          className="p-1.5 rounded bg-white border shadow-sm hover:bg-gray-50 cursor-pointer"
         >
           <Copy className="h-4 w-4 text-gray-400" />
         </button>
@@ -72,7 +72,7 @@ function SortableBlock({
             e.stopPropagation();
             onDelete();
           }}
-          className="p-1.5 rounded bg-white border shadow-sm hover:bg-red-50 hover:text-red-500"
+          className="p-1.5 rounded bg-white border shadow-sm hover:bg-red-50 hover:text-red-500 cursor-pointer"
         >
           <Trash2 className="h-4 w-4" />
         </button>

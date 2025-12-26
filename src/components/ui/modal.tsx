@@ -14,6 +14,8 @@ interface ModalProps {
   closeOnEsc?: boolean;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  /** Selector for the element to focus when the modal opens. Defaults to first focusable element. */
+  defaultFocus?: string;
 }
 
 export function Modal({
@@ -27,6 +29,7 @@ export function Modal({
   closeOnEsc = true,
   children,
   footer,
+  defaultFocus,
 }: ModalProps) {
   const modalRef = React.useRef<HTMLDivElement>(null);
   const previousActiveElement = React.useRef<HTMLElement | null>(null);
@@ -66,7 +69,13 @@ export function Modal({
     const firstElement = focusableElements?.[0] as HTMLElement;
     const lastElement = focusableElements?.[focusableElements.length - 1] as HTMLElement;
 
-    firstElement?.focus();
+    // Focus the specified element or first focusable element
+    if (defaultFocus && modalRef.current) {
+      const targetElement = modalRef.current.querySelector(defaultFocus) as HTMLElement;
+      targetElement?.focus();
+    } else {
+      firstElement?.focus();
+    }
 
     const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
@@ -90,7 +99,7 @@ export function Modal({
       document.removeEventListener('keydown', handleTab);
       previousActiveElement.current?.focus();
     };
-  }, [isOpen]);
+  }, [isOpen, defaultFocus]);
 
   // Prevent body scroll when modal is open
   React.useEffect(() => {
@@ -110,7 +119,10 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Overlay */}
       <div
-        className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in"
+        className={cn(
+          "fixed inset-0 bg-charcoal/50 backdrop-blur-sm animate-fade-in",
+          closeOnOverlayClick && "cursor-pointer"
+        )}
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -198,9 +210,16 @@ export function ConfirmModal({
       onClose={onClose}
       title={title}
       size="sm"
+      // For destructive actions, focus the cancel button to prevent accidental confirmation
+      defaultFocus={variant === 'destructive' ? '[data-cancel-button]' : undefined}
       footer={
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose} disabled={isLoading}>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            disabled={isLoading}
+            data-cancel-button
+          >
             {cancelText}
           </Button>
           <Button

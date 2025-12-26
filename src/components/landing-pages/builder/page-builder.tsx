@@ -122,7 +122,7 @@ export function PageBuilder({
   return (
     <div className="h-screen flex flex-col">
       {/* Toolbar */}
-      <div className="border-b bg-white px-4 py-2 flex items-center justify-between">
+      <div className="border-b bg-surface px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button
             variant={previewMode === 'desktop' ? 'primary' : 'ghost'}
@@ -155,14 +155,14 @@ export function PageBuilder({
       {/* Main Layout */}
       <div className="flex-1 flex overflow-hidden">
         {/* Block Palette */}
-        <div className="w-64 border-r bg-gray-50 overflow-y-auto p-4">
+        <div className="w-64 border-r bg-elevated overflow-y-auto p-4">
           <BlockPalette onAddBlock={addBlock} />
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 overflow-y-auto bg-gray-100 p-8">
+        <div className="flex-1 overflow-y-auto bg-canvas p-8">
           <div
-            className={`mx-auto bg-white shadow-lg transition-all ${
+            className={`mx-auto bg-surface shadow-lg transition-all ${
               previewMode === 'mobile' ? 'max-w-[375px]' : 'max-w-4xl'
             }`}
           >
@@ -186,15 +186,15 @@ export function PageBuilder({
             </DndContext>
 
             {blocks.length === 0 && (
-              <div className="p-16 text-center text-muted-foreground">
-                <p>Drag blocks from the left panel to start building</p>
+              <div className="p-16 text-center text-[var(--color-text-secondary)]">
+                <p className="text-body">Drag blocks from the left panel to start building</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Block Editor Panel */}
-        <div className="w-80 border-l bg-white overflow-y-auto">
+        <div className="w-80 border-l bg-surface overflow-y-auto">
           {selectedBlock ? (
             <BlockEditor
               block={selectedBlock}
@@ -202,9 +202,9 @@ export function PageBuilder({
               onDelete={() => deleteBlock(selectedBlock.id)}
             />
           ) : (
-            <div className="p-4 text-center text-muted-foreground">
+            <div className="p-4 text-center text-[var(--color-text-secondary)]">
               <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>Select a block to edit its properties</p>
+              <p className="text-body">Select a block to edit its properties</p>
             </div>
           )}
         </div>
