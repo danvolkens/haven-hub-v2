@@ -117,25 +117,55 @@ export function QuizForm({ quiz }: Props) {
   if (result) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: colors.bg }}
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: '#FAF8F5',
+          padding: '3rem 1.5rem',
+          position: 'relative',
+        }}
       >
-        <div className="w-full max-w-lg animate-fade-in">
+        {/* Background Image */}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+            backgroundPosition: 'center',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.15,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          className="w-full animate-fade-in"
+          style={{ maxWidth: '36rem' }}
+        >
           <div
-            className="rounded-2xl overflow-hidden"
             style={{
-              background: 'rgba(255, 255, 255, 0.97)',
-              boxShadow: '0 4px 60px rgba(0, 0, 0, 0.08)',
+              background: 'rgba(255, 255, 255, 0.973)',
+              borderRadius: '0.5rem',
+              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
+              overflow: 'hidden',
             }}
           >
-            <div className="h-1.5 w-full" style={{ background: colors.accent }} />
-            <div className="p-8 sm:p-12 text-center">
+            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
+            <div style={{ padding: '3rem', textAlign: 'center' }}>
               <div
-                className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
-                style={{ background: `${colors.accent}15` }}
+                style={{
+                  width: '5rem',
+                  height: '5rem',
+                  borderRadius: '9999px',
+                  margin: '0 auto 1.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: `${colors.accent}15`,
+                }}
               >
                 <svg
-                  className="w-10 h-10"
+                  style={{ width: '2.5rem', height: '2.5rem' }}
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke={colors.accent}
@@ -150,20 +180,26 @@ export function QuizForm({ quiz }: Props) {
               </div>
 
               <h1
-                className="text-2xl sm:text-3xl mb-4"
                 style={{
-                  fontFamily: '"Crimson Text", serif',
+                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                  fontSize: '1.75em',
+                  fontWeight: 400,
+                  lineHeight: 1.25,
                   color: '#2C3E50',
+                  marginBottom: '1rem',
                 }}
               >
                 {result.title}
               </h1>
 
               <p
-                className="text-base sm:text-lg mb-8 leading-relaxed"
                 style={{
-                  fontFamily: 'system-ui, sans-serif',
+                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                  fontSize: '1.125em',
+                  fontWeight: 400,
+                  lineHeight: 1.5,
                   color: '#5D6D7E',
+                  marginBottom: '2rem',
                 }}
               >
                 {result.description}
@@ -172,11 +208,25 @@ export function QuizForm({ quiz }: Props) {
               {result.cta_url && (
                 <a
                   href={result.cta_url}
-                  className="inline-block px-8 py-4 rounded-lg font-medium transition-all hover:scale-[1.02]"
                   style={{
-                    background: colors.accent,
+                    display: 'inline-block',
+                    padding: '1rem 2rem',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 500,
                     color: '#FFFFFF',
+                    background: colors.accent,
                     boxShadow: `0 4px 14px ${colors.accent}30`,
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.02)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   {result.cta_text || 'Shop Collection'}
@@ -185,7 +235,16 @@ export function QuizForm({ quiz }: Props) {
             </div>
           </div>
 
-          <p className="text-center mt-6 text-xs" style={{ color: '#A0A0A0' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+              fontSize: '0.75em',
+              fontWeight: 400,
+              color: '#A0A0A0',
+              textAlign: 'center',
+              marginTop: '1.5rem',
+            }}
+          >
             Haven & Hold
           </p>
         </div>
@@ -197,68 +256,139 @@ export function QuizForm({ quiz }: Props) {
   if (showEmailForm) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EE 100%)' }}
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: '#FAF8F5',
+          padding: '3rem 1.5rem',
+          position: 'relative',
+        }}
       >
-        <div className="w-full max-w-lg animate-fade-in">
+        {/* Background Image */}
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+            backgroundPosition: 'center',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.15,
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          className="w-full animate-fade-in"
+          style={{ maxWidth: '36rem' }}
+        >
           <div
-            className="rounded-2xl overflow-hidden"
             style={{
-              background: 'rgba(255, 255, 255, 0.97)',
-              boxShadow: '0 4px 60px rgba(0, 0, 0, 0.08)',
+              background: 'rgba(255, 255, 255, 0.973)',
+              borderRadius: '0.5rem',
+              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
+              overflow: 'hidden',
             }}
           >
-            <div className="h-1.5 w-full" style={{ background: colors.accent }} />
-            <div className="p-8 sm:p-12 text-center">
+            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
+            <div style={{ padding: '3rem', textAlign: 'center' }}>
               <h2
-                className="text-xl sm:text-2xl mb-4"
                 style={{
-                  fontFamily: '"Crimson Text", serif',
+                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                  fontSize: '1.5em',
+                  fontWeight: 400,
+                  lineHeight: 1.25,
                   color: '#2C3E50',
+                  marginBottom: '1rem',
                 }}
               >
                 Almost there!
               </h2>
 
               <p
-                className="text-base mb-6"
                 style={{
-                  fontFamily: 'system-ui, sans-serif',
+                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                  fontSize: '1.125em',
+                  fontWeight: 400,
+                  lineHeight: 1.5,
                   color: '#5D6D7E',
+                  marginBottom: '1.5rem',
                 }}
               >
                 Enter your email to see your personalized results
               </p>
 
-              <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <form onSubmit={handleEmailSubmit}>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
-                  className="w-full px-4 py-3 rounded-lg outline-none focus:ring-2"
                   style={{
+                    width: '100%',
+                    padding: '0.875rem 1rem',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 400,
+                    lineHeight: 1.5,
+                    color: '#2C3E50',
                     background: '#FAF8F5',
                     border: '1px solid #E8E4E0',
-                    fontFamily: 'system-ui, sans-serif',
+                    outline: 'none',
+                    marginBottom: '1rem',
+                    transition: 'border-color 0.2s, box-shadow 0.2s',
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = colors.accent;
+                    e.target.style.boxShadow = `0 0 0 2px ${colors.accent}20`;
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#E8E4E0';
+                    e.target.style.boxShadow = 'none';
                   }}
                 />
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 rounded-lg font-medium transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
                   style={{
-                    background: colors.accent,
+                    width: '100%',
+                    padding: '1rem',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 500,
                     color: '#FFFFFF',
+                    background: colors.accent,
+                    border: 'none',
+                    boxShadow: `0 4px 14px ${colors.accent}30`,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting ? 0.6 : 1,
+                    transition: 'transform 0.2s, opacity 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
                   {isSubmitting ? 'Loading...' : 'See My Results'}
                 </button>
               </form>
 
-              <p className="text-xs mt-4" style={{ color: '#A0A0A0' }}>
+              <p
+                style={{
+                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                  fontSize: '0.75em',
+                  fontWeight: 400,
+                  color: '#A0A0A0',
+                  marginTop: '1rem',
+                }}
+              >
                 We respect your privacy. Unsubscribe anytime.
               </p>
             </div>
@@ -272,67 +402,160 @@ export function QuizForm({ quiz }: Props) {
   const question = questions[currentQuestion];
   if (!question) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <p>No questions available</p>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{
+          background: '#FAF8F5',
+          padding: '3rem 1.5rem',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+            color: '#5D6D7E',
+          }}
+        >
+          No questions available
+        </p>
       </div>
     );
   }
 
   return (
     <div
-      className="min-h-screen flex flex-col p-4"
-      style={{ background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EE 100%)' }}
+      className="min-h-screen flex flex-col"
+      style={{
+        background: '#FAF8F5',
+        padding: '3rem 1.5rem',
+        position: 'relative',
+      }}
     >
+      {/* Background Image */}
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.15,
+          pointerEvents: 'none',
+        }}
+      />
+
       {/* Progress Bar */}
-      <div className="w-full max-w-lg mx-auto mb-8">
-        <div className="flex justify-between text-xs mb-2" style={{ color: '#7F8C8D' }}>
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '36rem',
+          margin: '0 auto 2rem',
+          position: 'relative',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+            fontSize: '0.75em',
+            color: '#7F8C8D',
+            marginBottom: '0.5rem',
+          }}
+        >
           <span>Question {currentQuestion + 1} of {questions.length}</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          style={{
+            width: '100%',
+            height: '0.375rem',
+            background: '#E8E4E0',
+            borderRadius: '9999px',
+            overflow: 'hidden',
+          }}
+        >
           <div
-            className="h-full transition-all duration-500"
             style={{
+              height: '100%',
               width: `${progress}%`,
               background: colors.accent,
+              transition: 'width 0.5s ease',
             }}
           />
         </div>
       </div>
 
       {/* Question Card */}
-      <div className="flex-1 flex items-center justify-center">
-        <div className="w-full max-w-lg animate-fade-in">
+      <div
+        className="flex-1 flex items-center justify-center"
+        style={{ position: 'relative' }}
+      >
+        <div
+          className="w-full animate-fade-in"
+          style={{ maxWidth: '36rem' }}
+        >
           <div
-            className="rounded-2xl overflow-hidden"
             style={{
-              background: 'rgba(255, 255, 255, 0.97)',
-              boxShadow: '0 4px 60px rgba(0, 0, 0, 0.08)',
+              background: 'rgba(255, 255, 255, 0.973)',
+              borderRadius: '0.5rem',
+              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
+              overflow: 'hidden',
             }}
           >
-            <div className="h-1.5 w-full" style={{ background: colors.accent }} />
-            <div className="p-8 sm:p-12">
+            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
+            <div style={{ padding: '3rem' }}>
               <h2
-                className="text-xl sm:text-2xl text-center mb-8"
                 style={{
-                  fontFamily: '"Crimson Text", serif',
+                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                  fontSize: '1.5em',
+                  fontWeight: 400,
+                  lineHeight: 1.25,
                   color: '#2C3E50',
+                  textAlign: 'center',
+                  marginBottom: '2rem',
                 }}
               >
                 {question.text}
               </h2>
 
-              <div className="space-y-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {question.answers?.map((answer) => (
                   <button
                     key={answer.id}
                     onClick={() => handleAnswer(question.id, answer)}
-                    className="w-full p-4 text-left rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                     style={{
+                      width: '100%',
+                      padding: '1rem',
+                      textAlign: 'left',
+                      borderRadius: '0.375rem',
+                      fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                      fontSize: '1em',
+                      fontWeight: 400,
+                      lineHeight: 1.5,
+                      color: '#2C3E50',
                       background: answers[question.id] === answer.id ? `${colors.accent}15` : '#FAF8F5',
                       border: `1px solid ${answers[question.id] === answer.id ? colors.accent : '#E8E4E0'}`,
-                      fontFamily: 'system-ui, sans-serif',
-                      color: '#2C3E50',
+                      cursor: 'pointer',
+                      transition: 'transform 0.2s, border-color 0.2s, background 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.01)';
+                      if (answers[question.id] !== answer.id) {
+                        e.currentTarget.style.borderColor = colors.accent;
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      if (answers[question.id] !== answer.id) {
+                        e.currentTarget.style.borderColor = '#E8E4E0';
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.99)';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1.01)';
                     }}
                   >
                     {answer.text}
@@ -342,7 +565,16 @@ export function QuizForm({ quiz }: Props) {
             </div>
           </div>
 
-          <p className="text-center mt-6 text-xs" style={{ color: '#A0A0A0' }}>
+          <p
+            style={{
+              fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+              fontSize: '0.75em',
+              fontWeight: 400,
+              color: '#A0A0A0',
+              textAlign: 'center',
+              marginTop: '1.5rem',
+            }}
+          >
             Haven & Hold
           </p>
         </div>

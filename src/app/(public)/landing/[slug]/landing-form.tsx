@@ -62,57 +62,99 @@ export function LandingPageForm({ page }: Props) {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 sm:p-8"
+      className="min-h-screen flex items-center justify-center"
       style={{
-        background: 'linear-gradient(180deg, #FAF8F5 0%, #F5F2EE 100%)',
+        background: '#FAF8F5',
+        padding: '3rem 1.5rem',
+        position: 'relative',
       }}
     >
-      {/* Subtle texture overlay */}
+      {/* Background Image - matching Carrd exactly */}
       <div
-        className="fixed inset-0 pointer-events-none opacity-30"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-          mixBlendMode: 'overlay',
+          position: 'fixed',
+          inset: 0,
+          backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+          backgroundPosition: 'center',
+          backgroundSize: 'cover',
+          backgroundRepeat: 'no-repeat',
+          opacity: 0.15,
+          pointerEvents: 'none',
         }}
       />
-
-      <div className="relative w-full max-w-lg animate-fade-in">
+      {/* Card Container - matches Carrd exactly */}
+      <div
+        className="w-full animate-fade-in"
+        style={{
+          maxWidth: '36rem',
+        }}
+      >
         {/* Main Card */}
         <div
-          className="relative rounded-2xl overflow-hidden"
           style={{
-            background: 'rgba(255, 255, 255, 0.97)',
-            boxShadow: '0 4px 60px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)',
+            background: 'rgba(255, 255, 255, 0.973)',
+            borderRadius: '0.5rem',
+            boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
+            overflow: 'hidden',
           }}
         >
           {/* Accent Bar */}
           <div
-            className="h-1.5 w-full"
-            style={{ background: colors.accent }}
+            style={{
+              height: '0.375rem',
+              width: '100%',
+              background: colors.accent,
+            }}
           />
 
-          <div className="px-8 py-10 sm:px-12 sm:py-14">
+          <div
+            style={{
+              padding: '3rem',
+            }}
+          >
             {/* Featured Image */}
             {page.featured_image_url && (
-              <div className="mb-8 -mx-4 sm:-mx-6">
+              <div
+                style={{
+                  marginBottom: '2rem',
+                  marginLeft: '-1rem',
+                  marginRight: '-1rem',
+                }}
+              >
                 <img
                   src={page.featured_image_url}
                   alt=""
-                  className="w-full h-48 sm:h-56 object-cover rounded-lg"
+                  style={{
+                    width: '100%',
+                    height: '14rem',
+                    objectFit: 'cover',
+                    borderRadius: '0.25rem',
+                  }}
                 />
               </div>
             )}
 
             {/* Content */}
-            <div className="text-center mb-8">
+            <div
+              style={{
+                textAlign: 'center',
+                marginBottom: '2rem',
+              }}
+            >
               {/* Badge */}
               {page.lead_magnet_type && (
                 <span
-                  className="inline-block px-3 py-1 text-xs uppercase tracking-widest rounded-full mb-4"
                   style={{
+                    display: 'inline-block',
+                    padding: '0.375rem 0.75rem',
+                    fontSize: '0.6875rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    borderRadius: '9999px',
+                    marginBottom: '1rem',
                     background: `${colors.accent}15`,
                     color: colors.accent,
-                    fontFamily: 'system-ui, sans-serif',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
                     fontWeight: 500,
                   }}
                 >
@@ -120,26 +162,29 @@ export function LandingPageForm({ page }: Props) {
                 </span>
               )}
 
-              {/* Headline */}
+              {/* Headline - Crimson Text, 1.75em, weight 400, line-height 1.25 */}
               <h1
-                className="text-2xl sm:text-3xl leading-tight mb-4"
                 style={{
-                  fontFamily: '"Crimson Text", "Times New Roman", serif',
-                  color: '#2C3E50',
+                  fontFamily: 'var(--font-serif), "Crimson Text", "Times New Roman", serif',
+                  fontSize: '1.75em',
                   fontWeight: 400,
+                  lineHeight: 1.25,
+                  color: '#2C3E50',
+                  marginBottom: '1rem',
                 }}
               >
                 {page.headline}
               </h1>
 
-              {/* Subheadline */}
+              {/* Subheadline - Figtree, 1.125em, weight 400, line-height 1.5 */}
               {page.subheadline && (
                 <p
-                  className="text-base sm:text-lg leading-relaxed"
                   style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
-                    color: '#5D6D7E',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1.125em',
                     fontWeight: 400,
+                    lineHeight: 1.5,
+                    color: '#5D6D7E',
                   }}
                 >
                   {page.subheadline}
@@ -149,11 +194,18 @@ export function LandingPageForm({ page }: Props) {
 
             {/* Body Content */}
             {page.body_content && (
-              <div className="mb-8 text-center">
+              <div
+                style={{
+                  marginBottom: '2rem',
+                  textAlign: 'center',
+                }}
+              >
                 <p
-                  className="text-sm leading-relaxed"
                   style={{
-                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 400,
+                    lineHeight: 1.5,
                     color: '#7F8C8D',
                   }}
                 >
@@ -164,19 +216,37 @@ export function LandingPageForm({ page }: Props) {
 
             {/* Divider */}
             <div
-              className="w-12 h-px mx-auto mb-8"
-              style={{ background: colors.accentLight }}
+              style={{
+                width: '3rem',
+                height: '1px',
+                margin: '0 auto 2rem',
+                background: colors.accentLight,
+              }}
             />
 
             {/* Form or Success */}
             {isSubmitted ? (
-              <div className="text-center py-8 animate-fade-in">
+              <div
+                className="animate-fade-in"
+                style={{
+                  textAlign: 'center',
+                  padding: '2rem 0',
+                }}
+              >
                 <div
-                  className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center"
-                  style={{ background: `${colors.accent}15` }}
+                  style={{
+                    width: '4rem',
+                    height: '4rem',
+                    borderRadius: '9999px',
+                    margin: '0 auto 1.5rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: `${colors.accent}15`,
+                  }}
                 >
                   <svg
-                    className="w-8 h-8"
+                    style={{ width: '2rem', height: '2rem' }}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke={colors.accent}
@@ -186,18 +256,23 @@ export function LandingPageForm({ page }: Props) {
                   </svg>
                 </div>
                 <h2
-                  className="text-xl mb-2"
                   style={{
-                    fontFamily: '"Crimson Text", serif',
+                    fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                    fontSize: '1.5em',
+                    fontWeight: 400,
+                    lineHeight: 1.25,
                     color: '#2C3E50',
+                    marginBottom: '0.5rem',
                   }}
                 >
                   You&apos;re all set!
                 </h2>
                 <p
-                  className="text-sm"
                   style={{
-                    fontFamily: 'system-ui, sans-serif',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 400,
+                    lineHeight: 1.5,
                     color: '#5D6D7E',
                   }}
                 >
@@ -205,15 +280,24 @@ export function LandingPageForm({ page }: Props) {
                 </p>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {formFields.map((field) => (
-                  <div key={field.name}>
+              <form onSubmit={handleSubmit}>
+                {formFields.map((field, index) => (
+                  <div
+                    key={field.name}
+                    style={{
+                      marginBottom: index < formFields.length - 1 ? '1rem' : '1.5rem',
+                    }}
+                  >
                     <label
-                      className="block text-xs uppercase tracking-wider mb-2"
                       style={{
-                        fontFamily: 'system-ui, sans-serif',
-                        color: '#7F8C8D',
+                        display: 'block',
+                        fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                        fontSize: '0.6875rem',
                         fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.1em',
+                        color: '#7F8C8D',
+                        marginBottom: '0.5rem',
                       }}
                     >
                       {field.label}
@@ -227,13 +311,27 @@ export function LandingPageForm({ page }: Props) {
                         value={formData[field.name] || ''}
                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                         rows={4}
-                        className="w-full px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2"
                         style={{
-                          fontFamily: 'system-ui, sans-serif',
-                          fontSize: '0.9375rem',
+                          width: '100%',
+                          padding: '0.875rem 1rem',
+                          borderRadius: '0.375rem',
+                          fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                          fontSize: '1em',
+                          fontWeight: 400,
+                          lineHeight: 1.5,
                           color: '#2C3E50',
                           background: '#FAF8F5',
                           border: '1px solid #E8E4E0',
+                          outline: 'none',
+                          transition: 'border-color 0.2s, box-shadow 0.2s',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = colors.accent;
+                          e.target.style.boxShadow = `0 0 0 2px ${colors.accent}20`;
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E8E4E0';
+                          e.target.style.boxShadow = 'none';
                         }}
                       />
                     ) : (
@@ -244,13 +342,27 @@ export function LandingPageForm({ page }: Props) {
                         placeholder={field.placeholder}
                         value={formData[field.name] || ''}
                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
-                        className="w-full px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2"
                         style={{
-                          fontFamily: 'system-ui, sans-serif',
-                          fontSize: '0.9375rem',
+                          width: '100%',
+                          padding: '0.875rem 1rem',
+                          borderRadius: '0.375rem',
+                          fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                          fontSize: '1em',
+                          fontWeight: 400,
+                          lineHeight: 1.5,
                           color: '#2C3E50',
                           background: '#FAF8F5',
                           border: '1px solid #E8E4E0',
+                          outline: 'none',
+                          transition: 'border-color 0.2s, box-shadow 0.2s',
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = colors.accent;
+                          e.target.style.boxShadow = `0 0 0 2px ${colors.accent}20`;
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#E8E4E0';
+                          e.target.style.boxShadow = 'none';
                         }}
                       />
                     )}
@@ -258,27 +370,77 @@ export function LandingPageForm({ page }: Props) {
                 ))}
 
                 {error && (
-                  <p className="text-sm text-red-600 text-center">{error}</p>
+                  <p
+                    style={{
+                      fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                      fontSize: '0.875em',
+                      color: '#E74C3C',
+                      textAlign: 'center',
+                      marginBottom: '1rem',
+                    }}
+                  >
+                    {error}
+                  </p>
                 )}
 
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed"
                   style={{
-                    fontFamily: 'system-ui, sans-serif',
-                    fontSize: '0.9375rem',
+                    width: '100%',
+                    padding: '1rem',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 500,
                     letterSpacing: '0.025em',
                     color: '#FFFFFF',
                     background: colors.accent,
+                    border: 'none',
                     boxShadow: `0 4px 14px ${colors.accent}30`,
+                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: isSubmitting ? 0.6 : 1,
+                    transition: 'transform 0.2s, opacity 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                  onMouseDown={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.transform = 'scale(0.98)';
+                    }
+                  }}
+                  onMouseUp={(e) => {
+                    if (!isSubmitting) {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                    }
                   }}
                 >
                   {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                      <svg
+                        style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }}
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          style={{ opacity: 0.25 }}
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          style={{ opacity: 0.75 }}
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
                       </svg>
                       Processing...
                     </span>
@@ -288,10 +450,13 @@ export function LandingPageForm({ page }: Props) {
                 </button>
 
                 <p
-                  className="text-xs text-center pt-2"
                   style={{
-                    fontFamily: 'system-ui, sans-serif',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '0.75em',
+                    fontWeight: 400,
                     color: '#A0A0A0',
+                    textAlign: 'center',
+                    marginTop: '1rem',
                   }}
                 >
                   We respect your privacy. Unsubscribe anytime.
@@ -303,10 +468,13 @@ export function LandingPageForm({ page }: Props) {
 
         {/* Footer */}
         <p
-          className="text-center mt-6 text-xs"
           style={{
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+            fontSize: '0.75em',
+            fontWeight: 400,
             color: '#A0A0A0',
+            textAlign: 'center',
+            marginTop: '1.5rem',
           }}
         >
           Haven & Hold
