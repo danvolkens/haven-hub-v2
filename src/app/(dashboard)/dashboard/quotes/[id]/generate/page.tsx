@@ -32,7 +32,10 @@ interface MockupTemplate {
   description: string | null;
   preview_url: string | null;
   dm_template_id: string | null;
+  recommended_collections: string[] | null;
 }
+
+type CollectionFilter = 'all' | 'grounding' | 'wholeness' | 'growth';
 
 export default function GenerateAssetsPage() {
   const router = useRouter();
@@ -48,6 +51,7 @@ export default function GenerateAssetsPage() {
   ]);
   const [generateMockups, setGenerateMockups] = useState(false);
   const [selectedScenes, setSelectedScenes] = useState<string[]>([]);
+  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('all');
 
   const { data: quote, isLoading: quoteLoading } = useQuery({
     queryKey: ['quote', quoteId],
@@ -60,6 +64,14 @@ export default function GenerateAssetsPage() {
     queryFn: () => api.get<{ templates: MockupTemplate[] }>('/mockups/templates/sync'),
   });
   const mockupTemplates = templatesData?.templates || [];
+
+  // Filter templates by collection
+  const filteredTemplates = collectionFilter === 'all'
+    ? mockupTemplates
+    : mockupTemplates.filter((t) =>
+        t.recommended_collections?.includes(collectionFilter) ||
+        !t.recommended_collections?.length // Show templates with no collection assigned
+      );
 
   const generateMutation = useMutation({
     mutationFn: () =>
@@ -246,21 +258,33 @@ export default function GenerateAssetsPage() {
                   <div className="mt-4 pt-4 border-t">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-body-sm font-medium">Select Templates ({selectedScenes.length} selected)</p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const allSceneKeys = mockupTemplates.map((t) => t.scene_key);
-                          setSelectedScenes(
-                            selectedScenes.length === mockupTemplates.length ? [] : allSceneKeys
-                          );
-                        }}
-                      >
-                        {selectedScenes.length === mockupTemplates.length ? 'Deselect All' : 'Select All'}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={collectionFilter}
+                          onChange={(e) => setCollectionFilter(e.target.value as CollectionFilter)}
+                          className="text-body-sm border rounded-md px-2 py-1 bg-white"
+                        >
+                          <option value="all">All Collections</option>
+                          <option value="grounding">Grounding</option>
+                          <option value="wholeness">Wholeness</option>
+                          <option value="growth">Growth</option>
+                        </select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const allSceneKeys = filteredTemplates.map((t) => t.scene_key);
+                            setSelectedScenes(
+                              selectedScenes.length === filteredTemplates.length ? [] : allSceneKeys
+                            );
+                          }}
+                        >
+                          {selectedScenes.length === filteredTemplates.length ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
-                      {mockupTemplates.map((template) => (
+                      {filteredTemplates.map((template) => (
                         <button
                           key={template.id}
                           onClick={() => toggleScene(template.scene_key)}

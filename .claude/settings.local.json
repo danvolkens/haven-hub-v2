@@ -70,7 +70,8 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"$\\(cat <<''EOF''\nFix missing database tables in production\n\nAdd repair migrations for tables that were recorded as applied but\nnever actually created in production:\n\nFrom 018_campaigns.sql:\n- campaigns \\(seasonal campaign management\\)\n- campaign_tasks \\(scheduled activities\\)\n- seasonal_templates \\(8 system templates seeded\\)\n\nFrom 022_winners_exports.sql:\n- pin_winners \\(top performing pin tracking\\)\n- exports \\(data export jobs\\)\n- pin_schedule_history \\(publishing history\\)\n- pins.is_winner column\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 push)",
       "Bash(git rm:*)",
-      "Bash(vercel ls:*)"
+      "Bash(vercel ls:*)",
+      "Bash(vercel env:*)"
     ]
   }
 }
