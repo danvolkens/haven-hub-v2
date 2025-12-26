@@ -201,12 +201,12 @@ export default function PinterestPage() {
             <p className="text-body text-[var(--color-text-secondary)] max-w-md mb-6">
               Connect your Pinterest Business account to start managing your pins, boards, and publishing schedule.
             </p>
-            <Link href="/api/auth/pinterest/connect">
+            <a href="/api/auth/pinterest/connect">
               <Button>
                 <Pin className="h-4 w-4 mr-2" />
                 Connect Pinterest
               </Button>
-            </Link>
+            </a>
           </CardContent>
         </Card>
       </PageContainer>
