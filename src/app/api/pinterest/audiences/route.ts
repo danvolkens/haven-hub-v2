@@ -7,7 +7,7 @@ export async function GET() {
     const userId = await getApiUserId();
     const supabase = getAdminClient();
 
-    // Check Pinterest connection
+    // Check Pinterest connection - just check if connected, don't require ad_account_id
     const { data: integration } = await (supabase as any)
       .from('integrations')
       .select('status, metadata')
@@ -15,7 +15,8 @@ export async function GET() {
       .eq('provider', 'pinterest')
       .single();
 
-    const pinterestConnected = integration?.status === 'connected' && integration?.metadata?.ad_account_id;
+    // User is connected if status is 'connected' - don't require ad_account_id in metadata
+    const pinterestConnected = integration?.status === 'connected';
 
     // Get audiences
     const { data: audiences, error } = await (supabase as any)

@@ -206,6 +206,102 @@ export class PinterestClient {
   ): Promise<PinterestPagedResponse<PinterestAudience>> {
     return this.request(`/ad_accounts/${adAccountId}/audiences`);
   }
+
+  // Ad Account Analytics - Get spend data
+  async getAdAccountAnalytics(
+    adAccountId: string,
+    params: {
+      start_date: string;
+      end_date: string;
+      granularity?: 'TOTAL' | 'DAY' | 'HOUR' | 'WEEK' | 'MONTH';
+      columns?: string[];
+    }
+  ): Promise<PinterestAdAccountAnalytics[]> {
+    const query = new URLSearchParams({
+      start_date: params.start_date,
+      end_date: params.end_date,
+      granularity: params.granularity || 'TOTAL',
+      columns: (params.columns || ['SPEND_IN_MICRO_DOLLAR', 'TOTAL_IMPRESSION', 'TOTAL_CLICKTHROUGH']).join(','),
+    });
+    return this.request(`/ad_accounts/${adAccountId}/analytics?${query}`);
+  }
+
+  // Helper to get spend summary for an ad account
+  async getAdAccountSpendSummary(adAccountId: string): Promise<{
+    totalSpend: number;
+    weekSpend: number;
+    monthSpend: number;
+    impressions: number;
+    clicks: number;
+  }> {
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    // Calculate date ranges
+    const endDate = formatDate(today);
+
+    // Start of current week (Sunday)
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekStartDate = formatDate(weekStart);
+
+    // Start of current month
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthStartDate = formatDate(monthStart);
+
+    // Last 90 days for total (Pinterest limits date range)
+    const totalStart = new Date(today);
+    totalStart.setDate(today.getDate() - 90);
+    const totalStartDate = formatDate(totalStart);
+
+    try {
+      // Fetch all three ranges in parallel
+      const [totalData, weekData, monthData] = await Promise.all([
+        this.getAdAccountAnalytics(adAccountId, {
+          start_date: totalStartDate,
+          end_date: endDate,
+          granularity: 'TOTAL',
+          columns: ['SPEND_IN_MICRO_DOLLAR', 'TOTAL_IMPRESSION', 'TOTAL_CLICKTHROUGH'],
+        }).catch(() => []),
+        this.getAdAccountAnalytics(adAccountId, {
+          start_date: weekStartDate,
+          end_date: endDate,
+          granularity: 'TOTAL',
+          columns: ['SPEND_IN_MICRO_DOLLAR'],
+        }).catch(() => []),
+        this.getAdAccountAnalytics(adAccountId, {
+          start_date: monthStartDate,
+          end_date: endDate,
+          granularity: 'TOTAL',
+          columns: ['SPEND_IN_MICRO_DOLLAR'],
+        }).catch(() => []),
+      ]);
+
+      // Pinterest returns spend in micro dollars (1/1,000,000 of a dollar)
+      const microToUsd = (micro: number) => micro / 1_000_000;
+
+      const totalRow = totalData[0] || {};
+      const weekRow = weekData[0] || {};
+      const monthRow = monthData[0] || {};
+
+      return {
+        totalSpend: microToUsd(totalRow.SPEND_IN_MICRO_DOLLAR || 0),
+        weekSpend: microToUsd(weekRow.SPEND_IN_MICRO_DOLLAR || 0),
+        monthSpend: microToUsd(monthRow.SPEND_IN_MICRO_DOLLAR || 0),
+        impressions: totalRow.TOTAL_IMPRESSION || 0,
+        clicks: totalRow.TOTAL_CLICKTHROUGH || 0,
+      };
+    } catch (error) {
+      console.error(`Error fetching spend for ad account ${adAccountId}:`, error);
+      return {
+        totalSpend: 0,
+        weekSpend: 0,
+        monthSpend: 0,
+        impressions: 0,
+        clicks: 0,
+      };
+    }
+  }
 }
 
 // Types
@@ -371,4 +467,16 @@ export interface PinterestAudience {
   description?: string;
   size?: number;
   status: string;
+}
+
+export interface PinterestAdAccountAnalytics {
+  DATE?: string;
+  SPEND_IN_MICRO_DOLLAR?: number;
+  TOTAL_IMPRESSION?: number;
+  TOTAL_CLICKTHROUGH?: number;
+  TOTAL_ENGAGEMENT?: number;
+  TOTAL_SAVE?: number;
+  TOTAL_PIN_CLICK?: number;
+  TOTAL_OUTBOUND_CLICK?: number;
+  [key: string]: string | number | undefined;
 }

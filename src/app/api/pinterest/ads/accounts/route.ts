@@ -50,8 +50,29 @@ export async function GET(request: NextRequest) {
     const client = new PinterestClient({ accessToken });
     const { items: adAccounts } = await client.getAdAccounts();
 
+    // Fetch spend data for each ad account in parallel
+    const accountsWithSpend = await Promise.all(
+      (adAccounts || []).map(async (account) => {
+        // Fetch real spend data from Pinterest Analytics API
+        const spendData = await client.getAdAccountSpendSummary(account.id);
+
+        return {
+          id: account.id,
+          name: account.name || 'Unnamed Account',
+          currency: account.currency || 'USD',
+          status: account.status || 'ACTIVE',
+          pinterest_ad_account_id: account.id,
+          total_spend: spendData.totalSpend,
+          current_week_spend: spendData.weekSpend,
+          current_month_spend: spendData.monthSpend,
+          impressions: spendData.impressions,
+          clicks: spendData.clicks,
+        };
+      })
+    );
+
     return NextResponse.json({
-      ad_accounts: adAccounts || [],
+      ad_accounts: accountsWithSpend,
     });
   } catch (error) {
     console.error('Pinterest ad accounts error:', error);

@@ -16,42 +16,64 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to create Klaviyo client' }, { status: 500 });
     }
 
-    // Get flows for top flows summary
-    const flows = await client.getFlows();
+    // Fetch all real metrics from Klaviyo in parallel
+    const [emailMetrics, revenueData, subscriberData, flows, campaigns] = await Promise.all([
+      client.getEmailMetrics(30),
+      client.getEmailRevenue(30),
+      client.getTotalSubscribers(),
+      client.getFlows(),
+      client.getCampaigns(5),
+    ]);
+
     const liveFlows = flows.filter((f) => f.status === 'live');
 
-    // Get lists for subscriber count
-    const lists = await client.getLists();
-
-    // Note: Klaviyo's actual metrics require the metric-aggregates endpoint
-    // which needs specific metric IDs. For now, we return estimates based on flows.
-    // In production, you'd integrate with Klaviyo's reporting API properly.
-
+    // Format flows for display
+    // Note: Flow-specific sent/revenue stats require additional Klaviyo API access
+    // that's not available in the standard API. We show the flow status but
+    // detailed per-flow metrics would require Klaviyo's premium analytics.
     const topFlows = liveFlows.slice(0, 5).map((flow) => ({
       id: flow.id,
       name: flow.name,
       status: flow.status,
-      sent: Math.floor(Math.random() * 5000) + 500,
-      revenue: Math.floor(Math.random() * 3000) + 200,
+      // Flow-specific metrics not available via standard API
+      // These would need Klaviyo's reporting API or flow analytics endpoint
+      sent: 0,
+      revenue: 0,
     }));
 
-    // Aggregate metrics (mock for now - would come from Klaviyo's metric aggregates)
-    const totalSent = topFlows.reduce((sum, f) => sum + f.sent, 0) * 2;
-    const openRate = 38.5 + Math.random() * 10;
-    const clickRate = 3.2 + Math.random() * 2;
-    const revenue = topFlows.reduce((sum, f) => sum + f.revenue, 0) * 1.5;
+    // Format campaigns with real data
+    const recentCampaigns = campaigns
+      .filter(c => c.status === 'Sent' || c.sentAt)
+      .slice(0, 5)
+      .map(campaign => ({
+        id: campaign.id,
+        name: campaign.name,
+        sentAt: campaign.sentAt || campaign.sendTime,
+        // Note: Campaign-specific open/click stats require additional API calls
+        // per campaign. For now we show the campaign list.
+        sent: 0,
+        opened: 0,
+        clicked: 0,
+      }));
 
     return NextResponse.json({
-      totalSent,
-      openRate,
-      clickRate: clickRate,
-      revenue,
-      revenueChange: 12.5,
-      subscribers: (status.listCount || lists.length) * 150,
-      subscribersChange: 8.3,
+      // Real email metrics from Klaviyo's metric-aggregates API
+      totalSent: emailMetrics.totalSent,
+      openRate: emailMetrics.openRate,
+      clickRate: emailMetrics.clickRate,
+
+      // Real revenue data
+      revenue: revenueData.totalRevenue,
+      revenueChange: revenueData.percentChange,
+
+      // Real subscriber count
+      subscribers: subscriberData.total,
+      subscribersChange: subscriberData.percentChange,
+
+      // Flow and campaign data
       activeFlows: liveFlows.length,
       topFlows,
-      recentCampaigns: [],
+      recentCampaigns,
     });
   } catch (error) {
     console.error('Error fetching Klaviyo metrics:', error);
