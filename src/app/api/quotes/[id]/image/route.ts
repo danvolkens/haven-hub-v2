@@ -13,6 +13,8 @@ export async function POST(
     const supabase = await createServerSupabaseClient();
     const { id } = await params;
 
+    console.log('Quote image upload - Quote ID:', id, 'User ID:', userId);
+
     // Verify quote belongs to user
     const { data: quote, error: quoteError } = await (supabase as any)
       .from('quotes')
@@ -21,8 +23,21 @@ export async function POST(
       .single();
 
     if (quoteError) {
-      console.error('Quote lookup error:', quoteError);
-      return NextResponse.json({ error: 'Quote not found', details: quoteError.message }, { status: 404 });
+      console.error('Quote lookup error:', {
+        quoteId: id,
+        userId,
+        error: quoteError,
+        code: quoteError.code,
+        message: quoteError.message,
+        details: quoteError.details,
+        hint: quoteError.hint,
+      });
+      return NextResponse.json({
+        error: 'Quote not found',
+        details: quoteError.message,
+        code: quoteError.code,
+        quoteId: id,
+      }, { status: 404 });
     }
 
     if (!quote) {

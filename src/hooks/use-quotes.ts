@@ -64,9 +64,12 @@ export function useCreateQuote() {
         const formData = new FormData();
         formData.append('image', data.masterImage);
 
+        console.log('Uploading image for quote:', quote.id);
+
         const response = await fetch(`/api/quotes/${quote.id}/image`, {
           method: 'POST',
           body: formData,
+          credentials: 'include', // Ensure cookies are sent
         });
 
         if (!response.ok) {
