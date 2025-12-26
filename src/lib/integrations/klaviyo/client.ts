@@ -233,14 +233,35 @@ export class KlaviyoClient {
   // ============================================================================
 
   async createEvent(event: KlaviyoEvent): Promise<void> {
+    // Build profile data - Klaviyo requires nested data structure
+    const profileData: Record<string, any> = {
+      type: 'profile',
+      attributes: {},
+    };
+
+    if ('email' in event.profile) {
+      profileData.attributes.email = event.profile.email;
+    } else if ('id' in event.profile) {
+      profileData.id = event.profile.id;
+    }
+
     await this.request('/events/', {
       method: 'POST',
       body: JSON.stringify({
         data: {
           type: 'event',
           attributes: {
-            metric: event.metric,
-            profile: event.profile,
+            metric: {
+              data: {
+                type: 'metric',
+                attributes: {
+                  name: event.metric.name,
+                },
+              },
+            },
+            profile: {
+              data: profileData,
+            },
             properties: event.properties,
             time: event.time || new Date().toISOString(),
             value: event.value,
