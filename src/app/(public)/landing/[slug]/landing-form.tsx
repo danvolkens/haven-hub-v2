@@ -264,7 +264,7 @@ export function LandingPageForm({ page }: Props) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full py-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:cursor-not-allowed"
                   style={{
                     fontFamily: 'system-ui, sans-serif',
                     fontSize: '0.9375rem',

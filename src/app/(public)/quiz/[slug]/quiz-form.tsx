@@ -248,7 +248,7 @@ export function QuizForm({ quiz }: Props) {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 rounded-lg font-medium transition-all disabled:opacity-60"
+                  className="w-full py-4 rounded-lg font-medium transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
                   style={{
                     background: colors.accent,
                     color: '#FFFFFF',
@@ -327,7 +327,7 @@ export function QuizForm({ quiz }: Props) {
                   <button
                     key={answer.id}
                     onClick={() => handleAnswer(question.id, answer)}
-                    className="w-full p-4 text-left rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    className="w-full p-4 text-left rounded-lg transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                     style={{
                       background: answers[question.id] === answer.id ? `${colors.accent}15` : '#FAF8F5',
                       border: `1px solid ${answers[question.id] === answer.id ? colors.accent : '#E8E4E0'}`,
