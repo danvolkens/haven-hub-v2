@@ -216,8 +216,8 @@ export function QuizForm({ quiz }: Props) {
                     fontSize: '1em',
                     fontWeight: 500,
                     color: '#FFFFFF',
-                    background: colors.accent,
-                    boxShadow: `0 4px 14px ${colors.accent}30`,
+                    background: '#2C3E50',
+                    boxShadow: '0 4px 14px rgba(44, 62, 80, 0.3)',
                     textDecoration: 'none',
                     transition: 'transform 0.2s',
                     cursor: 'pointer',
@@ -360,9 +360,9 @@ export function QuizForm({ quiz }: Props) {
                     fontSize: '1em',
                     fontWeight: 500,
                     color: '#FFFFFF',
-                    background: colors.accent,
+                    background: '#2C3E50',
                     border: 'none',
-                    boxShadow: `0 4px 14px ${colors.accent}30`,
+                    boxShadow: '0 4px 14px rgba(44, 62, 80, 0.3)',
                     cursor: isSubmitting ? 'not-allowed' : 'pointer',
                     opacity: isSubmitting ? 0.6 : 1,
                     transition: 'transform 0.2s, opacity 0.2s',
@@ -479,7 +479,7 @@ export function QuizForm({ quiz }: Props) {
             style={{
               height: '100%',
               width: `${progress}%`,
-              background: colors.accent,
+              background: '#2C3E50',
               transition: 'width 0.5s ease',
             }}
           />
