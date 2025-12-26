@@ -156,7 +156,7 @@ async function publishPin(
 
 export const pinPublisherTask = schedules.task({
   id: 'pin-publisher',
-  cron: '*/5 * * * *', // Run every 5 minutes
+  cron: '*/15 * * * *', // Run every 15 minutes
 
   run: async () => {
     const supabase = getSupabaseClient();
