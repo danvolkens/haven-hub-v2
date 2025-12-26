@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Eye, Sparkles, Loader2, Globe, GlobeLock } from 'lucide-react';
 import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, CardHeader, CardContent, Input, Label, Textarea } from '@/components/ui';
 import { useToast } from '@/components/providers/toast-provider';
@@ -35,6 +35,8 @@ export default function EditQuizPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -54,6 +56,7 @@ export default function EditQuizPage() {
         setDescription(quiz.description || '');
         setSlug(quiz.slug);
         setRequireEmail(quiz.require_email);
+        setIsPublished(quiz.status === 'active');
 
         // Convert questions from DB format
         const formattedQuestions = (quiz.questions || []).map((q: any, qi: number) => ({
@@ -90,6 +93,71 @@ export default function EditQuizPage() {
 
   const generateSlug = (text: string) => {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
+
+  const generateQuestionsWithAI = async () => {
+    if (!title) {
+      toast('Please enter a quiz title first', 'error');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/quiz/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: title,
+          description: description || undefined,
+          questionCount: 5,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate questions');
+      }
+
+      const { questions: generatedQuestions } = await response.json();
+
+      const formattedQuestions: QuizQuestion[] = generatedQuestions.map(
+        (q: { text: string; answers: { text: string; scores: { grounding: number; wholeness: number; growth: number } }[] }, idx: number) => ({
+          id: String(Date.now() + idx),
+          text: q.text,
+          type: 'single' as const,
+          answers: q.answers.map((a, aidx) => ({
+            id: `${Date.now() + idx}${String.fromCharCode(97 + aidx)}`,
+            text: a.text,
+            scores: a.scores,
+          })),
+        })
+      );
+
+      setQuestions(formattedQuestions);
+      toast(`Generated ${formattedQuestions.length} questions with AI!`, 'success');
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Failed to generate questions', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const togglePublish = async () => {
+    try {
+      const newStatus = isPublished ? 'draft' : 'active';
+      const response = await fetch(`/api/quiz/by-id/${params.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      setIsPublished(!isPublished);
+      toast(isPublished ? 'Quiz unpublished' : 'Quiz published!', 'success');
+    } catch (error) {
+      toast('Failed to update status', 'error');
+    }
   };
 
   const addQuestion = () => {
@@ -277,6 +345,13 @@ export default function EditQuizPage() {
               </Button>
             </Link>
           )}
+          <Button
+            variant={isPublished ? 'secondary' : 'primary'}
+            onClick={togglePublish}
+            leftIcon={isPublished ? <GlobeLock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+          >
+            {isPublished ? 'Unpublish' : 'Publish'}
+          </Button>
           <Button onClick={handleSubmit} isLoading={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>
             Save Changes
           </Button>
@@ -341,6 +416,24 @@ export default function EditQuizPage() {
             description="Edit questions with weighted answers for each collection"
           />
           <CardContent className="space-y-6">
+            {/* AI Generate Button */}
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div>
+                <p className="font-medium text-purple-900 dark:text-purple-100">AI Question Generator</p>
+                <p className="text-body-sm text-purple-700 dark:text-purple-300">
+                  Let Claude generate quiz questions based on your title
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                onClick={generateQuestionsWithAI}
+                disabled={isGenerating || !title}
+                leftIcon={isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              >
+                {isGenerating ? 'Generating...' : 'Generate Questions'}
+              </Button>
+            </div>
+
             {questions.map((question, qi) => (
               <div key={question.id} className="p-4 border rounded-lg space-y-4">
                 <div className="flex items-start gap-3">

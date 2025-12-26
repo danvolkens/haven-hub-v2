@@ -50,7 +50,8 @@
       "Bash(git pull:*)",
       "WebFetch(domain:havenandhold-b.carrd.co)",
       "Bash(git push:*)",
-      "Bash(npx vercel --prod)"
+      "Bash(npx vercel --prod)",
+      "Bash(vercel logs:*)"
     ]
   }
 }

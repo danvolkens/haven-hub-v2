@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Eye, Globe, GlobeLock } from 'lucide-react';
 import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, CardHeader, CardContent, Input, Label, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/providers/toast-provider';
@@ -54,6 +54,7 @@ export default function EditLandingPagePage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPublished, setIsPublished] = useState(false);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -88,6 +89,7 @@ export default function EditLandingPagePage() {
         setFeaturedImageUrl(page.featured_image_url || '');
         setMetaTitle(page.meta_title || '');
         setMetaDescription(page.meta_description || '');
+        setIsPublished(page.status === 'active');
 
         // Convert form fields
         const fields = (page.form_fields || []).map((f: any, i: number) => ({
@@ -114,6 +116,24 @@ export default function EditLandingPagePage() {
 
   const generateSlug = (text: string) => {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
+
+  const togglePublish = async () => {
+    try {
+      const newStatus = isPublished ? 'draft' : 'active';
+      const response = await fetch(`/api/landing-pages/by-id/${params.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) throw new Error('Failed to update status');
+
+      setIsPublished(!isPublished);
+      toast(isPublished ? 'Page unpublished' : 'Page published!', 'success');
+    } catch (error) {
+      toast('Failed to update status', 'error');
+    }
   };
 
   const addField = () => {
@@ -225,6 +245,13 @@ export default function EditLandingPagePage() {
               </Button>
             </Link>
           )}
+          <Button
+            variant={isPublished ? 'secondary' : 'primary'}
+            onClick={togglePublish}
+            leftIcon={isPublished ? <GlobeLock className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+          >
+            {isPublished ? 'Unpublish' : 'Publish'}
+          </Button>
           <Button onClick={handleSubmit} isLoading={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>
             Save Changes
           </Button>
