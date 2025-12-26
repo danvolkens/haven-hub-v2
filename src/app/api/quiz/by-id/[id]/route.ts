@@ -149,6 +149,7 @@ export async function PUT(
           .from('quiz_questions')
           .insert({
             quiz_id: id,
+            user_id: user.id,
             question_text: q.text,
             question_type: q.type || 'single',
             position: qi,
@@ -162,6 +163,7 @@ export async function PUT(
         if (q.answers && q.answers.length > 0) {
           const answersToInsert = q.answers.map((a: any, ai: number) => ({
             question_id: questionData.id,
+            user_id: user.id,
             answer_text: a.text,
             position: ai,
             scores: a.scores || { grounding: 0, wholeness: 0, growth: 0 },
@@ -180,6 +182,7 @@ export async function PUT(
     if (results && results.length > 0) {
       const resultsToInsert = results.map((r: any) => ({
         quiz_id: id,
+        user_id: user.id,
         collection: r.collection,
         title: r.title,
         description: r.description,
