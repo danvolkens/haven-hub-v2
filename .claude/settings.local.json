@@ -52,7 +52,8 @@
       "Bash(git push:*)",
       "Bash(npx vercel --prod)",
       "Bash(vercel logs:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(vercel list:*)"
     ]
   }
 }

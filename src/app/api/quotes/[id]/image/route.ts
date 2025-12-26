@@ -16,11 +16,13 @@ export async function POST(
     console.log('Quote image upload - Quote ID:', id, 'User ID:', userId);
 
     // Verify quote belongs to user
+    // Filter by both id and user_id to work with RLS
     const { data: quote, error: quoteError } = await (supabase as any)
       .from('quotes')
-      .select('id, master_image_key, user_id')
+      .select('id, user_id')
       .eq('id', id)
-      .single();
+      .eq('user_id', userId)
+      .maybeSingle();
 
     if (quoteError) {
       console.error('Quote lookup error:', {
@@ -33,19 +35,20 @@ export async function POST(
         hint: quoteError.hint,
       });
       return NextResponse.json({
-        error: 'Quote not found',
+        error: 'Database error during quote lookup',
         details: quoteError.message,
         code: quoteError.code,
         quoteId: id,
-      }, { status: 404 });
+      }, { status: 500 });
     }
 
     if (!quote) {
-      return NextResponse.json({ error: 'Quote does not exist' }, { status: 404 });
-    }
-
-    if (quote.user_id !== userId) {
-      return NextResponse.json({ error: 'Not authorized to modify this quote' }, { status: 403 });
+      console.error('Quote not found:', { quoteId: id, userId });
+      return NextResponse.json({
+        error: 'Quote not found',
+        quoteId: id,
+        hint: 'Quote may not exist or may belong to a different user'
+      }, { status: 404 });
     }
 
     // Parse the multipart form data
@@ -56,10 +59,18 @@ export async function POST(
       return NextResponse.json({ error: 'No image file provided' }, { status: 400 });
     }
 
+    // Check if quote has an existing master image to delete
+    // (need to fetch full quote to get master_image_key if it exists)
+    const { data: fullQuote } = await (supabase as any)
+      .from('quotes')
+      .select('master_image_key')
+      .eq('id', id)
+      .single();
+
     // Delete old image if exists
-    if (quote.master_image_key) {
+    if (fullQuote?.master_image_key) {
       try {
-        await deleteFile(quote.master_image_key);
+        await deleteFile(fullQuote.master_image_key);
       } catch (err) {
         console.error('Failed to delete old master image:', err);
       }
@@ -88,10 +99,16 @@ export async function POST(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
 
     if (updateError) {
+      console.error('Quote update error:', {
+        quoteId: id,
+        userId,
+        error: updateError,
+      });
       throw updateError;
     }
 
