@@ -99,9 +99,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error('Quote creation error:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    console.log('Quote created successfully:', { id: data?.id, userId });
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
