@@ -5,7 +5,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 interface Pin {
   id: string;
   status: string;
-  scheduled_time: string;
+  scheduled_for: string;
 }
 
 export const GET = cronHandler(async (_request: NextRequest) => {
@@ -19,8 +19,8 @@ export const GET = cronHandler(async (_request: NextRequest) => {
     .from('pins')
     .select('*')
     .eq('status', 'scheduled')
-    .lte('scheduled_time', now)
-    .order('scheduled_time', { ascending: true })
+    .lte('scheduled_for', now)
+    .order('scheduled_for', { ascending: true })
     .limit(50);
 
   if (error) {
