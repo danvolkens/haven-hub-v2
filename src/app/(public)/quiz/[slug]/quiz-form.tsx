@@ -43,7 +43,7 @@ const COLLECTION_COLORS = {
   growth: { accent: '#5B7B8C', bg: '#F5F8FA' },
 };
 
-export function QuizTemplate({ quiz }: Props) {
+export function QuizForm({ quiz }: Props) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [scores, setScores] = useState({ grounding: 0, wholeness: 0, growth: 0 });

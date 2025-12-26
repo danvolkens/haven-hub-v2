@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { QuizTemplate } from './template';
+import { QuizForm } from './quiz-form';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -62,5 +62,5 @@ export default async function QuizPage({ params }: PageProps) {
     notFound();
   }
 
-  return <QuizTemplate quiz={quiz} />;
+  return <QuizForm quiz={quiz} />;
 }
