@@ -37,12 +37,6 @@ interface Props {
   quiz: Quiz;
 }
 
-const COLLECTION_COLORS = {
-  grounding: { accent: '#786350', bg: '#FAF6F1' },
-  wholeness: { accent: '#7A9E7E', bg: '#F5FAF6' },
-  growth: { accent: '#5B7B8C', bg: '#F5F8FA' },
-};
-
 export function QuizForm({ quiz }: Props) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -58,7 +52,6 @@ export function QuizForm({ quiz }: Props) {
   const handleAnswer = (questionId: string, answer: QuizAnswer) => {
     setAnswers({ ...answers, [questionId]: answer.id });
 
-    // Add answer scores
     const newScores = {
       grounding: scores.grounding + (answer.scores?.grounding || 0),
       wholeness: scores.wholeness + (answer.scores?.wholeness || 0),
@@ -66,11 +59,9 @@ export function QuizForm({ quiz }: Props) {
     };
     setScores(newScores);
 
-    // Move to next question or show results
     if (currentQuestion < questions.length - 1) {
       setTimeout(() => setCurrentQuestion(currentQuestion + 1), 300);
     } else {
-      // Quiz complete - show email form or results
       if (quiz.require_email) {
         setShowEmailForm(true);
       } else {
@@ -107,12 +98,6 @@ export function QuizForm({ quiz }: Props) {
     }
   };
 
-  const getWinningCollection = () => {
-    return Object.entries(scores).reduce((a, b) => (a[1] > b[1] ? a : b))[0] as keyof typeof COLLECTION_COLORS;
-  };
-
-  const colors = COLLECTION_COLORS[getWinningCollection()] || COLLECTION_COLORS.grounding;
-
   // Show result
   if (result) {
     return (
@@ -120,7 +105,6 @@ export function QuizForm({ quiz }: Props) {
         className="min-h-screen flex items-center justify-center"
         style={{
           background: '#FAF8F5',
-          padding: '3rem 1.5rem',
           position: 'relative',
         }}
       >
@@ -129,124 +113,91 @@ export function QuizForm({ quiz }: Props) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+            backgroundImage: 'url(/images/brand/bg.jpg)',
             backgroundPosition: 'center',
             backgroundSize: 'cover',
             backgroundRepeat: 'no-repeat',
-            opacity: 0.15,
             pointerEvents: 'none',
           }}
         />
 
         <div
           className="w-full animate-fade-in"
-          style={{ maxWidth: '36rem' }}
+          style={{
+            maxWidth: '36rem',
+            padding: '3rem 1.5rem',
+            position: 'relative',
+            zIndex: 1,
+          }}
         >
           <div
             style={{
               background: 'rgba(255, 255, 255, 0.973)',
               borderRadius: '0.5rem',
-              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
-            <div style={{ padding: '3rem', textAlign: 'center' }}>
-              <div
-                style={{
-                  width: '5rem',
-                  height: '5rem',
-                  borderRadius: '9999px',
-                  margin: '0 auto 1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: `${colors.accent}15`,
-                }}
-              >
-                <svg
-                  style={{ width: '2.5rem', height: '2.5rem' }}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke={colors.accent}
-                  strokeWidth={1.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
-                  />
-                </svg>
-              </div>
-
-              <h1
-                style={{
-                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                  fontSize: '1.75em',
-                  fontWeight: 400,
-                  lineHeight: 1.25,
-                  color: '#2C3E50',
-                  marginBottom: '1rem',
-                }}
-              >
-                {result.title}
-              </h1>
-
-              <p
-                style={{
-                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
-                  fontWeight: 400,
-                  lineHeight: 1.5,
-                  color: '#5D6D7E',
-                  marginBottom: '2rem',
-                }}
-              >
-                {result.description}
-              </p>
-
-              {result.cta_url && (
-                <a
-                  href={result.cta_url}
-                  style={{
-                    display: 'inline-block',
-                    padding: '1rem 2rem',
-                    borderRadius: '0.375rem',
-                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                    fontSize: '1em',
-                    fontWeight: 500,
-                    color: '#FFFFFF',
-                    background: '#2C3E50',
-                    boxShadow: '0 4px 14px rgba(44, 62, 80, 0.3)',
-                    textDecoration: 'none',
-                    transition: 'transform 0.2s',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'scale(1.02)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
-                  {result.cta_text || 'Shop Collection'}
-                </a>
-              )}
-            </div>
-          </div>
-
-          <p
-            style={{
-              fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-              fontSize: '0.75em',
-              fontWeight: 400,
-              color: '#A0A0A0',
+              boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
+              padding: '3rem',
               textAlign: 'center',
-              marginTop: '1.5rem',
             }}
           >
-            Haven & Hold
-          </p>
+            {/* Logo */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <img
+                src="/images/brand/logo.png"
+                alt="Haven & Hold"
+                style={{
+                  width: '9.5rem',
+                  height: 'auto',
+                  margin: '0 auto',
+                }}
+              />
+            </div>
+
+            <h1
+              style={{
+                fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                fontSize: '1.75em',
+                fontWeight: 400,
+                lineHeight: 1.25,
+                color: '#2C3E50',
+                marginBottom: '1rem',
+              }}
+            >
+              {result.title}
+            </h1>
+
+            <p
+              style={{
+                fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                fontSize: '1.125em',
+                fontWeight: 400,
+                lineHeight: 1.5,
+                color: '#5D6D7E',
+                marginBottom: '2rem',
+              }}
+            >
+              {result.description}
+            </p>
+
+            {result.cta_url && (
+              <a
+                href={result.cta_url}
+                style={{
+                  display: 'inline-block',
+                  padding: '1rem 2rem',
+                  borderRadius: '0.375rem',
+                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                  fontSize: '1em',
+                  fontWeight: 500,
+                  color: '#FFFFFF',
+                  background: '#2C3E50',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                {result.cta_text || 'Shop Collection'}
+              </a>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -259,7 +210,6 @@ export function QuizForm({ quiz }: Props) {
         className="min-h-screen flex items-center justify-center"
         style={{
           background: '#FAF8F5',
-          padding: '3rem 1.5rem',
           position: 'relative',
         }}
       >
@@ -268,130 +218,124 @@ export function QuizForm({ quiz }: Props) {
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+            backgroundImage: 'url(/images/brand/bg.jpg)',
             backgroundPosition: 'center',
             backgroundSize: 'cover',
             backgroundRepeat: 'no-repeat',
-            opacity: 0.15,
             pointerEvents: 'none',
           }}
         />
 
         <div
           className="w-full animate-fade-in"
-          style={{ maxWidth: '36rem' }}
+          style={{
+            maxWidth: '36rem',
+            padding: '3rem 1.5rem',
+            position: 'relative',
+            zIndex: 1,
+          }}
         >
           <div
             style={{
               background: 'rgba(255, 255, 255, 0.973)',
               borderRadius: '0.5rem',
-              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
-              overflow: 'hidden',
+              boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
+              padding: '3rem',
+              textAlign: 'center',
             }}
           >
-            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
-            <div style={{ padding: '3rem', textAlign: 'center' }}>
-              <h2
+            {/* Logo */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <img
+                src="/images/brand/logo.png"
+                alt="Haven & Hold"
                 style={{
-                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                  fontSize: '1.5em',
-                  fontWeight: 400,
-                  lineHeight: 1.25,
-                  color: '#2C3E50',
-                  marginBottom: '1rem',
+                  width: '9.5rem',
+                  height: 'auto',
+                  margin: '0 auto',
                 }}
-              >
-                Almost there!
-              </h2>
+              />
+            </div>
 
-              <p
+            <h2
+              style={{
+                fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                fontSize: '1.5em',
+                fontWeight: 400,
+                lineHeight: 1.25,
+                color: '#2C3E50',
+                marginBottom: '1rem',
+              }}
+            >
+              Almost there!
+            </h2>
+
+            <p
+              style={{
+                fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                fontSize: '1.125em',
+                fontWeight: 400,
+                lineHeight: 1.5,
+                color: '#5D6D7E',
+                marginBottom: '1.5rem',
+              }}
+            >
+              Enter your email to see your personalized results
+            </p>
+
+            <form onSubmit={handleEmailSubmit}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                required
                 style={{
+                  width: '100%',
+                  padding: '0.875rem 1rem',
+                  borderRadius: '0.375rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
+                  fontSize: '1em',
                   fontWeight: 400,
                   lineHeight: 1.5,
-                  color: '#5D6D7E',
-                  marginBottom: '1.5rem',
+                  color: '#2C3E50',
+                  background: '#FFFFFF',
+                  border: '1px solid #E8E4E0',
+                  outline: 'none',
+                  marginBottom: '1rem',
+                  transition: 'border-color 0.2s, box-shadow 0.2s',
                 }}
-              >
-                Enter your email to see your personalized results
-              </p>
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#2C3E50';
+                  e.target.style.boxShadow = '0 0 0 2px rgba(44, 62, 80, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#E8E4E0';
+                  e.target.style.boxShadow = 'none';
+                }}
+              />
 
-              <form onSubmit={handleEmailSubmit}>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '0.875rem 1rem',
-                    borderRadius: '0.375rem',
-                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                    fontSize: '1em',
-                    fontWeight: 400,
-                    lineHeight: 1.5,
-                    color: '#2C3E50',
-                    background: '#FAF8F5',
-                    border: '1px solid #E8E4E0',
-                    outline: 'none',
-                    marginBottom: '1rem',
-                    transition: 'border-color 0.2s, box-shadow 0.2s',
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = colors.accent;
-                    e.target.style.boxShadow = `0 0 0 2px ${colors.accent}20`;
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = '#E8E4E0';
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    borderRadius: '0.375rem',
-                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                    fontSize: '1em',
-                    fontWeight: 500,
-                    color: '#FFFFFF',
-                    background: '#2C3E50',
-                    border: 'none',
-                    boxShadow: '0 4px 14px rgba(44, 62, 80, 0.3)',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: isSubmitting ? 0.6 : 1,
-                    transition: 'transform 0.2s, opacity 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSubmitting) {
-                      e.currentTarget.style.transform = 'scale(1.02)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >
-                  {isSubmitting ? 'Loading...' : 'See My Results'}
-                </button>
-              </form>
-
-              <p
+              <button
+                type="submit"
+                disabled={isSubmitting}
                 style={{
+                  width: '100%',
+                  padding: '1rem',
+                  borderRadius: '0.375rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '0.75em',
-                  fontWeight: 400,
-                  color: '#A0A0A0',
-                  marginTop: '1rem',
+                  fontSize: '1em',
+                  fontWeight: 500,
+                  color: '#FFFFFF',
+                  background: '#2C3E50',
+                  border: 'none',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: isSubmitting ? 0.6 : 1,
+                  transition: 'opacity 0.2s',
                 }}
               >
-                We respect your privacy. Unsubscribe anytime.
-              </p>
-            </div>
+                {isSubmitting ? 'Loading...' : 'See My Results'}
+              </button>
+            </form>
           </div>
         </div>
       </div>
@@ -406,7 +350,6 @@ export function QuizForm({ quiz }: Props) {
         className="min-h-screen flex items-center justify-center"
         style={{
           background: '#FAF8F5',
-          padding: '3rem 1.5rem',
         }}
       >
         <p
@@ -426,7 +369,6 @@ export function QuizForm({ quiz }: Props) {
       className="min-h-screen flex flex-col"
       style={{
         background: '#FAF8F5',
-        padding: '3rem 1.5rem',
         position: 'relative',
       }}
     >
@@ -435,11 +377,10 @@ export function QuizForm({ quiz }: Props) {
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundImage: 'url(https://havenandhold-b.carrd.co/assets/images/bg.jpg)',
+          backgroundImage: 'url(/images/brand/bg.jpg)',
           backgroundPosition: 'center',
           backgroundSize: 'cover',
           backgroundRepeat: 'no-repeat',
-          opacity: 0.15,
           pointerEvents: 'none',
         }}
       />
@@ -449,8 +390,10 @@ export function QuizForm({ quiz }: Props) {
         style={{
           width: '100%',
           maxWidth: '36rem',
-          margin: '0 auto 2rem',
+          margin: '0 auto',
+          padding: '1.5rem 1.5rem 0',
           position: 'relative',
+          zIndex: 1,
         }}
       >
         <div
@@ -470,7 +413,7 @@ export function QuizForm({ quiz }: Props) {
           style={{
             width: '100%',
             height: '0.375rem',
-            background: '#E8E4E0',
+            background: 'rgba(255, 255, 255, 0.5)',
             borderRadius: '9999px',
             overflow: 'hidden',
           }}
@@ -489,7 +432,11 @@ export function QuizForm({ quiz }: Props) {
       {/* Question Card */}
       <div
         className="flex-1 flex items-center justify-center"
-        style={{ position: 'relative' }}
+        style={{
+          padding: '1.5rem',
+          position: 'relative',
+          zIndex: 1,
+        }}
       >
         <div
           className="w-full animate-fade-in"
@@ -499,69 +446,58 @@ export function QuizForm({ quiz }: Props) {
             style={{
               background: 'rgba(255, 255, 255, 0.973)',
               borderRadius: '0.5rem',
-              boxShadow: '0rem 1.75rem 3.125rem 0rem rgba(0, 0, 0, 0.08)',
-              overflow: 'hidden',
+              boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
+              padding: '3rem',
             }}
           >
-            <div style={{ height: '0.375rem', width: '100%', background: colors.accent }} />
-            <div style={{ padding: '3rem' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                  fontSize: '1.5em',
-                  fontWeight: 400,
-                  lineHeight: 1.25,
-                  color: '#2C3E50',
-                  textAlign: 'center',
-                  marginBottom: '2rem',
-                }}
-              >
-                {question.text}
-              </h2>
+            <h2
+              style={{
+                fontFamily: 'var(--font-serif), "Crimson Text", serif',
+                fontSize: '1.5em',
+                fontWeight: 400,
+                lineHeight: 1.25,
+                color: '#2C3E50',
+                textAlign: 'center',
+                marginBottom: '2rem',
+              }}
+            >
+              {question.text}
+            </h2>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {question.answers?.map((answer) => (
-                  <button
-                    key={answer.id}
-                    onClick={() => handleAnswer(question.id, answer)}
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      textAlign: 'left',
-                      borderRadius: '0.375rem',
-                      fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                      fontSize: '1em',
-                      fontWeight: 400,
-                      lineHeight: 1.5,
-                      color: '#2C3E50',
-                      background: answers[question.id] === answer.id ? `${colors.accent}15` : '#FAF8F5',
-                      border: `1px solid ${answers[question.id] === answer.id ? colors.accent : '#E8E4E0'}`,
-                      cursor: 'pointer',
-                      transition: 'transform 0.2s, border-color 0.2s, background 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.01)';
-                      if (answers[question.id] !== answer.id) {
-                        e.currentTarget.style.borderColor = colors.accent;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'scale(1)';
-                      if (answers[question.id] !== answer.id) {
-                        e.currentTarget.style.borderColor = '#E8E4E0';
-                      }
-                    }}
-                    onMouseDown={(e) => {
-                      e.currentTarget.style.transform = 'scale(0.99)';
-                    }}
-                    onMouseUp={(e) => {
-                      e.currentTarget.style.transform = 'scale(1.01)';
-                    }}
-                  >
-                    {answer.text}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {question.answers?.map((answer) => (
+                <button
+                  key={answer.id}
+                  onClick={() => handleAnswer(question.id, answer)}
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    textAlign: 'left',
+                    borderRadius: '0.375rem',
+                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                    fontSize: '1em',
+                    fontWeight: 400,
+                    lineHeight: 1.5,
+                    color: '#2C3E50',
+                    background: answers[question.id] === answer.id ? 'rgba(44, 62, 80, 0.1)' : '#FFFFFF',
+                    border: `1px solid ${answers[question.id] === answer.id ? '#2C3E50' : '#E8E4E0'}`,
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s, background 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (answers[question.id] !== answer.id) {
+                      e.currentTarget.style.borderColor = '#2C3E50';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (answers[question.id] !== answer.id) {
+                      e.currentTarget.style.borderColor = '#E8E4E0';
+                    }
+                  }}
+                >
+                  {answer.text}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -570,7 +506,7 @@ export function QuizForm({ quiz }: Props) {
               fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
               fontSize: '0.75em',
               fontWeight: 400,
-              color: '#A0A0A0',
+              color: 'rgba(255, 255, 255, 0.7)',
               textAlign: 'center',
               marginTop: '1.5rem',
             }}
