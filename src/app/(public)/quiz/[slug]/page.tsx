@@ -27,13 +27,27 @@ async function getQuiz(slug: string) {
     return null;
   }
 
-  // Sort questions and answers by position
+  // Transform and sort questions and answers
   if (quiz.questions) {
     quiz.questions.sort((a: any, b: any) => a.position - b.position);
-    quiz.questions.forEach((q: any) => {
+    quiz.questions = quiz.questions.map((q: any) => {
+      // Map question_text to text for the component
+      const question = {
+        ...q,
+        text: q.question_text || q.text,
+        type: q.question_type || q.type,
+      };
+
       if (q.answers) {
-        q.answers.sort((a: any, b: any) => a.position - b.position);
+        question.answers = q.answers
+          .sort((a: any, b: any) => a.position - b.position)
+          .map((a: any) => ({
+            ...a,
+            text: a.answer_text || a.text,
+          }));
       }
+
+      return question;
     });
   }
 

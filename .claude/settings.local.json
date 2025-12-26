@@ -53,7 +53,24 @@
       "Bash(npx vercel --prod)",
       "Bash(vercel logs:*)",
       "Bash(tail:*)",
-      "Bash(vercel list:*)"
+      "Bash(vercel list:*)",
+      "Bash(comm:*)",
+      "Bash(mv:*)",
+      "Bash(for table in campaigns campaign_tasks seasonal_templates pin_winners exports pin_schedule_history)",
+      "Bash(do grep -q \"^$table$\" /tmp/prod_tables_after.txt)",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 status)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 log --oneline -3)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 status --porcelain supabase/migrations/)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 ls-files:*)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 status -u supabase/migrations/)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 check-ignore -v supabase/migrations/20251226100001_fix_missing_campaigns.sql)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 add -f supabase/migrations/20251226100001_fix_missing_campaigns.sql supabase/migrations/20251226100002_fix_missing_winners.sql)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"$\\(cat <<''EOF''\nFix missing database tables in production\n\nAdd repair migrations for tables that were recorded as applied but\nnever actually created in production:\n\nFrom 018_campaigns.sql:\n- campaigns \\(seasonal campaign management\\)\n- campaign_tasks \\(scheduled activities\\)\n- seasonal_templates \\(8 system templates seeded\\)\n\nFrom 022_winners_exports.sql:\n- pin_winners \\(top performing pin tracking\\)\n- exports \\(data export jobs\\)\n- pin_schedule_history \\(publishing history\\)\n- pins.is_winner column\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 push)",
+      "Bash(git rm:*)",
+      "Bash(vercel ls:*)"
     ]
   }
 }
