@@ -41,6 +41,9 @@ export async function createLandingPage(
         lead_magnet_type: request.leadMagnetType,
         lead_magnet_title: request.leadMagnetTitle,
         collection: request.collection,
+        featured_image_url: request.featuredImageUrl,
+        meta_title: request.metaTitle,
+        meta_description: request.metaDescription,
         form_fields: request.formFields || [
           { name: 'email', type: 'email', label: 'Email', required: true },
           { name: 'first_name', type: 'text', label: 'First Name', required: false },

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Image, Eye } from 'lucide-react';
 import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, CardHeader, CardContent, Input, Label, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/providers/toast-provider';
@@ -23,11 +23,21 @@ const PAGE_TYPES = [
   { value: 'product', label: 'Product Launch' },
 ];
 
+const LEAD_MAGNET_TYPES = [
+  { value: '', label: 'None' },
+  { value: 'ebook', label: 'eBook' },
+  { value: 'wallpaper', label: 'Wallpaper' },
+  { value: 'printable', label: 'Printable' },
+  { value: 'guide', label: 'Guide' },
+  { value: 'checklist', label: 'Checklist' },
+  { value: 'video', label: 'Video' },
+];
+
 const COLLECTIONS = [
   { value: '', label: 'None' },
-  { value: 'grounding', label: 'Grounding' },
-  { value: 'wholeness', label: 'Wholeness' },
-  { value: 'growth', label: 'Growth' },
+  { value: 'grounding', label: 'Grounding - Earthy tones (#786350)' },
+  { value: 'wholeness', label: 'Wholeness - Sage greens (#7A9E7E)' },
+  { value: 'growth', label: 'Growth - Blue slate (#5B7B8C)' },
 ];
 
 const FIELD_TYPES = [
@@ -50,6 +60,11 @@ export default function NewLandingPagePage() {
   const [subheadline, setSubheadline] = useState('');
   const [bodyContent, setBodyContent] = useState('');
   const [collection, setCollection] = useState('');
+  const [leadMagnetType, setLeadMagnetType] = useState('');
+  const [leadMagnetTitle, setLeadMagnetTitle] = useState('');
+  const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+  const [metaTitle, setMetaTitle] = useState('');
+  const [metaDescription, setMetaDescription] = useState('');
   const [formFields, setFormFields] = useState<FormField[]>([
     { id: '1', name: 'email', type: 'email', label: 'Email Address', required: true, placeholder: 'Enter your email' },
     { id: '2', name: 'firstName', type: 'text', label: 'First Name', required: false, placeholder: 'Enter your name' },
@@ -112,6 +127,11 @@ export default function NewLandingPagePage() {
           subheadline: subheadline || undefined,
           bodyContent: bodyContent || undefined,
           collection: collection || undefined,
+          leadMagnetType: leadMagnetType || undefined,
+          leadMagnetTitle: leadMagnetTitle || undefined,
+          featuredImageUrl: featuredImageUrl || undefined,
+          metaTitle: metaTitle || undefined,
+          metaDescription: metaDescription || undefined,
           formFields: formFields.map((f) => ({
             name: f.name,
             type: f.type,
@@ -147,6 +167,13 @@ export default function NewLandingPagePage() {
               Cancel
             </Button>
           </Link>
+          {slug && (
+            <Link href={`/landing/${slug}`} target="_blank">
+              <Button variant="secondary" leftIcon={<Eye className="h-4 w-4" />}>
+                Preview
+              </Button>
+            </Link>
+          )}
           <Button onClick={handleSubmit} isLoading={isSubmitting} leftIcon={<Save className="h-4 w-4" />}>
             Save Page
           </Button>
@@ -236,6 +263,116 @@ export default function NewLandingPagePage() {
                 placeholder="Add additional details about your offer..."
                 rows={4}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Design & Appearance */}
+        <Card>
+          <CardHeader
+            title="Design & Appearance"
+            description="Customize how your landing page looks"
+          />
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="leadMagnetType">Lead Magnet Type</Label>
+                <Select
+                  value={leadMagnetType}
+                  onChange={(v) => setLeadMagnetType(v as string)}
+                  options={LEAD_MAGNET_TYPES}
+                />
+                <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                  Shows as a badge above the headline
+                </p>
+              </div>
+              <div>
+                <Label htmlFor="leadMagnetTitle">CTA Button Text</Label>
+                <Input
+                  id="leadMagnetTitle"
+                  value={leadMagnetTitle}
+                  onChange={(e) => setLeadMagnetTitle(e.target.value)}
+                  placeholder="Get Instant Access"
+                />
+                <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                  Leave empty for default: &quot;Get Instant Access&quot;
+                </p>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="featuredImageUrl">Featured Image URL</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="featuredImageUrl"
+                  value={featuredImageUrl}
+                  onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1"
+                />
+                {featuredImageUrl && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => setFeaturedImageUrl('')}
+                    className="text-[var(--color-text-tertiary)]"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                Paste a URL for the hero image shown above your headline
+              </p>
+            </div>
+            {featuredImageUrl && (
+              <div className="relative rounded-lg overflow-hidden border bg-[var(--color-surface)]">
+                <img
+                  src={featuredImageUrl}
+                  alt="Featured image preview"
+                  className="w-full h-40 object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/5">
+                  <Image className="h-8 w-8 text-[var(--color-text-tertiary)] opacity-50" />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* SEO Settings */}
+        <Card>
+          <CardHeader
+            title="SEO Settings"
+            description="Optimize for search engines and social sharing"
+          />
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="metaTitle">Meta Title</Label>
+              <Input
+                id="metaTitle"
+                value={metaTitle}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                placeholder={headline || 'Page title for search results'}
+              />
+              <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                {metaTitle.length}/60 characters • Leave empty to use headline
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="metaDescription">Meta Description</Label>
+              <Textarea
+                id="metaDescription"
+                value={metaDescription}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                placeholder={subheadline || 'Brief description for search results'}
+                rows={2}
+              />
+              <p className="text-caption text-[var(--color-text-tertiary)] mt-1">
+                {metaDescription.length}/160 characters • Leave empty to use subheadline
+              </p>
             </div>
           </CardContent>
         </Card>

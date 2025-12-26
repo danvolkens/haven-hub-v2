@@ -14,6 +14,9 @@ const createSchema = z.object({
   leadMagnetType: z.enum(['ebook', 'wallpaper', 'printable', 'guide', 'checklist', 'video']).optional(),
   leadMagnetTitle: z.string().optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
+  featuredImageUrl: z.string().url().optional(),
+  metaTitle: z.string().max(100).optional(),
+  metaDescription: z.string().max(200).optional(),
   formFields: z.array(z.object({
     name: z.string(),
     type: z.enum(['text', 'email', 'tel', 'select', 'checkbox', 'textarea']),

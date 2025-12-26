@@ -102,6 +102,9 @@ export interface CreateLandingPageRequest {
   leadMagnetType?: LeadMagnetType;
   leadMagnetTitle?: string;
   collection?: 'grounding' | 'wholeness' | 'growth';
+  featuredImageUrl?: string;
+  metaTitle?: string;
+  metaDescription?: string;
   formFields?: FormField[];
   klaviyoListId?: string;
   klaviyoTags?: string[];
