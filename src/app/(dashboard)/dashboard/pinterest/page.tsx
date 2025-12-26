@@ -16,6 +16,8 @@ import {
   TabsContent,
   Modal,
   Select,
+  Input,
+  Label,
 } from '@/components/ui';
 import {
   Pin,
@@ -31,6 +33,8 @@ import {
   Trash2,
   BarChart3,
   Link as LinkIcon,
+  Calendar,
+  Check,
 } from 'lucide-react';
 
 interface Board {
@@ -70,6 +74,10 @@ export default function PinterestPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedPin, setSelectedPin] = useState<PinRecord | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showBulkSchedule, setShowBulkSchedule] = useState(false);
+  const [selectedPinIds, setSelectedPinIds] = useState<string[]>([]);
+  const [bulkScheduleStrategy, setBulkScheduleStrategy] = useState<'immediate' | 'optimal' | 'spread'>('optimal');
+  const [spreadDays, setSpreadDays] = useState(7);
   const queryClient = useQueryClient();
 
   // Fetch Pinterest status
@@ -164,6 +172,46 @@ export default function PinterestPage() {
       setShowDeleteConfirm(null);
     },
   });
+
+  // Bulk schedule mutation
+  const bulkScheduleMutation = useMutation({
+    mutationFn: async (data: { pinIds: string[]; strategy: string; spreadDays?: number }) => {
+      const res = await fetch('/api/pins/bulk-schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to schedule pins');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'pins'] });
+      setShowBulkSchedule(false);
+      setSelectedPinIds([]);
+    },
+  });
+
+  const handleBulkSchedule = () => {
+    bulkScheduleMutation.mutate({
+      pinIds: selectedPinIds,
+      strategy: bulkScheduleStrategy,
+      spreadDays: bulkScheduleStrategy === 'spread' ? spreadDays : undefined,
+    });
+  };
+
+  const togglePinSelection = (pinId: string) => {
+    setSelectedPinIds((prev) =>
+      prev.includes(pinId) ? prev.filter((id) => id !== pinId) : [...prev, pinId]
+    );
+  };
+
+  const selectAllDraftPins = () => {
+    const draftPinIds = pins.filter((p) => p.status === 'draft').map((p) => p.id);
+    setSelectedPinIds(draftPinIds);
+  };
 
   const boards: Board[] = boardsData?.boards || [];
   const pins: PinRecord[] = pinsData?.pins || [];
@@ -328,17 +376,37 @@ export default function PinterestPage() {
                   Manage all your pins across boards
                 </p>
               </div>
-              <Select
-                value={statusFilter}
-                onChange={(value) => setStatusFilter(typeof value === 'string' ? value : 'all')}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'draft', label: 'Draft' },
-                  { value: 'scheduled', label: 'Scheduled' },
-                  { value: 'published', label: 'Published' },
-                  { value: 'failed', label: 'Failed' },
-                ]}
-              />
+              <div className="flex items-center gap-2">
+                {selectedPinIds.length > 0 && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowBulkSchedule(true)}
+                  >
+                    <Calendar className="h-4 w-4 mr-2" />
+                    Schedule {selectedPinIds.length} pins
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={selectAllDraftPins}
+                  disabled={pins.filter((p) => p.status === 'draft').length === 0}
+                >
+                  Select All Drafts
+                </Button>
+                <Select
+                  value={statusFilter}
+                  onChange={(value) => setStatusFilter(typeof value === 'string' ? value : 'all')}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'draft', label: 'Draft' },
+                    { value: 'scheduled', label: 'Scheduled' },
+                    { value: 'published', label: 'Published' },
+                    { value: 'failed', label: 'Failed' },
+                  ]}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {loadingPins ? (
@@ -352,7 +420,7 @@ export default function PinterestPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {pins.map((pin) => (
-                    <Card key={pin.id} className="overflow-hidden">
+                    <Card key={pin.id} className={`overflow-hidden ${selectedPinIds.includes(pin.id) ? 'ring-2 ring-sage' : ''}`}>
                       <div
                         className="aspect-square relative bg-[var(--color-bg-secondary)] cursor-pointer"
                         onClick={() => setSelectedPin(pin)}
@@ -362,6 +430,22 @@ export default function PinterestPage() {
                           alt={pin.title}
                           className="absolute inset-0 w-full h-full object-cover"
                         />
+                        {/* Selection checkbox */}
+                        {(pin.status === 'draft' || pin.status === 'failed') && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePinSelection(pin.id);
+                            }}
+                            className={`absolute top-2 left-2 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                              selectedPinIds.includes(pin.id)
+                                ? 'bg-sage border-sage text-white'
+                                : 'bg-white/80 border-gray-300 hover:border-sage'
+                            }`}
+                          >
+                            {selectedPinIds.includes(pin.id) && <Check className="h-4 w-4" />}
+                          </button>
+                        )}
                       </div>
                       <CardContent className="p-3">
                         <div className="flex items-start justify-between gap-2 mb-2">
@@ -569,6 +653,87 @@ export default function PinterestPage() {
           >
             {deletePinMutation.isPending ? 'Deleting...' : 'Delete'}
           </Button>
+        </div>
+      </Modal>
+
+      {/* Bulk Schedule Modal */}
+      <Modal
+        isOpen={showBulkSchedule}
+        onClose={() => setShowBulkSchedule(false)}
+        title={`Schedule ${selectedPinIds.length} Pins`}
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Choose how you want to schedule the selected pins.
+          </p>
+
+          <div>
+            <Label>Scheduling Strategy</Label>
+            <Select
+              value={bulkScheduleStrategy}
+              onChange={(value) => setBulkScheduleStrategy(value as 'immediate' | 'optimal' | 'spread')}
+              options={[
+                { value: 'immediate', label: 'Immediate', description: 'Publish all pins now' },
+                { value: 'optimal', label: 'Optimal Times', description: 'Schedule at peak engagement times' },
+                { value: 'spread', label: 'Spread Over Days', description: 'Distribute across multiple days' },
+              ]}
+            />
+          </div>
+
+          {bulkScheduleStrategy === 'spread' && (
+            <div>
+              <Label>Spread Over (days)</Label>
+              <Input
+                type="number"
+                value={spreadDays}
+                onChange={(e) => setSpreadDays(parseInt(e.target.value) || 7)}
+                min={1}
+                max={30}
+                className="mt-1"
+              />
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                Pins will be evenly distributed across {spreadDays} days
+              </p>
+            </div>
+          )}
+
+          {bulkScheduleStrategy === 'optimal' && (
+            <div className="p-3 bg-[var(--color-bg-secondary)] rounded-lg text-sm">
+              <p className="font-medium mb-1">Optimal posting times:</p>
+              <ul className="text-[var(--color-text-secondary)] space-y-1">
+                <li>• Weekdays: 8-11 PM</li>
+                <li>• Weekends: 2-4 PM, 8-11 PM</li>
+                <li>• Fridays: 3 PM</li>
+              </ul>
+            </div>
+          )}
+
+          {bulkScheduleMutation.error && (
+            <p className="text-sm text-red-500">{bulkScheduleMutation.error.message}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="ghost" onClick={() => setShowBulkSchedule(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkSchedule}
+              disabled={bulkScheduleMutation.isPending}
+            >
+              {bulkScheduleMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Scheduling...
+                </>
+              ) : (
+                <>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Schedule Pins
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </Modal>
     </PageContainer>

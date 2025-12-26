@@ -28,6 +28,12 @@ import {
   Bell,
   Target,
   TrendingUp,
+  ListChecks,
+  Tags,
+  Bug,
+  DollarSign,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -72,6 +78,7 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Quotes', href: '/dashboard/quotes', icon: Quote },
       { name: 'Assets', href: '/dashboard/assets', icon: Image },
       { name: 'Mockups', href: '/dashboard/settings/mockups', icon: Frame },
+      { name: 'Copy Templates', href: '/dashboard/settings/copy-templates', icon: FileText },
     ],
   },
   {
@@ -92,6 +99,10 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Overview', href: '/dashboard/email', icon: Mail },
       { name: 'Flows', href: '/dashboard/email/flows', icon: Zap },
+      { name: 'Lists', href: '/dashboard/email/lists', icon: ListChecks },
+      { name: 'Tags', href: '/dashboard/email/tags', icon: Tags },
+      { name: 'Revenue', href: '/dashboard/email/revenue', icon: DollarSign },
+      { name: 'Debug', href: '/dashboard/email/debug', icon: Bug },
       { name: 'Setup', href: '/dashboard/email/setup', icon: Settings },
     ],
   },
@@ -119,6 +130,7 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Overview', href: '/dashboard/campaigns', icon: Megaphone },
       { name: 'Coupons', href: '/dashboard/campaigns/coupons', icon: Ticket },
       { name: 'Calendar', href: '/dashboard/calendar', icon: Calendar },
+      { name: 'Weekly Rhythm', href: '/dashboard/rhythm', icon: Clock },
     ],
   },
   {

@@ -41,6 +41,7 @@ import {
   Clock,
   Sparkles,
   Trophy,
+  Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -185,7 +186,13 @@ export default function PinterestAdsPage() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('campaigns');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
+  const [exportConfig, setExportConfig] = useState({
+    campaign: '',
+    source: 'haven_hub',
+    medium: 'pinterest_ads',
+  });
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     objective: 'AWARENESS',
@@ -343,6 +350,42 @@ export default function PinterestAdsPage() {
     },
   });
 
+  // Export to Ads CSV mutation
+  const exportAdsMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/pinterest/ad-export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'approvals',
+          utm: {
+            source: exportConfig.source,
+            medium: exportConfig.medium,
+            campaign: exportConfig.campaign || undefined,
+          },
+        }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to generate export');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      // Download the CSV
+      const blob = new Blob([data.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename || 'pinterest-ads-export.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      setShowExportModal(false);
+    },
+  });
+
   const handleCreateCampaign = () => {
     if (!selectedAccount || !newCampaign.name) return;
 
@@ -454,6 +497,10 @@ export default function PinterestAdsPage() {
           <Button variant="secondary" onClick={() => refetchCampaigns()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
+          </Button>
+          <Button variant="secondary" onClick={() => setShowExportModal(true)}>
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
           </Button>
           <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -1068,6 +1115,86 @@ export default function PinterestAdsPage() {
                 <>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Campaign
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export CSV Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Export to Pinterest Ads CSV"
+        size="md"
+        showCloseButton
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            Export approved pins as a CSV file for bulk upload to Pinterest Ads Manager.
+            UTM parameters will be added to all destination URLs.
+          </p>
+
+          <div>
+            <Label>UTM Source</Label>
+            <Input
+              value={exportConfig.source}
+              onChange={(e) => setExportConfig({ ...exportConfig, source: e.target.value })}
+              placeholder="e.g., haven_hub"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label>UTM Medium</Label>
+            <Input
+              value={exportConfig.medium}
+              onChange={(e) => setExportConfig({ ...exportConfig, medium: e.target.value })}
+              placeholder="e.g., pinterest_ads"
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label>UTM Campaign (Optional)</Label>
+            <Input
+              value={exportConfig.campaign}
+              onChange={(e) => setExportConfig({ ...exportConfig, campaign: e.target.value })}
+              placeholder="e.g., summer_2024"
+              className="mt-1"
+            />
+          </div>
+
+          <div className="p-3 bg-[var(--color-bg-secondary)] rounded-lg text-sm">
+            <p className="font-medium mb-1">Preview URL:</p>
+            <code className="text-xs text-[var(--color-text-secondary)] break-all">
+              https://yoursite.com/product?utm_source={exportConfig.source}&utm_medium={exportConfig.medium}
+              {exportConfig.campaign && `&utm_campaign=${exportConfig.campaign}`}
+            </code>
+          </div>
+
+          {exportAdsMutation.error && (
+            <p className="text-sm text-red-500">{exportAdsMutation.error.message}</p>
+          )}
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="secondary" onClick={() => setShowExportModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => exportAdsMutation.mutate()}
+              disabled={exportAdsMutation.isPending || !exportConfig.source || !exportConfig.medium}
+            >
+              {exportAdsMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download CSV
                 </>
               )}
             </Button>
