@@ -283,14 +283,25 @@ export default function DocsPage() {
       ],
     },
     {
-      name: 'Settings',
+      name: 'Integrations',
       sections: [
         {
+          id: 'shopify',
+          title: 'Shopify Integration',
+          icon: <Store className="h-4 w-4" />,
+          content: <ShopifySection />,
+        },
+        {
           id: 'integrations',
-          title: 'Integrations',
+          title: 'Other Integrations',
           icon: <Webhook className="h-4 w-4" />,
           content: <IntegrationsSection />,
         },
+      ],
+    },
+    {
+      name: 'Settings',
+      sections: [
         {
           id: 'settings',
           title: 'Account Settings',
@@ -2164,6 +2175,129 @@ function IntegrationsSection() {
         <p className="text-[var(--color-text-secondary)]">
           Each integration requires API credentials. Find these in each service&apos;s
           developer settings or admin panel. Never share credentials publicly.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ShopifySection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Shopify Integration</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Haven Hub provides deep, bidirectional integration with your Shopify store. Orders, customers,
+          and products sync in real-time via webhooks, enabling powerful attribution and automation.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Real-Time Webhooks</h3>
+        <p className="text-[var(--color-text-secondary)] mb-4">
+          When you connect Shopify, Haven Hub automatically registers 8 webhooks to receive real-time updates:
+        </p>
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">orders/create</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">New orders sync customers, update stats, record attribution</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">orders/updated</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">Order status changes, refund handling</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">checkouts/create & update</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">Track abandoned checkouts for recovery emails</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">customers/create & update</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">Customer data syncs to customer journey tracking</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">products/update</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">Price, inventory, and status changes sync back</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium text-sm">app/uninstalled</div>
+            <p className="text-xs text-[var(--color-text-secondary)]">Clean disconnect when app is removed</p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Shopify Settings Page</h3>
+        <p className="text-[var(--color-text-secondary)] mb-4">
+          Access via Settings → Shopify to manage your store connection:
+        </p>
+        <div className="space-y-3">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1 flex items-center gap-2">
+              <Store className="h-4 w-4" /> Connection Status
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              View shop name, domain, connection date, and overall sync health.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1 flex items-center gap-2">
+              <Database className="h-4 w-4" /> Product Sync
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Import all products from Shopify. Updates existing products, creates new ones.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1 flex items-center gap-2">
+              <CreditCard className="h-4 w-4" /> Order Sync
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Import historical orders for attribution. Syncs customers and updates product stats.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1 flex items-center gap-2">
+              <Webhook className="h-4 w-4" /> Webhook Health
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Monitor webhook status, see last received events, re-register if missing.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Attribution Tracking</h3>
+        <p className="text-[var(--color-text-secondary)] mb-4">
+          When orders come in, Haven Hub automatically:
+        </p>
+        <ol className="list-decimal list-inside space-y-2 text-[var(--color-text-secondary)]">
+          <li>Creates or updates the customer record with order count and lifetime value</li>
+          <li>Extracts UTM parameters from landing page to attribute the sale</li>
+          <li>Records a purchase touchpoint in the customer journey</li>
+          <li>Updates product statistics (orders, revenue, units sold)</li>
+          <li>Checks if the order recovers an abandoned checkout</li>
+          <li>Updates customer stage based on purchase history</li>
+        </ol>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Sales Dashboard Widget</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          The Shopify Sales Widget can be added to your dashboard showing:
+        </p>
+        <ul className="list-disc list-inside space-y-1 mt-2 text-[var(--color-text-secondary)]">
+          <li>Orders and revenue today, this week, this month</li>
+          <li>Comparison to last week (% change)</li>
+          <li>Top products by revenue</li>
+        </ul>
+      </div>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <h4 className="font-medium text-amber-800 mb-2">Security Note</h4>
+        <p className="text-sm text-amber-700">
+          All webhooks are verified using HMAC-SHA256 signatures with your Shopify app secret.
+          Spoofed webhooks are rejected. Access tokens are stored encrypted in Supabase Vault.
         </p>
       </div>
     </div>

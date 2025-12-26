@@ -34,6 +34,9 @@ import {
   DollarSign,
   FileText,
   Clock,
+  Store,
+  Database,
+  Plug,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -155,8 +158,12 @@ export const navigation: (NavItem | NavSection)[] = [
   },
   {
     name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
+    items: [
+      { name: 'Overview', href: '/dashboard/settings', icon: Settings },
+      { name: 'Shopify', href: '/dashboard/settings/shopify', icon: Store },
+      { name: 'Integrations', href: '/dashboard/setup', icon: Plug },
+      { name: 'Data Export', href: '/dashboard/settings/data', icon: Database },
+    ],
   },
 ];
 
