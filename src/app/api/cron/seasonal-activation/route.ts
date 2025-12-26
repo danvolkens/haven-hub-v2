@@ -1,45 +1,34 @@
 import { NextRequest } from 'next/server';
 import { cronHandler } from '@/lib/cron/verify-cron';
-import { getAdminClient } from '@/lib/supabase/admin';
+import {
+  getActiveSeasons,
+  processAllUsersSeasonalActivation,
+} from '@/lib/seasonal/seasonal-service';
 
-export const GET = cronHandler(async (request: NextRequest) => {
-  const supabase = getAdminClient();
-
-  // Check for seasonal/temporal content activations
-  // Implementation will be completed in Phase 21
-
+// Runs daily to check seasonal content activations
+export const GET = cronHandler(async (_request: NextRequest) => {
   const today = new Date();
-  const month = today.getMonth() + 1;
-  const day = today.getDate();
+  const activeSeasons = getActiveSeasons(today);
 
-  // Seasonal checks per spec Feature 41
-  const activeSeasons: string[] = [];
-
-  // Mental health awareness month (May)
-  if (month === 5) {
-    activeSeasons.push('mental_health_awareness_month');
-  }
-
-  // Suicide prevention month (September)
-  if (month === 9) {
-    activeSeasons.push('suicide_prevention_month');
-    activeSeasons.push('self_care_september');
-  }
-
-  // Holiday checks
-  if (month === 12 && day >= 20) {
-    activeSeasons.push('christmas');
-  }
-
-  if (month === 2 && day >= 10 && day <= 14) {
-    activeSeasons.push('valentines');
-  }
+  // Process all users
+  const results = await processAllUsersSeasonalActivation(today);
 
   return {
     success: true,
     data: {
-      activeSeasons,
       date: today.toISOString().split('T')[0],
+      activeSeasons: activeSeasons.map(s => ({
+        id: s.id,
+        name: s.name,
+        tags: s.tags,
+      })),
+      usersProcessed: results.usersProcessed,
+      pinsActivated: results.totalPinsActivated,
+      pinsDeactivated: results.totalPinsDeactivated,
+      campaignsActivated: results.totalCampaignsActivated,
+      campaignsPaused: results.totalCampaignsPaused,
+      approvalsCreated: results.totalApprovalsCreated,
+      errors: results.errors.slice(0, 10), // Limit errors in response
     },
   };
 });
