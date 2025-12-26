@@ -1,33 +1,48 @@
-import { createCanvas, registerFont, loadImage, type Canvas, type CanvasRenderingContext2D } from 'canvas';
 import path from 'path';
-import type { DesignConfig, ColorConfig, TypographyConfig, LayoutConfig } from '@/types/quotes';
+import type { DesignConfig, TypographyConfig } from '@/types/quotes';
+
+// Dynamic import for canvas (optional dependency)
+let canvasModule: typeof import('canvas') | null = null;
+
+async function getCanvas() {
+  if (canvasModule) return canvasModule;
+  try {
+    canvasModule = await import('canvas');
+    return canvasModule;
+  } catch {
+    return null;
+  }
+}
 
 // Register fonts (run once on server start)
 let fontsRegistered = false;
-export function registerFonts() {
+export async function registerFonts() {
   if (fontsRegistered) return;
+
+  const canvas = await getCanvas();
+  if (!canvas) return;
 
   // Register Haven & Hold brand fonts
   // These should be placed in public/fonts/
   try {
-    registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-Regular.ttf'), {
+    canvas.registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-Regular.ttf'), {
       family: 'Cormorant Garamond',
       weight: '400',
     });
-    registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-Italic.ttf'), {
+    canvas.registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-Italic.ttf'), {
       family: 'Cormorant Garamond',
       weight: '400',
       style: 'italic',
     });
-    registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-SemiBold.ttf'), {
+    canvas.registerFont(path.join(process.cwd(), 'public/fonts/CormorantGaramond-SemiBold.ttf'), {
       family: 'Cormorant Garamond',
       weight: '600',
     });
-    registerFont(path.join(process.cwd(), 'public/fonts/Inter-Regular.ttf'), {
+    canvas.registerFont(path.join(process.cwd(), 'public/fonts/Inter-Regular.ttf'), {
       family: 'Inter',
       weight: '400',
     });
-    registerFont(path.join(process.cwd(), 'public/fonts/Inter-Medium.ttf'), {
+    canvas.registerFont(path.join(process.cwd(), 'public/fonts/Inter-Medium.ttf'), {
       family: 'Inter',
       weight: '500',
     });
@@ -55,13 +70,18 @@ export interface RenderResult {
 }
 
 export async function renderQuoteImage(options: RenderOptions): Promise<RenderResult> {
-  registerFonts();
+  const canvas = await getCanvas();
+  if (!canvas) {
+    throw new Error('Canvas is not available in this environment. Use Dynamic Mockups API instead.');
+  }
+
+  await registerFonts();
 
   const { width, height, text, attribution, config } = options;
   const { typography, colors, layout, decorations } = config;
 
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext('2d');
+  const canvasInstance = canvas.createCanvas(width, height);
+  const ctx = canvasInstance.getContext('2d');
 
   // Fill background
   ctx.fillStyle = colors.background;
@@ -153,7 +173,7 @@ export async function renderQuoteImage(options: RenderOptions): Promise<RenderRe
   }
 
   return {
-    buffer: canvas.toBuffer('image/png'),
+    buffer: canvasInstance.toBuffer('image/png'),
     metadata: {
       width,
       height,
@@ -166,7 +186,7 @@ function calculateFontSize(
   text: string,
   maxWidth: number,
   typography: TypographyConfig,
-  ctx: CanvasRenderingContext2D
+  ctx: import('canvas').CanvasRenderingContext2D
 ): number {
   let fontSize = typography.font_size_base;
 
@@ -188,7 +208,7 @@ function calculateFontSize(
   return Math.round(fontSize);
 }
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+function wrapText(ctx: import('canvas').CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = '';
