@@ -93,11 +93,28 @@ export class KlaviyoClient {
   // ============================================================================
 
   async getLists(): Promise<KlaviyoList[]> {
-    const response = await this.request<PaginatedResponse<{ id: string; attributes: any }>>('/lists/');
-    return response.data.map(item => ({
-      id: item.id,
-      ...item.attributes,
-    }));
+    const allLists: KlaviyoList[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const endpoint: string = cursor ? `/lists/?page[cursor]=${cursor}` : '/lists/';
+      const response = await this.request<PaginatedResponse<{ id: string; attributes: any }> & { links?: { next?: string } }>(endpoint);
+
+      const lists = response.data.map(item => ({
+        id: item.id,
+        ...item.attributes,
+      }));
+      allLists.push(...lists);
+
+      // Extract cursor from next link if present
+      cursor = null;
+      if (response.links?.next) {
+        const match = response.links.next.match(/page\[cursor\]=([^&]+)/);
+        if (match) cursor = match[1];
+      }
+    } while (cursor);
+
+    return allLists;
   }
 
   async getList(listId: string): Promise<KlaviyoList | null> {

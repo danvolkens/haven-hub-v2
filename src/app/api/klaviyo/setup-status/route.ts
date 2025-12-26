@@ -55,10 +55,11 @@ export async function GET() {
       });
     }
 
-    // Check lists
+    // Check lists (case-insensitive comparison)
     const lists = await client.getLists();
     const listNames = lists.map(l => l.name);
-    const missingLists = REQUIRED_LISTS.filter(name => !listNames.includes(name));
+    const listNamesLower = lists.map(l => l.name.toLowerCase().trim());
+    const missingLists = REQUIRED_LISTS.filter(name => !listNamesLower.includes(name.toLowerCase().trim()));
     const listProgress = ((REQUIRED_LISTS.length - missingLists.length) / REQUIRED_LISTS.length) * 100;
 
     // Check for event metrics (indicates flows are set up)

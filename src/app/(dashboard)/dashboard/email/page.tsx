@@ -67,14 +67,16 @@ function MetricCard({
   change?: number;
   format?: 'number' | 'percent' | 'currency';
 }) {
-  const formatValue = (val: number) => {
+  const formatValue = (val: unknown) => {
+    // Ensure val is a valid number
+    const num = typeof val === 'number' && !isNaN(val) ? val : 0;
     switch (format) {
       case 'percent':
-        return `${val.toFixed(1)}%`;
+        return `${num.toFixed(1)}%`;
       case 'currency':
-        return `$${val.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+        return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
       default:
-        return val.toLocaleString();
+        return num.toLocaleString();
     }
   };
 

@@ -56,19 +56,26 @@ export async function GET() {
         clicked: 0,
       }));
 
+    // Ensure all numeric values are actually numbers (defensive)
+    const safeNumber = (val: unknown): number => {
+      if (typeof val === 'number' && !isNaN(val)) return val;
+      if (typeof val === 'string') return parseFloat(val) || 0;
+      return 0;
+    };
+
     return NextResponse.json({
       // Real email metrics from Klaviyo's metric-aggregates API
-      totalSent: emailMetrics.totalSent,
-      openRate: emailMetrics.openRate,
-      clickRate: emailMetrics.clickRate,
+      totalSent: safeNumber(emailMetrics.totalSent),
+      openRate: safeNumber(emailMetrics.openRate),
+      clickRate: safeNumber(emailMetrics.clickRate),
 
       // Real revenue data
-      revenue: revenueData.totalRevenue,
-      revenueChange: revenueData.percentChange,
+      revenue: safeNumber(revenueData.totalRevenue),
+      revenueChange: safeNumber(revenueData.percentChange),
 
       // Real subscriber count
-      subscribers: subscriberData.total,
-      subscribersChange: subscriberData.percentChange,
+      subscribers: safeNumber(subscriberData.total),
+      subscribersChange: safeNumber(subscriberData.percentChange),
 
       // Flow and campaign data
       activeFlows: liveFlows.length,
