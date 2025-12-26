@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, GripVertical, Save, Eye, Sparkles, Loader2, Globe, GlobeLock } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, GripVertical, Save, Eye, Sparkles, Loader2, Globe, GlobeLock, AlertTriangle } from 'lucide-react';
 import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, CardHeader, CardContent, Input, Label, Textarea } from '@/components/ui';
 import { useToast } from '@/components/providers/toast-provider';
@@ -37,6 +37,8 @@ export default function EditQuizPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -157,6 +159,24 @@ export default function EditQuizPage() {
       toast(isPublished ? 'Quiz unpublished' : 'Quiz published!', 'success');
     } catch (error) {
       toast('Failed to update status', 'error');
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/quiz/by-id/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete quiz');
+
+      toast('Quiz deleted', 'success');
+      router.push('/dashboard/leads/quiz');
+    } catch (error) {
+      toast('Failed to delete quiz', 'error');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -562,6 +582,63 @@ export default function EditQuizPage() {
                 </div>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="border-red-200 dark:border-red-900">
+          <CardHeader
+            title="Danger Zone"
+            description="Irreversible actions"
+          />
+          <CardContent>
+            {showDeleteConfirm ? (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-900 dark:text-red-100">Delete this quiz?</p>
+                    <p className="text-body-sm text-red-700 dark:text-red-300">
+                      This will permanently delete the quiz, all questions, answers, and collected responses. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleDelete}
+                    isLoading={isDeleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Yes, Delete Quiz
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Delete Quiz</p>
+                  <p className="text-body-sm text-[var(--color-text-secondary)]">
+                    Permanently delete this quiz and all its data
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  leftIcon={<Trash2 className="h-4 w-4" />}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

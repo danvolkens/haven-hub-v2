@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Save, Eye, Globe, GlobeLock } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Eye, Globe, GlobeLock, AlertTriangle } from 'lucide-react';
 import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, CardHeader, CardContent, Input, Label, Select, Textarea } from '@/components/ui';
 import { useToast } from '@/components/providers/toast-provider';
@@ -55,6 +55,8 @@ export default function EditLandingPagePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
@@ -133,6 +135,24 @@ export default function EditLandingPagePage() {
       toast(isPublished ? 'Page unpublished' : 'Page published!', 'success');
     } catch (error) {
       toast('Failed to update status', 'error');
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/landing-pages/by-id/${params.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete landing page');
+
+      toast('Landing page deleted', 'success');
+      router.push('/dashboard/leads/landing-pages');
+    } catch (error) {
+      toast('Failed to delete landing page', 'error');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -474,6 +494,63 @@ export default function EditLandingPagePage() {
             <Button variant="secondary" onClick={addField} leftIcon={<Plus className="h-4 w-4" />}>
               Add Field
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="border-red-200 dark:border-red-900">
+          <CardHeader
+            title="Danger Zone"
+            description="Irreversible actions"
+          />
+          <CardContent>
+            {showDeleteConfirm ? (
+              <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg space-y-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-900 dark:text-red-100">Delete this landing page?</p>
+                    <p className="text-body-sm text-red-700 dark:text-red-300">
+                      This will permanently delete the page and all collected leads. This action cannot be undone.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleDelete}
+                    isLoading={isDeleting}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Yes, Delete Page
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Delete Landing Page</p>
+                  <p className="text-body-sm text-[var(--color-text-secondary)]">
+                    Permanently delete this page and all its data
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  leftIcon={<Trash2 className="h-4 w-4" />}
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
