@@ -219,7 +219,11 @@ function NavItemComponent({
           <>
             <span className="flex-1">{item.name}</span>
             {badgeCount > 0 && (
-              <Badge variant="primary" size="sm">
+              <Badge
+                variant={isActive ? "default" : "primary"}
+                size="sm"
+                className={isActive ? "bg-sage text-white" : ""}
+              >
                 {badgeCount}
               </Badge>
             )}
