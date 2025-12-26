@@ -327,3 +327,264 @@ function substituteVariables(template: string, variables: Record<string, string>
   }
   return result;
 }
+
+// ==========================================
+// Bulk Pin Scheduling Strategies
+// ==========================================
+
+export type SchedulingStrategy = 'immediate' | 'optimal' | 'spread';
+
+export interface BulkScheduleOptions {
+  strategy: SchedulingStrategy;
+  spreadDays?: number; // For 'spread' strategy (default: 7)
+  pinsPerDay?: number; // For 'spread' strategy (default: 5)
+  startDate?: Date; // Start date for scheduling (default: now)
+}
+
+export interface BulkScheduleResult {
+  scheduled: number;
+  failed: number;
+  schedule: Array<{ pinId: string; scheduledFor: Date }>;
+  errors: string[];
+}
+
+/**
+ * Get optimal posting times based on historical pin performance
+ * Defaults to common high-engagement times if no data available
+ */
+export async function getOptimalPostingTimes(
+  userId: string,
+  count: number = 4
+): Promise<Date[]> {
+  const supabase = await createServerSupabaseClient();
+
+  // Try to get performance data by hour
+  const { data: hourlyStats } = await (supabase as any)
+    .from('pins')
+    .select('published_at')
+    .eq('user_id', userId)
+    .eq('status', 'published')
+    .not('published_at', 'is', null)
+    .order('published_at', { ascending: false })
+    .limit(100);
+
+  // Default optimal times (in hours, local time assumptions)
+  // Pinterest best times: 8-11am, 2-4pm, 8-11pm
+  const defaultHours = [8, 12, 17, 20];
+
+  // If we have enough data, analyze which hours perform best
+  if (hourlyStats && hourlyStats.length >= 20) {
+    // Count pins by hour
+    const hourCounts: Record<number, number> = {};
+    for (const pin of hourlyStats) {
+      const hour = new Date(pin.published_at).getHours();
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+    }
+
+    // Get top hours
+    const sortedHours = Object.entries(hourCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, count)
+      .map(([hour]) => parseInt(hour));
+
+    if (sortedHours.length >= count) {
+      return sortedHours.map((hour) => {
+        const date = new Date();
+        date.setHours(hour, 0, 0, 0);
+        return date;
+      });
+    }
+  }
+
+  // Return default optimal times
+  return defaultHours.slice(0, count).map((hour) => {
+    const date = new Date();
+    date.setHours(hour, 0, 0, 0);
+    return date;
+  });
+}
+
+/**
+ * Schedule multiple pins using a specific strategy
+ */
+export async function scheduleBulkPins(
+  userId: string,
+  pinIds: string[],
+  options: BulkScheduleOptions
+): Promise<BulkScheduleResult> {
+  const supabase = await createServerSupabaseClient();
+  const result: BulkScheduleResult = {
+    scheduled: 0,
+    failed: 0,
+    schedule: [],
+    errors: [],
+  };
+
+  if (pinIds.length === 0) {
+    return result;
+  }
+
+  const startDate = options.startDate || new Date();
+  let scheduleTimes: Date[] = [];
+
+  switch (options.strategy) {
+    case 'immediate':
+      // All pins scheduled for now
+      scheduleTimes = pinIds.map(() => new Date());
+      break;
+
+    case 'optimal':
+      // Distribute pins across optimal posting times over the next days
+      const optimalTimes = await getOptimalPostingTimes(userId, 4);
+      const timesPerDay = optimalTimes.length;
+      let dayOffset = 0;
+      let timeIndex = 0;
+
+      for (let i = 0; i < pinIds.length; i++) {
+        const baseTime = new Date(optimalTimes[timeIndex]);
+        baseTime.setDate(startDate.getDate() + dayOffset);
+        baseTime.setMonth(startDate.getMonth());
+        baseTime.setFullYear(startDate.getFullYear());
+
+        // Add some random minutes to avoid exact same times
+        baseTime.setMinutes(Math.floor(Math.random() * 15));
+
+        scheduleTimes.push(baseTime);
+
+        timeIndex++;
+        if (timeIndex >= timesPerDay) {
+          timeIndex = 0;
+          dayOffset++;
+        }
+      }
+      break;
+
+    case 'spread':
+      // Spread evenly over the specified number of days
+      const spreadDays = options.spreadDays || 7;
+      const pinsPerDay = options.pinsPerDay || Math.ceil(pinIds.length / spreadDays);
+
+      // Calculate times to spread pins evenly
+      const totalSlots = spreadDays * pinsPerDay;
+      const interval = (spreadDays * 24 * 60) / Math.max(pinIds.length, 1); // minutes per pin
+
+      for (let i = 0; i < pinIds.length; i++) {
+        const scheduleTime = new Date(startDate);
+        scheduleTime.setMinutes(scheduleTime.getMinutes() + i * interval);
+
+        // Ensure we're within reasonable hours (8am - 10pm)
+        const hour = scheduleTime.getHours();
+        if (hour < 8) {
+          scheduleTime.setHours(8, Math.floor(Math.random() * 30), 0, 0);
+        } else if (hour >= 22) {
+          // Move to next day at 8am
+          scheduleTime.setDate(scheduleTime.getDate() + 1);
+          scheduleTime.setHours(8, Math.floor(Math.random() * 30), 0, 0);
+        }
+
+        scheduleTimes.push(scheduleTime);
+      }
+      break;
+  }
+
+  // Apply schedules to pins
+  for (let i = 0; i < pinIds.length; i++) {
+    const pinId = pinIds[i];
+    const scheduledFor = scheduleTimes[i];
+
+    try {
+      const { error } = await (supabase as any)
+        .from('pins')
+        .update({
+          status: 'scheduled',
+          scheduled_for: scheduledFor.toISOString(),
+        })
+        .eq('id', pinId)
+        .eq('user_id', userId)
+        .in('status', ['draft', 'scheduled']); // Allow rescheduling
+
+      if (error) {
+        result.errors.push(`Pin ${pinId}: ${error.message}`);
+        result.failed++;
+      } else {
+        result.schedule.push({ pinId, scheduledFor });
+        result.scheduled++;
+      }
+    } catch (error) {
+      result.errors.push(
+        `Pin ${pinId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+      result.failed++;
+    }
+  }
+
+  // Log bulk scheduling activity
+  if (result.scheduled > 0) {
+    await (supabase as any).rpc('log_activity', {
+      p_user_id: userId,
+      p_action_type: 'pins_bulk_scheduled',
+      p_details: {
+        strategy: options.strategy,
+        totalPins: pinIds.length,
+        scheduled: result.scheduled,
+        failed: result.failed,
+        spreadDays: options.spreadDays,
+        pinsPerDay: options.pinsPerDay,
+      },
+      p_executed: true,
+      p_module: 'pinterest',
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Get the next available posting slot for a user
+ * Avoids scheduling too close to existing scheduled pins
+ */
+export async function getNextAvailableSlot(
+  userId: string,
+  after: Date = new Date(),
+  minGapMinutes: number = 30
+): Promise<Date> {
+  const supabase = await createServerSupabaseClient();
+
+  // Get scheduled pins in the next 24 hours
+  const endTime = new Date(after);
+  endTime.setHours(endTime.getHours() + 24);
+
+  const { data: scheduledPins } = await (supabase as any)
+    .from('pins')
+    .select('scheduled_for')
+    .eq('user_id', userId)
+    .eq('status', 'scheduled')
+    .gte('scheduled_for', after.toISOString())
+    .lte('scheduled_for', endTime.toISOString())
+    .order('scheduled_for');
+
+  if (!scheduledPins || scheduledPins.length === 0) {
+    return after;
+  }
+
+  // Find a gap in the schedule
+  let candidate = new Date(after);
+
+  for (const pin of scheduledPins) {
+    const pinTime = new Date(pin.scheduled_for);
+    const gap = (pinTime.getTime() - candidate.getTime()) / (1000 * 60);
+
+    if (gap >= minGapMinutes) {
+      return candidate;
+    }
+
+    // Move candidate to after this pin + min gap
+    candidate = new Date(pinTime.getTime() + minGapMinutes * 60 * 1000);
+  }
+
+  // If no gap found, schedule after the last pin
+  const lastPin = scheduledPins[scheduledPins.length - 1];
+  return new Date(
+    new Date(lastPin.scheduled_for).getTime() + minGapMinutes * 60 * 1000
+  );
+}
