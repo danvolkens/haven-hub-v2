@@ -55,12 +55,28 @@ export async function GET() {
       });
     }
 
-    // Check lists (case-insensitive comparison)
+    // Normalize function - handles case, dashes, and extra spaces
+    const normalize = (s: string) => s
+      .toLowerCase()
+      .trim()
+      .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-') // all dash variants to hyphen
+      .replace(/\s+/g, ' '); // normalize spaces
+
+    // Check lists (case-insensitive, dash-normalized comparison)
     const lists = await client.getLists();
     const listNames = lists.map(l => l.name);
-    const listNamesLower = lists.map(l => l.name.toLowerCase().trim());
-    const missingLists = REQUIRED_LISTS.filter(name => !listNamesLower.includes(name.toLowerCase().trim()));
+    const normalizedKlaviyoLists = lists.map(l => normalize(l.name));
+
+    const missingLists = REQUIRED_LISTS.filter(requiredName => {
+      const normalizedRequired = normalize(requiredName);
+      return !normalizedKlaviyoLists.some(klaviyoName => klaviyoName === normalizedRequired);
+    });
     const listProgress = ((REQUIRED_LISTS.length - missingLists.length) / REQUIRED_LISTS.length) * 100;
+
+    // Debug: log what we're comparing (remove in production)
+    console.log('Klaviyo lists found:', listNames);
+    console.log('Normalized:', normalizedKlaviyoLists);
+    console.log('Missing:', missingLists);
 
     // Check for event metrics (indicates flows are set up)
     const metrics = await client.getMetrics();

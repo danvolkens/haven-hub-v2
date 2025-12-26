@@ -273,43 +273,71 @@ export default function EmailFlowsPage() {
                   name: 'Welcome Series',
                   description: 'Introduce new subscribers to your brand',
                   trigger: 'List subscription',
+                  keywords: ['welcome', 'subscriber'],
                 },
                 {
                   name: 'Cart Abandonment',
                   description: 'Recover abandoned carts with reminders',
                   trigger: 'Cart abandoned',
+                  keywords: ['cart', 'abandon'],
                 },
                 {
                   name: 'Post-Purchase',
                   description: 'Thank customers and encourage reviews',
                   trigger: 'Order placed',
+                  keywords: ['post', 'purchase', 'thank', 'order'],
                 },
                 {
                   name: 'Win-Back',
                   description: 'Re-engage lapsed customers',
                   trigger: 'No purchase in 90 days',
+                  keywords: ['win', 'back', 'lapse', 'churn'],
                 },
                 {
                   name: 'Browse Abandonment',
                   description: 'Follow up on viewed products',
                   trigger: 'Product viewed',
+                  keywords: ['browse', 'view', 'product'],
                 },
                 {
                   name: 'VIP Rewards',
                   description: 'Reward your best customers',
                   trigger: 'Lifetime value threshold',
+                  keywords: ['vip', 'reward', 'loyal', 'lifetime'],
                 },
-              ].map((flow) => (
-                <div key={flow.name} className="p-4 border rounded-lg">
-                  <h4 className="text-body-sm font-medium mb-1">{flow.name}</h4>
-                  <p className="text-caption text-[var(--color-text-secondary)] mb-2">
-                    {flow.description}
-                  </p>
-                  <p className="text-caption text-[var(--color-text-tertiary)]">
-                    Trigger: {flow.trigger}
-                  </p>
-                </div>
-              ))}
+              ].map((recommended) => {
+                // Check if a flow matching this recommendation exists
+                const matchingFlow = data?.flows.find(f =>
+                  recommended.keywords.some(kw => f.name.toLowerCase().includes(kw))
+                );
+                const isSetUp = !!matchingFlow;
+
+                return (
+                  <div
+                    key={recommended.name}
+                    className={`p-4 border rounded-lg ${isSetUp ? 'border-success/30 bg-success/5' : ''}`}
+                  >
+                    <div className="flex items-start justify-between mb-1">
+                      <h4 className="text-body-sm font-medium">{recommended.name}</h4>
+                      {isSetUp && (
+                        <Badge variant="success" className="text-xs">Active</Badge>
+                      )}
+                    </div>
+                    <p className="text-caption text-[var(--color-text-secondary)] mb-2">
+                      {recommended.description}
+                    </p>
+                    {isSetUp ? (
+                      <p className="text-caption text-success">
+                        ✓ {matchingFlow.name}
+                      </p>
+                    ) : (
+                      <p className="text-caption text-[var(--color-text-tertiary)]">
+                        Trigger: {recommended.trigger}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
