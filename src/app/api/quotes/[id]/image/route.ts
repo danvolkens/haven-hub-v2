@@ -16,13 +16,21 @@ export async function POST(
     // Verify quote belongs to user
     const { data: quote, error: quoteError } = await (supabase as any)
       .from('quotes')
-      .select('id, master_image_key')
+      .select('id, master_image_key, user_id')
       .eq('id', id)
-      .eq('user_id', userId)
       .single();
 
-    if (quoteError || !quote) {
-      return NextResponse.json({ error: 'Quote not found' }, { status: 404 });
+    if (quoteError) {
+      console.error('Quote lookup error:', quoteError);
+      return NextResponse.json({ error: 'Quote not found', details: quoteError.message }, { status: 404 });
+    }
+
+    if (!quote) {
+      return NextResponse.json({ error: 'Quote does not exist' }, { status: 404 });
+    }
+
+    if (quote.user_id !== userId) {
+      return NextResponse.json({ error: 'Not authorized to modify this quote' }, { status: 403 });
     }
 
     // Parse the multipart form data
