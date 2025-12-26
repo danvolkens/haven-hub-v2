@@ -71,7 +71,10 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 push)",
       "Bash(git rm:*)",
       "Bash(vercel ls:*)",
-      "Bash(vercel env:*)"
+      "Bash(vercel env:*)",
+      "Bash(npx trigger.dev:*)",
+      "Bash(npx trigger.dev@latest env set:*)",
+      "Bash(npx trigger.dev@latest env:*)"
     ]
   }
 }

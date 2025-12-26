@@ -33,9 +33,10 @@ interface MockupTemplate {
   preview_url: string | null;
   dm_template_id: string | null;
   recommended_collections: string[] | null;
+  config?: {
+    collection_name?: string;
+  };
 }
-
-type CollectionFilter = 'all' | 'grounding' | 'wholeness' | 'growth';
 
 export default function GenerateAssetsPage() {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function GenerateAssetsPage() {
   ]);
   const [generateMockups, setGenerateMockups] = useState(false);
   const [selectedScenes, setSelectedScenes] = useState<string[]>([]);
-  const [collectionFilter, setCollectionFilter] = useState<CollectionFilter>('all');
+  const [dmCollectionFilter, setDmCollectionFilter] = useState<string>('all');
 
   const { data: quote, isLoading: quoteLoading } = useQuery({
     queryKey: ['quote', quoteId],
@@ -65,12 +66,18 @@ export default function GenerateAssetsPage() {
   });
   const mockupTemplates = templatesData?.templates || [];
 
-  // Filter templates by collection
-  const filteredTemplates = collectionFilter === 'all'
+  // Extract unique Dynamic Mockups collection names
+  const dmCollections = [...new Set(
+    mockupTemplates
+      .map((t) => t.description || t.config?.collection_name)
+      .filter(Boolean)
+  )] as string[];
+
+  // Filter templates by Dynamic Mockups collection
+  const filteredTemplates = dmCollectionFilter === 'all'
     ? mockupTemplates
     : mockupTemplates.filter((t) =>
-        t.recommended_collections?.includes(collectionFilter) ||
-        !t.recommended_collections?.length // Show templates with no collection assigned
+        (t.description || t.config?.collection_name) === dmCollectionFilter
       );
 
   const generateMutation = useMutation({
@@ -260,14 +267,16 @@ export default function GenerateAssetsPage() {
                       <p className="text-body-sm font-medium">Select Templates ({selectedScenes.length} selected)</p>
                       <div className="flex items-center gap-2">
                         <select
-                          value={collectionFilter}
-                          onChange={(e) => setCollectionFilter(e.target.value as CollectionFilter)}
+                          value={dmCollectionFilter}
+                          onChange={(e) => setDmCollectionFilter(e.target.value)}
                           className="text-body-sm border rounded-md px-2 py-1 bg-white"
                         >
-                          <option value="all">All Collections</option>
-                          <option value="grounding">Grounding</option>
-                          <option value="wholeness">Wholeness</option>
-                          <option value="growth">Growth</option>
+                          <option value="all">All Collections ({mockupTemplates.length})</option>
+                          {dmCollections.map((collection) => (
+                            <option key={collection} value={collection}>
+                              {collection} ({mockupTemplates.filter((t) => (t.description || t.config?.collection_name) === collection).length})
+                            </option>
+                          ))}
                         </select>
                         <Button
                           variant="ghost"
