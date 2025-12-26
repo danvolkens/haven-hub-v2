@@ -3,8 +3,15 @@
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button } from '@/components/ui';
 import { Layers, Plus } from 'lucide-react';
+import { useToast } from '@/components/providers/toast-provider';
 
 export default function LandingPagesPage() {
+  const { toast } = useToast();
+
+  const handleCreate = () => {
+    toast('Landing page builder coming soon! This feature is under development.', 'info');
+  };
+
   return (
     <PageContainer
       title="Landing Pages"
@@ -18,7 +25,7 @@ export default function LandingPagesPage() {
             Create beautiful landing pages for lead magnets, special offers,
             and email capture campaigns.
           </p>
-          <Button variant="primary">
+          <Button variant="primary" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" /> Create Landing Page
           </Button>
         </CardContent>

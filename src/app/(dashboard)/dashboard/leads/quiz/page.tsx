@@ -3,8 +3,15 @@
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button } from '@/components/ui';
 import { HelpCircle, Plus } from 'lucide-react';
+import { useToast } from '@/components/providers/toast-provider';
 
 export default function QuizPage() {
+  const { toast } = useToast();
+
+  const handleCreate = () => {
+    toast('Quiz builder coming soon! This feature is under development.', 'info');
+  };
+
   return (
     <PageContainer
       title="Quiz Builder"
@@ -18,7 +25,7 @@ export default function QuizPage() {
             Build interactive quizzes to help visitors discover their perfect
             collection and capture their email for future marketing.
           </p>
-          <Button variant="primary">
+          <Button variant="primary" onClick={handleCreate}>
             <Plus className="mr-2 h-4 w-4" /> Create Quiz
           </Button>
         </CardContent>

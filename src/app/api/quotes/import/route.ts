@@ -1,91 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
-import { nanoid } from 'nanoid';
 
-const importRowSchema = z.object({
-  text: z.string().min(1).max(500),
-  attribution: z.string().max(100).optional(),
-  collection: z.enum(['grounding', 'wholeness', 'growth']),
-  mood: z.enum(['calm', 'warm', 'hopeful', 'reflective', 'empowering']),
-  temporal_tags: z.array(z.string()).or(z.string()).optional(),
-});
-
-const importSchema = z.object({
-  quotes: z.array(importRowSchema).min(1).max(500),
-});
+interface QuoteImport {
+  text: string;
+  attribution?: string;
+  collection: string;
+  mood: string;
+  tags?: string[];
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
     const userId = await getApiUserId();
-    const body = await request.json();
+    const { quotes } = await request.json() as { quotes: QuoteImport[] };
 
-    const { quotes } = importSchema.parse(body);
-    const batchId = nanoid();
+    if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+      return NextResponse.json({ error: 'No quotes provided' }, { status: 400 });
+    }
 
-    // Prepare quotes for insertion
-    const quotesToInsert = quotes.map((q) => ({
-      user_id: userId,
-      text: q.text,
-      attribution: q.attribution || null,
-      collection: q.collection,
-      mood: q.mood,
-      temporal_tags: Array.isArray(q.temporal_tags)
-        ? q.temporal_tags
-        : q.temporal_tags?.split(',').map((t) => t.trim()) || [],
-      imported_from: 'csv' as const,
-      import_batch_id: batchId,
-    }));
+    const supabase = await createServerSupabaseClient();
 
-    // Insert in batches of 100
-    const batchSize = 100;
-    let inserted = 0;
-    const errors: Array<{ index: number; error: string }> = [];
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
 
-    for (let i = 0; i < quotesToInsert.length; i += batchSize) {
-      const batch = quotesToInsert.slice(i, i + batchSize);
+    for (const quote of quotes) {
+      try {
+        const { error } = await (supabase as any)
+          .from('quotes')
+          .insert({
+            user_id: userId,
+            text: quote.text,
+            attribution: quote.attribution || null,
+            collection: quote.collection,
+            mood: quote.mood,
+            tags: quote.tags || [],
+            status: 'active',
+          });
 
-      const { data, error } = await (supabase as any)
-        .from('quotes')
-        .insert(batch)
-        .select('id');
-
-      if (error) {
-        errors.push({ index: i, error: error.message });
-      } else {
-        inserted += data?.length || 0;
+        if (error) {
+          failed++;
+          errors.push(`"${quote.text.substring(0, 30)}...": ${error.message}`);
+        } else {
+          success++;
+        }
+      } catch (err) {
+        failed++;
+        errors.push(`"${quote.text.substring(0, 30)}...": Unknown error`);
       }
     }
 
-    // Log activity
-    await (supabase as any).rpc('log_activity', {
-      p_user_id: userId,
-      p_action_type: 'quotes_imported',
-      p_details: {
-        total: quotes.length,
-        inserted,
-        errors: errors.length,
-        batchId,
-      },
-      p_executed: true,
-      p_module: 'design_engine',
-    });
-
-    return NextResponse.json({
-      success: true,
-      batchId,
-      total: quotes.length,
-      inserted,
-      errors,
-    });
+    return NextResponse.json({ success, failed, errors });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid import data' }, { status: 400 });
-    }
+    console.error('Quote import error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal error' },
+      { error: 'Failed to import quotes' },
       { status: 500 }
     );
   }
