@@ -378,4 +378,99 @@ export class KlaviyoClient {
       name: metric.attributes.name,
     }));
   }
+
+  // ============================================================================
+  // Flows
+  // ============================================================================
+
+  async getFlows(): Promise<Array<{
+    id: string;
+    name: string;
+    status: 'live' | 'draft' | 'paused';
+    trigger: string;
+    created: string;
+    updated: string;
+  }>> {
+    const response = await this.request<PaginatedResponse<{ id: string; attributes: any }>>('/flows/');
+    return response.data.map(flow => ({
+      id: flow.id,
+      name: flow.attributes.name,
+      status: flow.attributes.status === 'live' ? 'live' : flow.attributes.status === 'draft' ? 'draft' : 'paused',
+      trigger: flow.attributes.trigger_type || 'Unknown',
+      created: flow.attributes.created,
+      updated: flow.attributes.updated,
+    }));
+  }
+
+  async getFlowMessages(flowId: string): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const response = await this.request<PaginatedResponse<{ id: string; attributes: any }>>(
+        `/flows/${flowId}/flow-messages/`
+      );
+      return response.data.map(msg => ({
+        id: msg.id,
+        name: msg.attributes.name || 'Untitled',
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  async getListProfileCount(listId: string): Promise<number> {
+    try {
+      const response = await this.request<{ data: any[]; meta?: { page_count?: number } }>(
+        `/lists/${listId}/profiles/?page[size]=1`
+      );
+      // Estimate count based on profiles returned or meta info
+      return response.data?.length || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  // ============================================================================
+  // Reporting / Aggregate Metrics
+  // ============================================================================
+
+  async getMetricAggregates(
+    metricId: string,
+    measurement: string = 'count',
+    interval: string = 'day',
+    startDate?: string,
+    endDate?: string
+  ): Promise<{ values: number[]; dates: string[] }> {
+    const end = endDate || new Date().toISOString().split('T')[0];
+    const start = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    try {
+      const response = await this.request<{
+        data: {
+          attributes: {
+            data: Array<{ measurements: Record<string, number>; dimensions: { datetime: string } }>;
+          };
+        };
+      }>('/metric-aggregates/', {
+        method: 'POST',
+        body: JSON.stringify({
+          data: {
+            type: 'metric-aggregate',
+            attributes: {
+              metric_id: metricId,
+              measurements: [measurement],
+              interval,
+              filter: [`greater-or-equal(datetime,${start})`, `less-than(datetime,${end})`],
+            },
+          },
+        }),
+      });
+
+      const data = response.data?.attributes?.data || [];
+      return {
+        values: data.map((d) => d.measurements[measurement] || 0),
+        dates: data.map((d) => d.dimensions.datetime),
+      };
+    } catch {
+      return { values: [], dates: [] };
+    }
+  }
 }

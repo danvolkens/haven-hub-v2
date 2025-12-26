@@ -12,3 +12,4 @@ export { Sheet } from './sheet';
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs';
 export { LoadingSpinner, type LoadingSpinnerProps } from './loading-spinner';
 export { EmptyState, type EmptyStateProps } from './empty-state';
+export { Progress, type ProgressProps } from './progress';

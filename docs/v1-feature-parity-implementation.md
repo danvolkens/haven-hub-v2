@@ -14,8 +14,9 @@ This document outlines the implementation plan for features that are missing or 
 | Enhanced Performance Alerts | ✅ Complete | Event-based threshold alerts |
 | Complete Seasonal Rotation | ✅ Complete | 16 seasonal periods, respects auto/assisted mode |
 | Klaviyo Setup Wizard | ✅ Complete | Step-by-step setup with test events |
-| Audience Segment Export | ⏳ Pending | Phase 2 |
-| 16-Week KPI Dashboard | ⏳ Pending | Phase 2 |
+| Klaviyo Dashboard | ✅ Complete | Email overview, flows, metrics display |
+| Audience Segment Export | ✅ Complete | Pinterest custom audiences with hash export |
+| 16-Week KPI Dashboard | ✅ Complete | Scaling playbook with 4 phases, weekly tracking |
 | Enhanced Copy Templates | ⏳ Pending | Phase 2 |
 | Bulk Pin Scheduling | ⏳ Pending | Phase 3 |
 | Copy-to-Ads UTM Export | ⏳ Pending | Phase 3 |
@@ -271,9 +272,18 @@ export async function sendEventsToPinterest(userId: string): Promise<{
 
 ### 1.2 Audience Segment Export (Pinterest Custom Audiences)
 
+**Status:** ✅ IMPLEMENTED (2025-12-26)
+
 **V1 Reference:** Prompt 16 - Audience Segment Export
 **Priority:** Medium (enables retargeting)
 **Estimated Effort:** 10 hours
+
+**Implemented Files:**
+- `supabase/migrations/20251226130001_audience_exports.sql`
+- `src/app/(dashboard)/dashboard/pinterest/audiences/page.tsx`
+- `src/app/api/pinterest/audiences/route.ts`
+- `src/app/api/pinterest/audiences/[id]/route.ts`
+- `src/app/api/pinterest/audiences/[id]/sync/route.ts`
 
 #### Description
 Export customer segments as SHA-256 hashed emails for Pinterest Custom Audiences, enabling retargeting campaigns.
@@ -328,9 +338,18 @@ CREATE TABLE audience_exports (
 
 ### 1.3 16-Week KPI Dashboard (Scaling Playbook Tracker)
 
+**Status:** ✅ IMPLEMENTED (2025-12-26)
+
 **V1 Reference:** Prompt 17 - 16-Week KPI Dashboard
 **Priority:** Medium (strategic planning)
 **Estimated Effort:** 12 hours
+
+**Implemented Files:**
+- `supabase/migrations/20251226130002_scaling_playbook.sql`
+- `src/app/(dashboard)/dashboard/analytics/scaling-playbook/page.tsx`
+- `src/app/api/scaling-playbook/route.ts`
+- `src/app/api/scaling-playbook/start/route.ts`
+- `src/app/api/scaling-playbook/advance-week/route.ts`
 
 #### Description
 Track progress against Pinterest Scaling Playbook targets across 4 phases: Foundation (weeks 1-4), Growth (5-8), Optimization (9-12), Scale (13-16).
@@ -979,8 +998,18 @@ Email 2 (Day 1): Reminder to redeem
 
 ### 4.2 Klaviyo Dashboard in Haven Hub
 
+**Status:** ✅ IMPLEMENTED (2025-12-26)
+
 **Priority:** Medium
 **Estimated Effort:** 8 hours
+
+**Implemented Files:**
+- `src/app/(dashboard)/dashboard/email/page.tsx`
+- `src/app/(dashboard)/dashboard/email/flows/page.tsx`
+- `src/app/api/klaviyo/flows/route.ts`
+- `src/app/api/klaviyo/metrics/route.ts`
+- `src/lib/integrations/klaviyo/client.ts` (updated with flow methods)
+- `src/lib/navigation.ts` (Email section added)
 
 Display Klaviyo flow performance directly in Haven Hub so you don't need to switch between apps.
 

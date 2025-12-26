@@ -219,6 +219,29 @@ export default function DocsPage() {
       ],
     },
     {
+      name: 'Email Marketing',
+      sections: [
+        {
+          id: 'email-overview',
+          title: 'Email Overview',
+          icon: <Mail className="h-4 w-4" />,
+          content: <EmailOverviewSection />,
+        },
+        {
+          id: 'email-setup',
+          title: 'Klaviyo Setup',
+          icon: <Settings className="h-4 w-4" />,
+          content: <EmailSetupSection />,
+        },
+        {
+          id: 'email-flows',
+          title: 'Email Flows',
+          icon: <Zap className="h-4 w-4" />,
+          content: <EmailFlowsSection />,
+        },
+      ],
+    },
+    {
       name: 'Content & Analytics',
       sections: [
         {
@@ -238,6 +261,24 @@ export default function DocsPage() {
           title: 'Attribution',
           icon: <Target className="h-4 w-4" />,
           content: <AttributionSection />,
+        },
+        {
+          id: 'scaling-playbook',
+          title: 'Scaling Playbook',
+          icon: <TrendingUp className="h-4 w-4" />,
+          content: <ScalingPlaybookSection />,
+        },
+        {
+          id: 'performance-alerts',
+          title: 'Performance Alerts',
+          icon: <Bell className="h-4 w-4" />,
+          content: <PerformanceAlertsSection />,
+        },
+        {
+          id: 'audiences',
+          title: 'Pinterest Audiences',
+          icon: <Target className="h-4 w-4" />,
+          content: <AudiencesSection />,
         },
       ],
     },
@@ -2214,6 +2255,418 @@ function SettingsSection() {
           <li>Delete account and data permanently</li>
           <li>View API usage and logs</li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// EMAIL MARKETING SECTIONS
+// ============================================================================
+
+function EmailOverviewSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Email Marketing</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Connect Klaviyo to power your email automation with Haven Hub events.
+          Track email performance, manage flows, and see revenue attribution.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <FeatureCard
+          icon={<Mail className="h-6 w-6 text-purple-500" />}
+          title="Email Dashboard"
+          description="View key metrics like open rates, click rates, and email revenue at a glance."
+        />
+        <FeatureCard
+          icon={<Zap className="h-6 w-6 text-amber-500" />}
+          title="Automated Flows"
+          description="Monitor your Klaviyo flows - welcome series, cart abandonment, post-purchase, and more."
+        />
+        <FeatureCard
+          icon={<TrendingUp className="h-6 w-6 text-green-500" />}
+          title="Revenue Attribution"
+          description="See how much revenue is driven by each email flow and campaign."
+        />
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Key Features</h3>
+        <ul className="list-disc list-inside space-y-2 text-[var(--color-text-secondary)]">
+          <li><strong>Flow Performance:</strong> View metrics for all your Klaviyo flows</li>
+          <li><strong>Campaign Tracking:</strong> See recent email campaigns and their results</li>
+          <li><strong>Event Sync:</strong> Quiz completions, cart abandonment, and purchases sync automatically</li>
+          <li><strong>List Management:</strong> Create and manage Klaviyo lists from Haven Hub</li>
+        </ul>
+      </div>
+
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+        <h3 className="font-semibold mb-2">Getting Started</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          Go to <strong>Email → Setup</strong> to connect your Klaviyo account and configure
+          the required lists and flows for Haven Hub automation.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EmailSetupSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Klaviyo Setup</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          The Setup Wizard guides you through connecting Klaviyo and configuring
+          the lists and flows needed for Haven Hub automation.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Setup Steps</h3>
+        <div className="space-y-4">
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">1</span>
+              </div>
+              <h4 className="font-medium">Connect Klaviyo</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Add your Klaviyo API key in Settings → Integrations. Haven Hub will verify the connection.
+            </p>
+          </div>
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">2</span>
+              </div>
+              <h4 className="font-medium">Create Required Lists</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Haven Hub will create lists for All Leads, Quiz Takers, and each collection (Grounding, Wholeness, Growth).
+            </p>
+          </div>
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">3</span>
+              </div>
+              <h4 className="font-medium">Create Flows in Klaviyo</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Create your email flows in Klaviyo using Haven Hub events as triggers. The setup page provides templates.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Required Lists</h3>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li>Haven Hub - All Leads</li>
+          <li>Haven Hub - Quiz Takers</li>
+          <li>Haven Hub - Grounding</li>
+          <li>Haven Hub - Wholeness</li>
+          <li>Haven Hub - Growth</li>
+          <li>Haven Hub - Customers</li>
+          <li>Haven Hub - VIP</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function EmailFlowsSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Email Flows</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          View and monitor your Klaviyo flows from Haven Hub. See performance metrics,
+          identify opportunities, and track revenue attribution.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Recommended Flows</h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Welcome Series</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: List subscription. Introduce new leads to your brand over 4 emails.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Quiz Results</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: Quiz Completed event. Share personalized recommendations based on quiz results.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Cart Abandonment</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: Cart Abandoned event. Recover lost sales with timely reminders.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Post-Purchase</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: Placed Order event. Thank customers, request reviews, cross-sell.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Win-Back</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: Win Back Started event. Re-engage customers who haven't purchased recently.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">VIP Rewards</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Trigger: LTV threshold. Reward your best customers with exclusive offers.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Flow Metrics</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          For each flow, track:
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)] mt-2">
+          <li>Total emails sent</li>
+          <li>Open rate and click rate</li>
+          <li>Revenue attributed to the flow</li>
+          <li>Flow status (live, draft, paused)</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// NEW ANALYTICS SECTIONS
+// ============================================================================
+
+function ScalingPlaybookSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">16-Week Scaling Playbook</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          A structured 16-week program to scale your Pinterest presence from foundation
+          to full automation. Track weekly KPIs and phase goals.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">The Four Phases</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="border border-blue-500/30 bg-blue-500/5 rounded-lg p-4">
+            <div className="font-medium text-blue-600 mb-1">Phase 1: Foundation</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Weeks 1-4. Build your Pinterest presence with quality content.
+            </p>
+          </div>
+          <div className="border border-green-500/30 bg-green-500/5 rounded-lg p-4">
+            <div className="font-medium text-green-600 mb-1">Phase 2: Growth</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Weeks 5-8. Start paid advertising and drive traffic.
+            </p>
+          </div>
+          <div className="border border-amber-500/30 bg-amber-500/5 rounded-lg p-4">
+            <div className="font-medium text-amber-600 mb-1">Phase 3: Optimization</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Weeks 9-12. Refine for maximum ROAS and efficiency.
+            </p>
+          </div>
+          <div className="border border-purple-500/30 bg-purple-500/5 rounded-lg p-4">
+            <div className="font-medium text-purple-600 mb-1">Phase 4: Scale</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Weeks 13-16. Maximize returns with full automation.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Weekly Tracking</h3>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li>Pins published per week</li>
+          <li>Impressions, saves, and clicks</li>
+          <li>Ad spend and ROAS</li>
+          <li>Total revenue from Pinterest</li>
+          <li>Goal achievement score (0-100%)</li>
+        </ul>
+      </div>
+
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+        <h3 className="font-semibold mb-2">Getting Started</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          Go to <strong>Analytics → Scaling Playbook</strong> to start your 16-week journey.
+          Set your targets and advance through phases as you hit milestones.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PerformanceAlertsSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Performance Alerts</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Set up automated alerts for important events like pin milestones,
+          underperforming content, campaign CPA thresholds, and more.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Alert Types</h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Pin Milestone</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Get notified when a pin hits impression or save milestones.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Underperformer Alert</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Flag pins that fall below engagement thresholds.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Campaign CPA</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Alert when cost-per-acquisition exceeds your target.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">ROAS Threshold</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Notify when ROAS drops below or exceeds targets.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Daily Spend</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Track daily ad spend against budget limits.
+            </p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+            <div className="font-medium mb-1">Winner Detected</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Celebrate when a pin achieves top-performer status.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Notification Options</h3>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li>Email notifications</li>
+          <li>In-app notifications</li>
+          <li>Create approval tasks for manual review</li>
+        </ul>
+      </div>
+
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+        <h3 className="font-semibold mb-2">Configure Alerts</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          Go to <strong>Analytics → Alerts</strong> to set up your alert rules.
+          Define the metric, threshold, and what actions to take.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AudiencesSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Pinterest Audiences</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Export customer segments as Pinterest Custom Audiences for retargeting.
+          Hash customer emails securely and sync to Pinterest Ads Manager.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">How It Works</h3>
+        <div className="space-y-4">
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">1</span>
+              </div>
+              <h4 className="font-medium">Create Segment</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Define criteria like purchase history, quiz results, or engagement level.
+            </p>
+          </div>
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">2</span>
+              </div>
+              <h4 className="font-medium">Export to Pinterest</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Email addresses are hashed (SHA-256) and sent securely to Pinterest.
+            </p>
+          </div>
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-8 h-8 rounded-full bg-sage/20 flex items-center justify-center">
+                <span className="font-semibold text-sage">3</span>
+              </div>
+              <h4 className="font-medium">Target in Ads</h4>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] pl-11">
+              Use the audience in Pinterest Ads Manager for retargeting campaigns.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Audience Ideas</h3>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li>High-value customers (LTV greater than $100)</li>
+          <li>Cart abandoners (last 30 days)</li>
+          <li>Quiz takers by collection preference</li>
+          <li>Recent purchasers (cross-sell)</li>
+          <li>Lapsed customers (win-back)</li>
+          <li>Email engaged (opened in last 90 days)</li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Sync Options</h3>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li><strong>Manual:</strong> Export when you need to update</li>
+          <li><strong>Daily:</strong> Auto-sync every day</li>
+          <li><strong>Weekly:</strong> Auto-sync every week</li>
+          <li><strong>Monthly:</strong> Auto-sync every month</li>
+        </ul>
+      </div>
+
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4">
+        <h3 className="font-semibold mb-2">Requirements</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          You need a Pinterest Business account with an Ad Account connected.
+          Go to <strong>Pinterest → Audiences</strong> to get started.
+        </p>
       </div>
     </div>
   );

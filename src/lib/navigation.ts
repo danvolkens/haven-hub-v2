@@ -23,6 +23,11 @@ import {
   Share2,
   Settings,
   BookOpen,
+  Mail,
+  Zap,
+  Bell,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -75,10 +80,19 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Manager', href: '/dashboard/pinterest', icon: Pin },
       { name: 'Analytics', href: '/dashboard/pinterest/analytics', icon: BarChart3 },
       { name: 'Content Mix', href: '/dashboard/pinterest/analytics/content-mix', icon: PieChart },
+      { name: 'Audiences', href: '/dashboard/pinterest/audiences', icon: Target },
       { name: 'Ads', href: '/dashboard/pinterest/ads', icon: Megaphone },
       { name: 'Campaign Wizard', href: '/dashboard/pinterest/campaign-wizard', icon: Megaphone },
       { name: 'A/B Tests', href: '/dashboard/pinterest/ab-tests', icon: FlaskConical },
       { name: 'Rules', href: '/dashboard/pinterest/settings/performance-rules', icon: Settings },
+    ],
+  },
+  {
+    name: 'Email',
+    items: [
+      { name: 'Overview', href: '/dashboard/email', icon: Mail },
+      { name: 'Flows', href: '/dashboard/email/flows', icon: Zap },
+      { name: 'Setup', href: '/dashboard/email/setup', icon: Settings },
     ],
   },
   {
@@ -112,6 +126,14 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Link-in-Bio', href: '/dashboard/links', icon: LinkIcon },
       { name: 'Cross-Platform', href: '/dashboard/analytics/cross-platform', icon: Share2 },
+    ],
+  },
+  {
+    name: 'Analytics',
+    items: [
+      { name: 'Attribution', href: '/dashboard/analytics/attribution', icon: TrendingUp },
+      { name: 'Scaling Playbook', href: '/dashboard/analytics/scaling-playbook', icon: Target },
+      { name: 'Alerts', href: '/dashboard/settings/alerts', icon: Bell },
     ],
   },
   {
