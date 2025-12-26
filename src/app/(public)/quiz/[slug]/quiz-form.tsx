@@ -106,9 +106,9 @@ export function QuizForm({ quiz }: Props) {
         style={{
           background: '#FAF8F5',
           position: 'relative',
+          fontSize: '18pt',
         }}
       >
-        {/* Background Image */}
         <div
           style={{
             position: 'fixed',
@@ -124,8 +124,9 @@ export function QuizForm({ quiz }: Props) {
         <div
           className="w-full animate-fade-in"
           style={{
-            maxWidth: '36rem',
-            padding: '3rem 1.5rem',
+            width: '36rem',
+            maxWidth: '100%',
+            padding: '3rem',
             position: 'relative',
             zIndex: 1,
           }}
@@ -133,13 +134,12 @@ export function QuizForm({ quiz }: Props) {
           <div
             style={{
               background: 'rgba(255, 255, 255, 0.973)',
-              borderRadius: '0.5rem',
+              borderRadius: '0.25rem',
               boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
               padding: '3rem',
               textAlign: 'center',
             }}
           >
-            {/* Logo */}
             <div style={{ marginBottom: '1.5rem' }}>
               <img
                 src="/images/brand/logo.png"
@@ -159,7 +159,7 @@ export function QuizForm({ quiz }: Props) {
                 fontWeight: 400,
                 lineHeight: 1.25,
                 color: '#2C3E50',
-                marginBottom: '1rem',
+                marginBottom: '1.5rem',
               }}
             >
               {result.title}
@@ -172,7 +172,7 @@ export function QuizForm({ quiz }: Props) {
                 fontWeight: 400,
                 lineHeight: 1.5,
                 color: '#5D6D7E',
-                marginBottom: '2rem',
+                marginBottom: '1.5rem',
               }}
             >
               {result.description}
@@ -183,10 +183,10 @@ export function QuizForm({ quiz }: Props) {
                 href={result.cta_url}
                 style={{
                   display: 'inline-block',
-                  padding: '1rem 2rem',
-                  borderRadius: '0.375rem',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1em',
+                  fontSize: '1.125em',
                   fontWeight: 500,
                   color: '#FFFFFF',
                   background: '#2C3E50',
@@ -211,9 +211,9 @@ export function QuizForm({ quiz }: Props) {
         style={{
           background: '#FAF8F5',
           position: 'relative',
+          fontSize: '18pt',
         }}
       >
-        {/* Background Image */}
         <div
           style={{
             position: 'fixed',
@@ -229,8 +229,9 @@ export function QuizForm({ quiz }: Props) {
         <div
           className="w-full animate-fade-in"
           style={{
-            maxWidth: '36rem',
-            padding: '3rem 1.5rem',
+            width: '36rem',
+            maxWidth: '100%',
+            padding: '3rem',
             position: 'relative',
             zIndex: 1,
           }}
@@ -238,13 +239,12 @@ export function QuizForm({ quiz }: Props) {
           <div
             style={{
               background: 'rgba(255, 255, 255, 0.973)',
-              borderRadius: '0.5rem',
+              borderRadius: '0.25rem',
               boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
               padding: '3rem',
               textAlign: 'center',
             }}
           >
-            {/* Logo */}
             <div style={{ marginBottom: '1.5rem' }}>
               <img
                 src="/images/brand/logo.png"
@@ -260,11 +260,11 @@ export function QuizForm({ quiz }: Props) {
             <h2
               style={{
                 fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                fontSize: '1.5em',
+                fontSize: '1.75em',
                 fontWeight: 400,
                 lineHeight: 1.25,
                 color: '#2C3E50',
-                marginBottom: '1rem',
+                marginBottom: '1.5rem',
               }}
             >
               Almost there!
@@ -292,26 +292,24 @@ export function QuizForm({ quiz }: Props) {
                 required
                 style={{
                   width: '100%',
-                  padding: '0.875rem 1rem',
-                  borderRadius: '0.375rem',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1em',
+                  fontSize: '1.125em',
                   fontWeight: 400,
                   lineHeight: 1.5,
                   color: '#2C3E50',
                   background: '#FFFFFF',
                   border: '1px solid #E8E4E0',
                   outline: 'none',
-                  marginBottom: '1rem',
-                  transition: 'border-color 0.2s, box-shadow 0.2s',
+                  marginBottom: '1.5rem',
+                  transition: 'border-color 0.25s ease',
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#2C3E50';
-                  e.target.style.boxShadow = '0 0 0 2px rgba(44, 62, 80, 0.1)';
                 }}
                 onBlur={(e) => {
                   e.target.style.borderColor = '#E8E4E0';
-                  e.target.style.boxShadow = 'none';
                 }}
               />
 
@@ -320,17 +318,17 @@ export function QuizForm({ quiz }: Props) {
                 disabled={isSubmitting}
                 style={{
                   width: '100%',
-                  padding: '1rem',
-                  borderRadius: '0.375rem',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1em',
+                  fontSize: '1.125em',
                   fontWeight: 500,
                   color: '#FFFFFF',
                   background: '#2C3E50',
                   border: 'none',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   opacity: isSubmitting ? 0.6 : 1,
-                  transition: 'opacity 0.2s',
+                  transition: 'opacity 0.25s ease',
                 }}
               >
                 {isSubmitting ? 'Loading...' : 'See My Results'}
@@ -350,6 +348,7 @@ export function QuizForm({ quiz }: Props) {
         className="min-h-screen flex items-center justify-center"
         style={{
           background: '#FAF8F5',
+          fontSize: '18pt',
         }}
       >
         <p
@@ -366,13 +365,13 @@ export function QuizForm({ quiz }: Props) {
 
   return (
     <div
-      className="min-h-screen flex flex-col"
+      className="min-h-screen flex items-center justify-center"
       style={{
         background: '#FAF8F5',
         position: 'relative',
+        fontSize: '18pt',
       }}
     >
-      {/* Background Image */}
       <div
         style={{
           position: 'fixed',
@@ -385,134 +384,108 @@ export function QuizForm({ quiz }: Props) {
         }}
       />
 
-      {/* Progress Bar */}
       <div
+        className="w-full animate-fade-in"
         style={{
-          width: '100%',
-          maxWidth: '36rem',
-          margin: '0 auto',
-          padding: '1.5rem 1.5rem 0',
+          width: '36rem',
+          maxWidth: '100%',
+          padding: '3rem',
           position: 'relative',
           zIndex: 1,
         }}
       >
         <div
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-            fontSize: '0.75em',
-            color: '#7F8C8D',
-            marginBottom: '0.5rem',
+            background: 'rgba(255, 255, 255, 0.973)',
+            borderRadius: '0.25rem',
+            boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
+            padding: '3rem',
           }}
         >
-          <span>Question {currentQuestion + 1} of {questions.length}</span>
-          <span>{Math.round(progress)}%</span>
-        </div>
-        <div
-          style={{
-            width: '100%',
-            height: '0.375rem',
-            background: 'rgba(255, 255, 255, 0.5)',
-            borderRadius: '9999px',
-            overflow: 'hidden',
-          }}
-        >
-          <div
-            style={{
-              height: '100%',
-              width: `${progress}%`,
-              background: '#2C3E50',
-              transition: 'width 0.5s ease',
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Question Card */}
-      <div
-        className="flex-1 flex items-center justify-center"
-        style={{
-          padding: '1.5rem',
-          position: 'relative',
-          zIndex: 1,
-        }}
-      >
-        <div
-          className="w-full animate-fade-in"
-          style={{ maxWidth: '36rem' }}
-        >
-          <div
-            style={{
-              background: 'rgba(255, 255, 255, 0.973)',
-              borderRadius: '0.5rem',
-              boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
-              padding: '3rem',
-            }}
-          >
-            <h2
+          {/* Progress Bar - inside card */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div
               style={{
-                fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                fontSize: '1.5em',
-                fontWeight: 400,
-                lineHeight: 1.25,
-                color: '#2C3E50',
-                textAlign: 'center',
-                marginBottom: '2rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                fontSize: '0.75em',
+                color: '#7F8C8D',
+                marginBottom: '0.5rem',
               }}
             >
-              {question.text}
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {question.answers?.map((answer) => (
-                <button
-                  key={answer.id}
-                  onClick={() => handleAnswer(question.id, answer)}
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    textAlign: 'left',
-                    borderRadius: '0.375rem',
-                    fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                    fontSize: '1em',
-                    fontWeight: 400,
-                    lineHeight: 1.5,
-                    color: '#2C3E50',
-                    background: answers[question.id] === answer.id ? 'rgba(44, 62, 80, 0.1)' : '#FFFFFF',
-                    border: `1px solid ${answers[question.id] === answer.id ? '#2C3E50' : '#E8E4E0'}`,
-                    cursor: 'pointer',
-                    transition: 'border-color 0.2s, background 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (answers[question.id] !== answer.id) {
-                      e.currentTarget.style.borderColor = '#2C3E50';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (answers[question.id] !== answer.id) {
-                      e.currentTarget.style.borderColor = '#E8E4E0';
-                    }
-                  }}
-                >
-                  {answer.text}
-                </button>
-              ))}
+              <span>Question {currentQuestion + 1} of {questions.length}</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <div
+              style={{
+                width: '100%',
+                height: '0.25rem',
+                background: '#E8E4E0',
+                borderRadius: '9999px',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${progress}%`,
+                  background: '#2C3E50',
+                  transition: 'width 0.5s ease',
+                }}
+              />
             </div>
           </div>
 
-          <p
+          <h2
             style={{
-              fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-              fontSize: '0.75em',
+              fontFamily: 'var(--font-serif), "Crimson Text", serif',
+              fontSize: '1.75em',
               fontWeight: 400,
-              color: 'rgba(255, 255, 255, 0.7)',
+              lineHeight: 1.25,
+              color: '#2C3E50',
               textAlign: 'center',
-              marginTop: '1.5rem',
+              marginBottom: '1.5rem',
             }}
           >
-            Haven & Hold
-          </p>
+            {question.text}
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {question.answers?.map((answer) => (
+              <button
+                key={answer.id}
+                onClick={() => handleAnswer(question.id, answer)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  textAlign: 'left',
+                  borderRadius: '0.25rem',
+                  fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
+                  fontSize: '1.125em',
+                  fontWeight: 400,
+                  lineHeight: 1.5,
+                  color: '#2C3E50',
+                  background: answers[question.id] === answer.id ? 'rgba(44, 62, 80, 0.1)' : '#FFFFFF',
+                  border: `1px solid ${answers[question.id] === answer.id ? '#2C3E50' : '#E8E4E0'}`,
+                  cursor: 'pointer',
+                  transition: 'border-color 0.25s ease, background 0.25s ease',
+                }}
+                onMouseEnter={(e) => {
+                  if (answers[question.id] !== answer.id) {
+                    e.currentTarget.style.borderColor = '#2C3E50';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (answers[question.id] !== answer.id) {
+                    e.currentTarget.style.borderColor = '#E8E4E0';
+                  }
+                }}
+              >
+                {answer.text}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

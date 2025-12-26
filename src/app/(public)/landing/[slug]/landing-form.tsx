@@ -47,9 +47,10 @@ export function LandingPageForm({ page }: Props) {
       style={{
         background: '#FAF8F5',
         position: 'relative',
+        fontSize: '18pt', // Carrd root font size
       }}
     >
-      {/* Background Image - matching Carrd exactly */}
+      {/* Background Image */}
       <div
         style={{
           position: 'fixed',
@@ -62,21 +63,22 @@ export function LandingPageForm({ page }: Props) {
         }}
       />
 
-      {/* Card Container - matches Carrd exactly */}
+      {/* Card Container */}
       <div
         className="w-full animate-fade-in"
         style={{
-          maxWidth: '36rem',
-          padding: '3rem 1.5rem',
+          width: '36rem',
+          maxWidth: '100%',
+          padding: '3rem',
           position: 'relative',
           zIndex: 1,
         }}
       >
-        {/* Main Card - Carrd exact styling */}
+        {/* Main Card */}
         <div
           style={{
             background: 'rgba(255, 255, 255, 0.973)',
-            borderRadius: '0.5rem',
+            borderRadius: '0.25rem',
             boxShadow: '0rem 1.75rem 3.125rem 1.25rem rgba(0, 0, 0, 0.51)',
             padding: '3rem',
           }}
@@ -94,7 +96,7 @@ export function LandingPageForm({ page }: Props) {
             />
           </div>
 
-          {/* Headline - Crimson Text, 1.75em */}
+          {/* Headline - Crimson Text, 1.75em, line-height 1.25 */}
           <h1
             style={{
               fontFamily: 'var(--font-serif), "Crimson Text", "Times New Roman", serif',
@@ -103,13 +105,13 @@ export function LandingPageForm({ page }: Props) {
               lineHeight: 1.25,
               color: '#2C3E50',
               textAlign: 'center',
-              marginBottom: '1rem',
+              marginBottom: '1.5rem',
             }}
           >
             {page.headline || 'Quiet Anchors for Turbulent Minds'}
           </h1>
 
-          {/* Subheadline - Figtree, 1.125em */}
+          {/* Subheadline - Figtree, 1.125em, line-height 1.5 */}
           {page.subheadline && (
             <p
               style={{
@@ -119,7 +121,7 @@ export function LandingPageForm({ page }: Props) {
                 lineHeight: 1.5,
                 color: '#5D6D7E',
                 textAlign: 'center',
-                marginBottom: '0.5rem',
+                marginBottom: '1.5rem',
               }}
             >
               {page.subheadline}
@@ -131,7 +133,7 @@ export function LandingPageForm({ page }: Props) {
             <p
               style={{
                 fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                fontSize: '1em',
+                fontSize: '1.125em',
                 fontWeight: 400,
                 lineHeight: 1.5,
                 color: '#5D6D7E',
@@ -151,6 +153,7 @@ export function LandingPageForm({ page }: Props) {
                 alt=""
                 style={{
                   width: '16.875rem',
+                  maxWidth: '100%',
                   height: 'auto',
                   borderRadius: '0.5rem',
                   margin: '0 auto',
@@ -159,12 +162,12 @@ export function LandingPageForm({ page }: Props) {
             </div>
           )}
 
-          {/* CTA Text (if provided) */}
+          {/* CTA Text */}
           {page.lead_magnet_title && (
             <p
               style={{
                 fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                fontSize: '1em',
+                fontSize: '1.125em',
                 fontWeight: 400,
                 lineHeight: 1.5,
                 color: '#5D6D7E',
@@ -182,7 +185,7 @@ export function LandingPageForm({ page }: Props) {
               className="animate-fade-in"
               style={{
                 textAlign: 'center',
-                padding: '1rem 0',
+                padding: '1.5rem 0',
               }}
             >
               <div
@@ -210,11 +213,11 @@ export function LandingPageForm({ page }: Props) {
               <h2
                 style={{
                   fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                  fontSize: '1.5em',
+                  fontSize: '1.75em',
                   fontWeight: 400,
                   lineHeight: 1.25,
                   color: '#2C3E50',
-                  marginBottom: '0.5rem',
+                  marginBottom: '1.5rem',
                 }}
               >
                 You&apos;re all set!
@@ -222,7 +225,7 @@ export function LandingPageForm({ page }: Props) {
               <p
                 style={{
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1em',
+                  fontSize: '1.125em',
                   fontWeight: 400,
                   lineHeight: 1.5,
                   color: '#5D6D7E',
@@ -237,7 +240,7 @@ export function LandingPageForm({ page }: Props) {
                 <div
                   key={field.name}
                   style={{
-                    marginBottom: index < formFields.length - 1 ? '1rem' : '1rem',
+                    marginBottom: index < formFields.length - 1 ? '1.5rem' : '1.5rem',
                   }}
                 >
                   <input
@@ -249,25 +252,23 @@ export function LandingPageForm({ page }: Props) {
                     onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                     style={{
                       width: '100%',
-                      padding: '0.875rem 1rem',
-                      borderRadius: '0.375rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.25rem',
                       fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                      fontSize: '1em',
+                      fontSize: '1.125em',
                       fontWeight: 400,
                       lineHeight: 1.5,
                       color: '#2C3E50',
                       background: '#FFFFFF',
                       border: '1px solid #E8E4E0',
                       outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s',
+                      transition: 'border-color 0.25s ease',
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = '#2C3E50';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(44, 62, 80, 0.1)';
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = '#E8E4E0';
-                      e.target.style.boxShadow = 'none';
                     }}
                   />
                 </div>
@@ -277,10 +278,10 @@ export function LandingPageForm({ page }: Props) {
                 <p
                   style={{
                     fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                    fontSize: '0.875em',
+                    fontSize: '1em',
                     color: '#E74C3C',
                     textAlign: 'center',
-                    marginBottom: '1rem',
+                    marginBottom: '1.5rem',
                   }}
                 >
                   {error}
@@ -292,18 +293,17 @@ export function LandingPageForm({ page }: Props) {
                 disabled={isSubmitting}
                 style={{
                   width: '100%',
-                  padding: '1rem',
-                  borderRadius: '0.375rem',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1em',
+                  fontSize: '1.125em',
                   fontWeight: 500,
-                  letterSpacing: '0.025em',
                   color: '#FFFFFF',
                   background: '#2C3E50',
                   border: 'none',
                   cursor: isSubmitting ? 'not-allowed' : 'pointer',
                   opacity: isSubmitting ? 0.6 : 1,
-                  transition: 'opacity 0.2s',
+                  transition: 'opacity 0.25s ease',
                 }}
               >
                 {isSubmitting ? 'Processing...' : 'Join the List'}
