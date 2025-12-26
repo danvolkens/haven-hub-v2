@@ -4,11 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Zap,
   ExternalLink,
-  Mail,
-  MousePointer,
-  DollarSign,
   RefreshCw,
-  ArrowRight,
   Play,
   Pause,
 } from 'lucide-react';
@@ -30,20 +26,10 @@ interface Flow {
   trigger: string;
   created: string;
   updated: string;
-  metrics: {
-    sent: number;
-    opened: number;
-    clicked: number;
-    revenue: number;
-    openRate: number;
-    clickRate: number;
-  };
 }
 
 interface FlowsResponse {
   flows: Flow[];
-  totalRevenue: number;
-  totalSent: number;
 }
 
 const STATUS_COLORS = {
@@ -127,27 +113,25 @@ export default function EmailFlowsPage() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-caption text-[var(--color-text-secondary)]">Total Emails Sent</p>
+              <p className="text-caption text-[var(--color-text-secondary)]">Draft Flows</p>
               <p className="text-2xl font-semibold mt-1">
-                {(data?.totalSent || 0).toLocaleString()}
+                {data?.flows.filter(f => f.status === 'draft').length || 0}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-caption text-[var(--color-text-secondary)]">Avg Open Rate</p>
+              <p className="text-caption text-[var(--color-text-secondary)]">Paused Flows</p>
               <p className="text-2xl font-semibold mt-1">
-                {data?.flows.length
-                  ? (data.flows.reduce((acc, f) => acc + f.metrics.openRate, 0) / data.flows.length).toFixed(1)
-                  : 0}%
+                {data?.flows.filter(f => f.status === 'paused').length || 0}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-caption text-[var(--color-text-secondary)]">Flow Revenue (30d)</p>
-              <p className="text-2xl font-semibold text-success mt-1">
-                ${(data?.totalRevenue || 0).toLocaleString()}
+              <p className="text-caption text-[var(--color-text-secondary)]">Total Flows</p>
+              <p className="text-2xl font-semibold mt-1">
+                {data?.flows.length || 0}
               </p>
             </CardContent>
           </Card>
@@ -171,7 +155,7 @@ export default function EmailFlowsPage() {
                   const StatusIcon = STATUS_ICONS[flow.status];
                   return (
                     <div key={flow.id} className="p-4 hover:bg-elevated/50">
-                      <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-sage/10 flex items-center justify-center">
                             <Zap className="h-5 w-5 text-sage" />
@@ -195,41 +179,8 @@ export default function EmailFlowsPage() {
                           onClick={() => window.open(`https://www.klaviyo.com/flow/${flow.id}/edit`, '_blank')}
                           rightIcon={<ExternalLink className="h-3 w-3" />}
                         >
-                          Edit
+                          View in Klaviyo
                         </Button>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-4 pl-13">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                          <div>
-                            <p className="text-body-sm font-medium">{flow.metrics.sent.toLocaleString()}</p>
-                            <p className="text-caption text-[var(--color-text-tertiary)]">Sent</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <ArrowRight className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                          <div>
-                            <p className="text-body-sm font-medium">{flow.metrics.openRate.toFixed(1)}%</p>
-                            <p className="text-caption text-[var(--color-text-tertiary)]">Open Rate</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MousePointer className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                          <div>
-                            <p className="text-body-sm font-medium">{flow.metrics.clickRate.toFixed(1)}%</p>
-                            <p className="text-caption text-[var(--color-text-tertiary)]">Click Rate</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <DollarSign className="h-4 w-4 text-success" />
-                          <div>
-                            <p className="text-body-sm font-medium text-success">
-                              ${flow.metrics.revenue.toLocaleString()}
-                            </p>
-                            <p className="text-caption text-[var(--color-text-tertiary)]">Revenue</p>
-                          </div>
-                        </div>
                       </div>
                     </div>
                   );

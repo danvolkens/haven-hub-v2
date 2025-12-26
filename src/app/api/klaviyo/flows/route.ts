@@ -11,30 +11,23 @@ export async function GET() {
       return NextResponse.json({ error: 'Klaviyo not connected' }, { status: 400 });
     }
 
-    // Get all flows
+    // Get all flows from Klaviyo
     const flows = await client.getFlows();
 
-    // For now, return mock metrics since Klaviyo's metric API is complex
-    // In production, you'd use the metric-aggregates endpoint
+    // Return real flow data - metrics require Klaviyo's premium analytics
+    // so we don't show fake numbers
     const flowsWithMetrics = flows.map((flow) => ({
       ...flow,
-      metrics: {
-        sent: Math.floor(Math.random() * 5000),
-        opened: Math.floor(Math.random() * 2500),
-        clicked: Math.floor(Math.random() * 500),
-        revenue: Math.floor(Math.random() * 5000),
-        openRate: 35 + Math.random() * 25,
-        clickRate: 2 + Math.random() * 5,
-      },
+      // Note: Per-flow metrics require Klaviyo's Flow Analytics API
+      // which is only available on certain plans
+      metrics: null,
     }));
-
-    const totalSent = flowsWithMetrics.reduce((sum, f) => sum + f.metrics.sent, 0);
-    const totalRevenue = flowsWithMetrics.reduce((sum, f) => sum + f.metrics.revenue, 0);
 
     return NextResponse.json({
       flows: flowsWithMetrics,
-      totalSent,
-      totalRevenue,
+      // We don't have real totals without flow metrics
+      totalSent: null,
+      totalRevenue: null,
     });
   } catch (error) {
     console.error('Error fetching Klaviyo flows:', error);
