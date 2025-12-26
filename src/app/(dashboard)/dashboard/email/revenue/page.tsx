@@ -65,13 +65,19 @@ export default function KlaviyoRevenuePage() {
     },
   });
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: unknown) => {
+    // Ensure value is a valid number
+    const num = typeof value === 'number' && !isNaN(value) ? value : 0;
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    }).format(num);
+  };
+
+  const safeNumber = (value: unknown): number => {
+    return typeof value === 'number' && !isNaN(value) ? value : 0;
   };
 
   const formatDate = (dateString: string) => {
@@ -171,7 +177,7 @@ export default function KlaviyoRevenuePage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Orders</p>
                   <p className="text-2xl font-semibold">
-                    {revenueData.summary.totalOrders.toLocaleString()}
+                    {safeNumber(revenueData.summary.totalOrders).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -206,7 +212,7 @@ export default function KlaviyoRevenuePage() {
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <div className="text-3xl font-bold text-sage">
-                    {revenueData.summary.emailAttributionRate}%
+                    {safeNumber(revenueData.summary.emailAttributionRate)}%
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Industry avg: 20-30%
@@ -219,7 +225,7 @@ export default function KlaviyoRevenuePage() {
               <div
                 className="h-full bg-sage transition-all duration-500"
                 style={{
-                  width: `${Math.min(revenueData.summary.emailAttributionRate * 2, 100)}%`,
+                  width: `${Math.min(safeNumber(revenueData.summary.emailAttributionRate) * 2, 100)}%`,
                 }}
               />
             </div>

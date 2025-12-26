@@ -61,6 +61,11 @@ All application code lives in `src/`. When the plans reference paths like:
 
 Only `trigger/`, `supabase/`, and `plans/` remain at root level.
 
+## Deployment
+Pushing to `main` branch auto-deploys to production via Vercel.
+- No need to run `npx vercel --prod` manually
+- Just `git push` to main and Vercel handles the rest
+
 ## Commands
 ```bash
 # Development

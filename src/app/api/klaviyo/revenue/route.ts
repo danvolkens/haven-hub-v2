@@ -61,6 +61,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Helper to ensure we get a valid number
+    const safeSum = (values: unknown): number => {
+      if (!Array.isArray(values)) return 0;
+      return values.reduce((sum: number, v: unknown) => {
+        const num = typeof v === 'number' && !isNaN(v) ? v : 0;
+        return sum + num;
+      }, 0);
+    };
+
     // Get aggregate order metrics if available
     let totalOrders = 0;
     let totalRevenue = 0;
@@ -74,7 +83,7 @@ export async function GET(request: NextRequest) {
           startDate,
           endDate
         );
-        totalOrders = orderData.values.reduce((sum, v) => sum + v, 0);
+        totalOrders = safeSum(orderData.values);
 
         const revenueData = await client.getMetricAggregates(
           placedOrderMetric.id,
@@ -83,7 +92,7 @@ export async function GET(request: NextRequest) {
           startDate,
           endDate
         );
-        totalRevenue = revenueData.values.reduce((sum, v) => sum + v, 0);
+        totalRevenue = safeSum(revenueData.values);
       } catch (e) {
         // Metrics aggregation might not be available on all plans
         console.error('Failed to get order aggregates:', e);
