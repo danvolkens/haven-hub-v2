@@ -40,11 +40,11 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
       'Content-Security-Policy',
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://static.cloudflareinsights.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https: blob:",
         "font-src 'self' data:",
-        "connect-src 'self' https://*.supabase.co https://api.klaviyo.com https://api.pinterest.com",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.klaviyo.com https://api.pinterest.com https://static.cloudflareinsights.com",
         "frame-ancestors 'none'",
       ].join('; ')
     );
