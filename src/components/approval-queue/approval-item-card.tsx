@@ -72,7 +72,10 @@ export function ApprovalItemCard({
           </div>
 
           {/* Checkbox overlay */}
-          <div className="absolute top-3 right-3">
+          <div
+            className="absolute top-3 right-3"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="bg-white rounded-md shadow-sm p-1">
               <Checkbox
                 checked={isSelected}
