@@ -54,3 +54,4 @@ build-logs/
 
 # Local uploads (dev storage)
 public/uploads/
+.env.production
