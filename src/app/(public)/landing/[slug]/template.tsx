@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import type { LandingPage, FormField } from '@/types/leads';
 
 interface Props {
@@ -13,17 +12,14 @@ const COLLECTION_ACCENTS = {
   grounding: {
     accent: '#786350',
     accentLight: '#A89B8C',
-    gradient: 'from-amber-50 to-stone-100',
   },
   wholeness: {
     accent: '#7A9E7E',
     accentLight: '#A4C4A8',
-    gradient: 'from-sage-50 to-emerald-50',
   },
   growth: {
     accent: '#5B7B8C',
     accentLight: '#8BAAB8',
-    gradient: 'from-sky-50 to-slate-100',
   },
 };
 
@@ -80,12 +76,7 @@ export function LandingPageTemplate({ page }: Props) {
         }}
       />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-lg"
-      >
+      <div className="relative w-full max-w-lg animate-fade-in">
         {/* Main Card */}
         <div
           className="relative rounded-2xl overflow-hidden"
@@ -103,27 +94,17 @@ export function LandingPageTemplate({ page }: Props) {
           <div className="px-8 py-10 sm:px-12 sm:py-14">
             {/* Featured Image */}
             {page.featured_image_url && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.6 }}
-                className="mb-8 -mx-4 sm:-mx-6"
-              >
+              <div className="mb-8 -mx-4 sm:-mx-6">
                 <img
                   src={page.featured_image_url}
                   alt=""
                   className="w-full h-48 sm:h-56 object-cover rounded-lg"
                 />
-              </motion.div>
+              </div>
             )}
 
             {/* Content */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-center mb-8"
-            >
+            <div className="text-center mb-8">
               {/* Badge */}
               {page.lead_magnet_type && (
                 <span
@@ -164,16 +145,11 @@ export function LandingPageTemplate({ page }: Props) {
                   {page.subheadline}
                 </p>
               )}
-            </motion.div>
+            </div>
 
             {/* Body Content */}
             {page.body_content && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.6 }}
-                className="mb-8 text-center"
-              >
+              <div className="mb-8 text-center">
                 <p
                   className="text-sm leading-relaxed"
                   style={{
@@ -183,7 +159,7 @@ export function LandingPageTemplate({ page }: Props) {
                 >
                   {page.body_content}
                 </p>
-              </motion.div>
+              </div>
             )}
 
             {/* Divider */}
@@ -194,12 +170,7 @@ export function LandingPageTemplate({ page }: Props) {
 
             {/* Form or Success */}
             {isSubmitted ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
-                className="text-center py-8"
-              >
+              <div className="text-center py-8 animate-fade-in">
                 <div
                   className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center"
                   style={{ background: `${colors.accent}15` }}
@@ -232,22 +203,11 @@ export function LandingPageTemplate({ page }: Props) {
                 >
                   Check your inbox for your download.
                 </p>
-              </motion.div>
+              </div>
             ) : (
-              <motion.form
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                onSubmit={handleSubmit}
-                className="space-y-4"
-              >
-                {formFields.map((field, index) => (
-                  <motion.div
-                    key={field.name}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 + index * 0.1, duration: 0.4 }}
-                  >
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {formFields.map((field) => (
+                  <div key={field.name}>
                     <label
                       className="block text-xs uppercase tracking-wider mb-2"
                       style={{
@@ -267,7 +227,7 @@ export function LandingPageTemplate({ page }: Props) {
                         value={formData[field.name] || ''}
                         onChange={(e) => setFormData({ ...formData, [field.name]: e.target.value })}
                         rows={4}
-                        className="w-full px-4 py-3 rounded-lg transition-all duration-200 outline-none"
+                        className="w-full px-4 py-3 rounded-lg transition-all duration-200 outline-none focus:ring-2"
                         style={{
                           fontFamily: 'system-ui, sans-serif',
                           fontSize: '0.9375rem',
@@ -291,24 +251,20 @@ export function LandingPageTemplate({ page }: Props) {
                           color: '#2C3E50',
                           background: '#FAF8F5',
                           border: '1px solid #E8E4E0',
-                          // @ts-ignore
-                          '--tw-ring-color': `${colors.accent}40`,
                         }}
                       />
                     )}
-                  </motion.div>
+                  </div>
                 ))}
 
                 {error && (
                   <p className="text-sm text-red-600 text-center">{error}</p>
                 )}
 
-                <motion.button
+                <button
                   type="submit"
                   disabled={isSubmitting}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-60"
+                  className="w-full py-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-60 hover:scale-[1.02] active:scale-[0.98]"
                   style={{
                     fontFamily: 'system-ui, sans-serif',
                     fontSize: '0.9375rem',
@@ -329,7 +285,7 @@ export function LandingPageTemplate({ page }: Props) {
                   ) : (
                     page.lead_magnet_title || 'Get Instant Access'
                   )}
-                </motion.button>
+                </button>
 
                 <p
                   className="text-xs text-center pt-2"
@@ -340,16 +296,13 @@ export function LandingPageTemplate({ page }: Props) {
                 >
                   We respect your privacy. Unsubscribe anytime.
                 </p>
-              </motion.form>
+              </form>
             )}
           </div>
         </div>
 
         {/* Footer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
+        <p
           className="text-center mt-6 text-xs"
           style={{
             fontFamily: 'system-ui, sans-serif',
@@ -357,8 +310,8 @@ export function LandingPageTemplate({ page }: Props) {
           }}
         >
           Haven & Hold
-        </motion.p>
-      </motion.div>
+        </p>
+      </div>
     </div>
   );
 }
