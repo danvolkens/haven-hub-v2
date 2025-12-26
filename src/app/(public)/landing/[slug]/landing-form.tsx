@@ -23,7 +23,7 @@ const COLLECTION_ACCENTS = {
   },
 };
 
-export function LandingPageTemplate({ page }: Props) {
+export function LandingPageForm({ page }: Props) {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);

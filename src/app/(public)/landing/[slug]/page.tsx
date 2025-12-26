@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { LandingPageTemplate } from './template';
+import { LandingPageForm } from './landing-form';
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -51,5 +51,5 @@ export default async function LandingPage({ params }: PageProps) {
     notFound();
   }
 
-  return <LandingPageTemplate page={page} />;
+  return <LandingPageForm page={page} />;
 }
