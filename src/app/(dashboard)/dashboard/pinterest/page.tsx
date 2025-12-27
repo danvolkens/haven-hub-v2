@@ -78,6 +78,8 @@ export default function PinterestPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showBulkSchedule, setShowBulkSchedule] = useState(false);
   const [selectedPinIds, setSelectedPinIds] = useState<string[]>([]);
+  const [selectedScheduledIds, setSelectedScheduledIds] = useState<string[]>([]);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [bulkScheduleStrategy, setBulkScheduleStrategy] = useState<'immediate' | 'optimal' | 'spread'>('optimal');
   const [spreadDays, setSpreadDays] = useState(7);
   const queryClient = useQueryClient();
@@ -171,6 +173,29 @@ export default function PinterestPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pinterest', 'pins'] });
+    },
+  });
+
+  // Bulk delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (pinIds: string[]) => {
+      // Delete pins one by one (could be optimized with a bulk endpoint)
+      const results = await Promise.all(
+        pinIds.map(async (pinId) => {
+          const res = await fetch('/api/pinterest/pins', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pinId }),
+          });
+          return { pinId, success: res.ok };
+        })
+      );
+      return results;
+    },
+    onSuccess: () => {
+      setSelectedScheduledIds([]);
+      setShowBulkDeleteConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['pinterest', 'pins'] });
       setShowDeleteConfirm(null);
     },
   });
@@ -213,6 +238,21 @@ export default function PinterestPage() {
   const selectAllDraftPins = () => {
     const draftPinIds = pins.filter((p) => p.status === 'draft').map((p) => p.id);
     setSelectedPinIds(draftPinIds);
+  };
+
+  const toggleScheduledSelection = (pinId: string) => {
+    setSelectedScheduledIds((prev) =>
+      prev.includes(pinId) ? prev.filter((id) => id !== pinId) : [...prev, pinId]
+    );
+  };
+
+  const selectAllScheduledPins = () => {
+    const scheduledPinIds = pins.filter((p) => p.status === 'scheduled').map((p) => p.id);
+    setSelectedScheduledIds(scheduledPinIds);
+  };
+
+  const clearScheduledSelection = () => {
+    setSelectedScheduledIds([]);
   };
 
   const boards: Board[] = boardsData?.boards || [];
@@ -513,10 +553,44 @@ export default function PinterestPage() {
         <TabsContent value="scheduled">
           <Card>
             <CardHeader>
-              <h3 className="text-lg font-semibold">Scheduled Pins</h3>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Pins waiting to be published
-              </p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Scheduled Pins</h3>
+                  <p className="text-sm text-[var(--color-text-secondary)]">
+                    Pins waiting to be published
+                  </p>
+                </div>
+                {pins.filter((p) => p.status === 'scheduled').length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllScheduledPins}
+                    >
+                      Select All
+                    </Button>
+                    {selectedScheduledIds.length > 0 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={clearScheduledSelection}
+                        >
+                          Clear ({selectedScheduledIds.length})
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => setShowBulkDeleteConfirm(true)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete Selected
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {(() => {
@@ -533,9 +607,25 @@ export default function PinterestPage() {
                     {scheduledPins.map((pin) => (
                       <div
                         key={pin.id}
-                        className="flex items-center gap-4 p-4 border rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors cursor-pointer"
+                        className={`flex items-center gap-4 p-4 border rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors cursor-pointer ${
+                          selectedScheduledIds.includes(pin.id) ? 'ring-2 ring-sage bg-sage/5' : ''
+                        }`}
                         onClick={() => setSelectedPin(pin)}
                       >
+                        {/* Selection checkbox */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleScheduledSelection(pin.id);
+                          }}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors shrink-0 ${
+                            selectedScheduledIds.includes(pin.id)
+                              ? 'bg-sage border-sage text-white'
+                              : 'border-gray-300 hover:border-sage'
+                          }`}
+                        >
+                          {selectedScheduledIds.includes(pin.id) && <Check className="h-3 w-3" />}
+                        </button>
                         <img
                           src={pin.image_url}
                           alt={pin.title}
@@ -733,6 +823,37 @@ export default function PinterestPage() {
             disabled={deletePinMutation.isPending}
           >
             {deletePinMutation.isPending ? 'Deleting...' : 'Delete'}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Bulk Delete Confirmation */}
+      <Modal
+        isOpen={showBulkDeleteConfirm}
+        onClose={() => setShowBulkDeleteConfirm(false)}
+        title={`Delete ${selectedScheduledIds.length} Pins`}
+        size="sm"
+      >
+        <p className="text-[var(--color-text-secondary)] mb-4">
+          Are you sure you want to delete {selectedScheduledIds.length} scheduled pins? This action cannot be undone.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <Button variant="ghost" onClick={() => setShowBulkDeleteConfirm(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => bulkDeleteMutation.mutate(selectedScheduledIds)}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            {bulkDeleteMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              `Delete ${selectedScheduledIds.length} Pins`
+            )}
           </Button>
         </div>
       </Modal>
