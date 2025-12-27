@@ -11,6 +11,7 @@ import {
   Sparkles,
   Copy,
   CheckCircle,
+  Star,
 } from 'lucide-react';
 import {
   Button,
@@ -36,6 +37,7 @@ interface MockupTemplate {
   dm_template_url: string | null;
   is_active: boolean;
   is_system: boolean;
+  is_default: boolean;
   config: {
     collection_name?: string;
     smart_objects?: any[];
@@ -65,6 +67,35 @@ export default function MockupTemplatesPage() {
       toast(error instanceof Error ? error.message : 'Failed to sync templates', 'error');
     },
   });
+
+  const toggleDefaultMutation = useMutation({
+    mutationFn: async ({ templateId, isDefault }: { templateId: string; isDefault: boolean }) => {
+      const res = await fetch('/api/mockups/templates/defaults', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateId, isDefault }),
+      });
+      if (!res.ok) throw new Error('Failed to update template');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mockup-templates-all'] });
+      toast('Template updated', 'success');
+    },
+    onError: (error) => {
+      toast(error instanceof Error ? error.message : 'Failed to update template', 'error');
+    },
+  });
+
+  const handleToggleDefault = (template: MockupTemplate, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleDefaultMutation.mutate({
+      templateId: template.id,
+      isDefault: !template.is_default,
+    });
+  };
+
+  const defaultCount = templates.filter((t) => t.is_default).length;
 
   const filteredTemplates = templates.filter((t) => {
     if (filter === 'synced') return !t.is_system;
@@ -99,40 +130,48 @@ export default function MockupTemplatesPage() {
     >
       <div className="space-y-6">
         {/* Stats */}
-        <div className="flex gap-4">
-          <button
-            onClick={() => setFilter('all')}
-            className={cn(
-              'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
-              filter === 'all'
-                ? 'bg-sage text-white'
-                : 'bg-elevated hover:bg-elevated/80'
-            )}
-          >
-            All ({templates.length})
-          </button>
-          <button
-            onClick={() => setFilter('synced')}
-            className={cn(
-              'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
-              filter === 'synced'
-                ? 'bg-sage text-white'
-                : 'bg-elevated hover:bg-elevated/80'
-            )}
-          >
-            Synced ({syncedCount})
-          </button>
-          <button
-            onClick={() => setFilter('system')}
-            className={cn(
-              'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
-              filter === 'system'
-                ? 'bg-sage text-white'
-                : 'bg-elevated hover:bg-elevated/80'
-            )}
-          >
-            System ({systemCount})
-          </button>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={cn(
+                'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
+                filter === 'all'
+                  ? 'bg-sage text-white'
+                  : 'bg-elevated hover:bg-elevated/80'
+              )}
+            >
+              All ({templates.length})
+            </button>
+            <button
+              onClick={() => setFilter('synced')}
+              className={cn(
+                'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
+                filter === 'synced'
+                  ? 'bg-sage text-white'
+                  : 'bg-elevated hover:bg-elevated/80'
+              )}
+            >
+              Synced ({syncedCount})
+            </button>
+            <button
+              onClick={() => setFilter('system')}
+              className={cn(
+                'px-4 py-2 rounded-md text-body-sm font-medium transition-colors cursor-pointer',
+                filter === 'system'
+                  ? 'bg-sage text-white'
+                  : 'bg-elevated hover:bg-elevated/80'
+              )}
+            >
+              System ({systemCount})
+            </button>
+          </div>
+          {defaultCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 rounded-full text-sm">
+              <Star className="h-4 w-4 text-yellow-500 fill-yellow-400" />
+              <span className="text-yellow-700">{defaultCount} default{defaultCount !== 1 ? 's' : ''}</span>
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -170,6 +209,8 @@ export default function MockupTemplatesPage() {
                       key={template.id}
                       template={template}
                       onClick={() => setSelectedTemplate(template)}
+                      onToggleDefault={(e) => handleToggleDefault(template, e)}
+                      isToggling={toggleDefaultMutation.isPending}
                     />
                   ))}
                 </div>
@@ -212,57 +253,85 @@ export default function MockupTemplatesPage() {
 function TemplateCard({
   template,
   onClick,
+  onToggleDefault,
+  isToggling,
 }: {
   template: MockupTemplate;
   onClick: () => void;
+  onToggleDefault: (e: React.MouseEvent) => void;
+  isToggling: boolean;
 }) {
   const isPinterestOnly = template.config?.collection_name?.toLowerCase().includes('pinterest');
 
   return (
-    <button
-      onClick={onClick}
-      className="rounded-lg border overflow-hidden bg-white text-left cursor-pointer hover:shadow-md transition-shadow"
-    >
-      <div className="aspect-[4/3] bg-elevated relative">
-        {template.preview_url ? (
-          <img
-            src={template.preview_url}
-            alt={template.name}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[var(--color-text-tertiary)]">
-            <Sparkles className="h-10 w-10" />
-          </div>
-        )}
-        <div className="absolute top-2 right-2 flex flex-wrap gap-1 justify-end">
-          {isPinterestOnly && (
-            <Badge variant="primary" className="text-xs">Pinterest</Badge>
-          )}
-          {template.is_system && (
-            <Badge variant="secondary" className="text-xs">System</Badge>
-          )}
-          {template.is_active ? (
-            <Badge variant="success" className="text-xs">Active</Badge>
+    <div className="rounded-lg border overflow-hidden bg-white text-left hover:shadow-md transition-shadow">
+      <button
+        onClick={onClick}
+        className="w-full text-left cursor-pointer"
+      >
+        <div className="aspect-[4/3] bg-elevated relative">
+          {template.preview_url ? (
+            <img
+              src={template.preview_url}
+              alt={template.name}
+              className="w-full h-full object-cover"
+            />
           ) : (
-            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+            <div className="w-full h-full flex items-center justify-center text-[var(--color-text-tertiary)]">
+              <Sparkles className="h-10 w-10" />
+            </div>
           )}
+          <div className="absolute top-2 right-2 flex flex-wrap gap-1 justify-end">
+            {isPinterestOnly && (
+              <Badge variant="primary" className="text-xs">Pinterest</Badge>
+            )}
+            {template.is_system && (
+              <Badge variant="secondary" className="text-xs">System</Badge>
+            )}
+            {template.is_active ? (
+              <Badge variant="success" className="text-xs">Active</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Inactive</Badge>
+            )}
+          </div>
         </div>
-      </div>
+      </button>
       <div className="p-3">
-        <p className="text-body-sm font-medium truncate">{template.name}</p>
-        {template.description && (
-          <p className="text-caption text-[var(--color-text-tertiary)] truncate mt-0.5">
-            {template.description}
-          </p>
-        )}
+        <div className="flex items-start justify-between gap-2">
+          <button onClick={onClick} className="flex-1 text-left cursor-pointer">
+            <p className="text-body-sm font-medium truncate">{template.name}</p>
+            {template.description && (
+              <p className="text-caption text-[var(--color-text-tertiary)] truncate mt-0.5">
+                {template.description}
+              </p>
+            )}
+          </button>
+          <button
+            onClick={onToggleDefault}
+            disabled={isToggling}
+            className={cn(
+              'flex-shrink-0 p-1.5 rounded-md transition-colors cursor-pointer',
+              template.is_default
+                ? 'text-yellow-500 hover:bg-yellow-50'
+                : 'text-[var(--color-text-tertiary)] hover:text-yellow-500 hover:bg-yellow-50'
+            )}
+            title={template.is_default ? 'Remove from defaults' : 'Set as default for auto-generation'}
+          >
+            <Star
+              className={cn(
+                'h-5 w-5',
+                template.is_default && 'fill-yellow-400'
+              )}
+            />
+          </button>
+        </div>
         {template.dm_template_id && (
           <p className="text-caption text-[var(--color-text-tertiary)] mt-1 font-mono">
             ID: {template.dm_template_id.slice(0, 8)}...
           </p>
         )}
       </div>
-    </button>
+    </div>
   );
 }
 

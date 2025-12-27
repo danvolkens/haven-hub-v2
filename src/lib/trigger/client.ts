@@ -43,6 +43,13 @@ export interface ExportGeneratorPayload {
   fields?: string[];
 }
 
+export interface AutoMockupQueuePayload {
+  userId: string;
+  assetIds: string[];
+  quoteId?: string;
+  source: 'asset_approval' | 'quote_approval' | 'manual';
+}
+
 /**
  * Trigger the design engine pipeline
  */
@@ -97,4 +104,12 @@ export async function getTaskRunStatus(runId: string) {
  */
 export async function cancelTaskRun(runId: string) {
   return runs.cancel(runId);
+}
+
+/**
+ * Trigger auto-mockup generation queue
+ * Called when assets are approved and auto-generation is enabled
+ */
+export async function triggerAutoMockupQueue(payload: AutoMockupQueuePayload) {
+  return tasks.trigger('auto-mockup-queue', payload);
 }

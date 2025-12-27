@@ -48,9 +48,17 @@ export interface MockupSceneTemplate {
   preview_url: string | null;
   is_active: boolean;
   is_system: boolean;
+  is_default: boolean;
   recommended_collections: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface MockupAutomationSettings {
+  auto_generate: boolean;
+  use_defaults: boolean;
+  max_per_quote: number;
+  notify_on_complete: boolean;
 }
 
 export interface CreditUsage {

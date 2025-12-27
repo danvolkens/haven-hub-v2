@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardHeader, CardContent, Button } from '@/components/ui';
-import { Database, Shield, ArrowRight, RefreshCw, Plug, Image, Store } from 'lucide-react';
+import { Database, Shield, ArrowRight, RefreshCw, Plug, Image, Store, Zap } from 'lucide-react';
 import { useToast } from '@/components/providers/toast-provider';
 import { api } from '@/lib/fetcher';
 
@@ -14,6 +14,12 @@ const settingsSections = [
     description: 'Manage your Shopify store connection, sync products and orders',
     icon: Store,
     href: '/dashboard/settings/shopify',
+  },
+  {
+    title: 'Mockup Automation',
+    description: 'Auto-generate mockups when quotes are approved',
+    icon: Zap,
+    href: '/dashboard/settings/mockup-automation',
   },
   {
     title: 'Data Export',

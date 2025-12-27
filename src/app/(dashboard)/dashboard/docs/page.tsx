@@ -767,6 +767,40 @@ function MockupsSection() {
           Track your usage and remaining credits in Settings → Integrations.
         </p>
       </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Automatic Generation</h3>
+        <p className="text-[var(--color-text-secondary)] mb-3">
+          Mockups can be generated automatically when you approve an asset. Configure in Settings → Mockup Automation:
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)]">
+          <li><strong>Auto-Generate:</strong> Enable to trigger mockups on asset approval</li>
+          <li><strong>Default Templates:</strong> Mark favorite templates with ⭐ in Settings → Mockups</li>
+          <li><strong>Max Per Quote:</strong> Limit mockups generated per approved asset (1-20)</li>
+          <li><strong>Notifications:</strong> Get notified when mockups are ready</li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Operator Mode Behavior</h3>
+        <p className="text-[var(--color-text-secondary)] mb-3">
+          Auto-generated mockups follow your Operator Mode settings:
+        </p>
+        <div className="grid gap-3">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium mb-1">Supervised Mode</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">Mockups go to Approval Queue for review before saving</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium mb-1">Assisted Mode</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">Mockups go to Approval Queue (non-autopilot default)</p>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="font-medium mb-1">Autopilot Mode</div>
+            <p className="text-sm text-[var(--color-text-secondary)]">Mockups are auto-saved directly to your Assets Library</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
 import { invalidate, cacheKey, CACHE_PREFIX } from '@/lib/cache/cache-utils';
+import { triggerAutoMockupQueue } from '@/lib/trigger/client';
 
 const bulkActionSchema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -46,6 +47,60 @@ export async function POST(request: NextRequest) {
       p_executed: true,
       p_module: 'approval_queue',
     });
+
+    // Trigger auto-mockup generation for approved assets
+    if (action === 'approve') {
+      // Get the approved items to find asset reference IDs
+      const { data: approvedItems } = await (supabase as any)
+        .from('approval_items')
+        .select('type, reference_id, payload')
+        .in('id', itemIds)
+        .eq('type', 'asset');
+
+      if (approvedItems && approvedItems.length > 0) {
+        const assetIds = approvedItems.map((item: any) => item.reference_id);
+
+        // Update asset statuses to approved
+        await (supabase as any)
+          .from('assets')
+          .update({
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+          })
+          .in('id', assetIds)
+          .eq('user_id', userId);
+
+        // Trigger auto-mockup generation (will check settings internally)
+        try {
+          await triggerAutoMockupQueue({
+            userId,
+            assetIds,
+            source: 'asset_approval',
+          });
+        } catch (err) {
+          console.error('Auto-mockup trigger failed:', err);
+        }
+      }
+
+      // Update mockup statuses to approved
+      const { data: approvedMockups } = await (supabase as any)
+        .from('approval_items')
+        .select('reference_id')
+        .in('id', itemIds)
+        .eq('type', 'mockup');
+
+      if (approvedMockups && approvedMockups.length > 0) {
+        const mockupIds = approvedMockups.map((item: any) => item.reference_id);
+        await (supabase as any)
+          .from('mockups')
+          .update({
+            status: 'approved',
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', mockupIds)
+          .eq('user_id', userId);
+      }
+    }
 
     return NextResponse.json({
       success: true,

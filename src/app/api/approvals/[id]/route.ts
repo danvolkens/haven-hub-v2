@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
 import { invalidate, cacheKey, CACHE_PREFIX } from '@/lib/cache/cache-utils';
+import { triggerAutoMockupQueue } from '@/lib/trigger/client';
 
 const actionSchema = z.object({
   action: z.enum(['approve', 'reject', 'skip']),
@@ -99,10 +100,46 @@ export async function PATCH(
       p_reference_table: data.reference_table,
     });
 
-    // TODO: Trigger downstream actions based on approval
-    // - If asset approved: queue for mockup generation
-    // - If pin approved: queue for scheduling
-    // - If product approved: publish to Shopify
+    // Trigger downstream actions based on approval
+    if (action === 'approve') {
+      // If asset approved: queue for auto mockup generation
+      if (data.type === 'asset' && data.reference_id) {
+        // Update the asset status to approved
+        await (supabase as any)
+          .from('assets')
+          .update({
+            status: 'approved',
+            approved_at: new Date().toISOString(),
+          })
+          .eq('id', data.reference_id)
+          .eq('user_id', userId);
+
+        // Trigger auto-mockup generation (will check settings internally)
+        try {
+          await triggerAutoMockupQueue({
+            userId,
+            assetIds: [data.reference_id],
+            quoteId: data.payload?.quoteId,
+            source: 'asset_approval',
+          });
+        } catch (err) {
+          // Don't fail the approval if auto-mockup fails
+          console.error('Auto-mockup trigger failed:', err);
+        }
+      }
+
+      // If mockup approved: update mockup status
+      if (data.type === 'mockup' && data.reference_id) {
+        await (supabase as any)
+          .from('mockups')
+          .update({
+            status: 'approved',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', data.reference_id)
+          .eq('user_id', userId);
+      }
+    }
 
     return NextResponse.json({ success: true, item: data });
   } catch (error) {
