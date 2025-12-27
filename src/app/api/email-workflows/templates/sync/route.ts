@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { KlaviyoClient } from '@/lib/integrations/klaviyo/client';
+import { getKlaviyoClient } from '@/lib/integrations/klaviyo/service';
 
 // POST - Sync a template to Klaviyo (creates or updates)
 export async function POST(request: NextRequest) {
@@ -15,21 +15,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { template_id, sync_all } = body;
 
-    // Get Klaviyo API key from integrations
-    const { data: integration } = await (supabase as any)
-      .from('integrations')
-      .select('credentials')
-      .eq('user_id', user.id)
-      .eq('provider', 'klaviyo')
-      .single();
+    // Get Klaviyo client
+    const klaviyo = await getKlaviyoClient(user.id);
 
-    if (!integration?.credentials?.api_key) {
+    if (!klaviyo) {
       return NextResponse.json({
         error: 'Klaviyo integration not configured. Please add your API key in Settings.'
       }, { status: 400 });
     }
-
-    const klaviyo = new KlaviyoClient({ apiKey: integration.credentials.api_key });
 
     // Get templates to sync
     let query = (supabase as any)
@@ -157,19 +150,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Template is not synced to Klaviyo' }, { status: 400 });
     }
 
-    // Get Klaviyo API key
-    const { data: integration } = await (supabase as any)
-      .from('integrations')
-      .select('credentials')
-      .eq('user_id', user.id)
-      .eq('provider', 'klaviyo')
-      .single();
+    // Get Klaviyo client
+    const klaviyo = await getKlaviyoClient(user.id);
 
-    if (!integration?.credentials?.api_key) {
+    if (!klaviyo) {
       return NextResponse.json({ error: 'Klaviyo integration not configured' }, { status: 400 });
     }
-
-    const klaviyo = new KlaviyoClient({ apiKey: integration.credentials.api_key });
 
     try {
       // Delete from Klaviyo
