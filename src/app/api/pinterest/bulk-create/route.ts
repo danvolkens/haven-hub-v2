@@ -9,6 +9,10 @@ interface BulkPinRequest {
   schedule_strategy: 'immediate' | 'optimal' | 'spread';
   spread_days?: number;
   include_mockups?: boolean;
+  link_type?: 'product' | 'custom' | 'landing_page' | 'quiz';
+  custom_url?: string;
+  landing_page_slug?: string;
+  quiz_slug?: string;
 }
 
 interface BulkCreateResult {
@@ -87,6 +91,10 @@ export async function POST(request: NextRequest) {
       schedule_strategy,
       spread_days = 7,
       include_mockups = true,
+      link_type = 'product',
+      custom_url,
+      landing_page_slug,
+      quiz_slug,
     } = body;
 
     if (!quote_ids?.length) {
@@ -228,6 +236,19 @@ export async function POST(request: NextRequest) {
 
     const defaultShopUrl = userSettings?.shop_url || 'https://havenandhold.com';
 
+    // Determine the base URL based on link_type
+    let overrideLink: string | null = null;
+    const siteBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://havenhub.app';
+
+    if (link_type === 'custom' && custom_url) {
+      overrideLink = custom_url;
+    } else if (link_type === 'landing_page' && landing_page_slug) {
+      overrideLink = `${siteBaseUrl}/landing/${landing_page_slug}`;
+    } else if (link_type === 'quiz' && quiz_slug) {
+      overrideLink = `${siteBaseUrl}/quiz/${quiz_slug}`;
+    }
+    // If link_type === 'product', overrideLink stays null and we use per-quote product links
+
     // Fetch quote data (text and product_link) for all quotes
     const allQuoteIds = [...new Set(allImages.filter(img => img.quoteId).map(img => img.quoteId))];
     const quoteDataMap = new Map<string, { text: string; product_link: string | null }>();
@@ -290,7 +311,7 @@ export async function POST(request: NextRequest) {
             title: copy.title,
             description: `${copy.description}\n\n${copy.hashtags.map((h: string) => `#${h}`).join(' ')}`,
             alt_text: copy.alt_text,
-            link: item.productLink || quoteData?.product_link || defaultShopUrl,
+            link: overrideLink || item.productLink || quoteData?.product_link || defaultShopUrl,
             image_url: item.imageUrl,
             collection: item.collection,
             status: schedule_strategy === 'immediate' ? 'draft' : 'scheduled',
@@ -333,6 +354,8 @@ export async function POST(request: NextRequest) {
           includeMockups: include_mockups,
           boardId: board_id,
           boardName: board.name,
+          linkType: link_type,
+          linkDestination: overrideLink || 'product',
         },
         p_executed: true,
         p_module: 'pinterest',

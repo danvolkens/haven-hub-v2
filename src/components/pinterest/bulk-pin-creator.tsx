@@ -21,6 +21,11 @@ import {
   Zap,
   Clock,
   Check,
+  Link as LinkIcon,
+  ExternalLink,
+  FileText,
+  HelpCircle,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface Quote {
@@ -44,6 +49,8 @@ interface BulkPinCreatorProps {
   boards: Board[];
 }
 
+type LinkType = 'product' | 'custom' | 'landing_page' | 'quiz';
+
 export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedQuotes, setSelectedQuotes] = useState<string[]>([]);
@@ -51,6 +58,10 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
   const [strategy, setStrategy] = useState<'immediate' | 'optimal' | 'spread'>('optimal');
   const [spreadDays, setSpreadDays] = useState(7);
   const [includeMockups, setIncludeMockups] = useState(true);
+  const [linkType, setLinkType] = useState<LinkType>('product');
+  const [customUrl, setCustomUrl] = useState('');
+  const [selectedLandingPage, setSelectedLandingPage] = useState('');
+  const [selectedQuiz, setSelectedQuiz] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch quotes with approved assets
@@ -64,6 +75,28 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     enabled: isOpen,
   });
 
+  // Fetch landing pages
+  const { data: landingPagesData } = useQuery({
+    queryKey: ['landing-pages-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/landing-pages');
+      if (!res.ok) return { pages: [] };
+      return res.json();
+    },
+    enabled: isOpen && linkType === 'landing_page',
+  });
+
+  // Fetch quizzes
+  const { data: quizzesData } = useQuery({
+    queryKey: ['quizzes-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/quiz');
+      if (!res.ok) return { quizzes: [] };
+      return res.json();
+    },
+    enabled: isOpen && linkType === 'quiz',
+  });
+
   // Bulk create mutation
   const bulkCreateMutation = useMutation({
     mutationFn: async (data: {
@@ -72,6 +105,10 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
       schedule_strategy: string;
       spread_days?: number;
       include_mockups: boolean;
+      link_type: LinkType;
+      custom_url?: string;
+      landing_page_slug?: string;
+      quiz_slug?: string;
     }) => {
       const res = await fetch('/api/pinterest/bulk-create', {
         method: 'POST',
@@ -104,6 +141,10 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     setStrategy('optimal');
     setSpreadDays(7);
     setIncludeMockups(true);
+    setLinkType('product');
+    setCustomUrl('');
+    setSelectedLandingPage('');
+    setSelectedQuiz('');
   };
 
   const toggleQuote = (quoteId: string) => {
@@ -125,14 +166,26 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
   const handleCreate = () => {
     if (!boardId || selectedQuotes.length === 0) return;
 
+    // Validate link options
+    if (linkType === 'custom' && !customUrl) return;
+    if (linkType === 'landing_page' && !selectedLandingPage) return;
+    if (linkType === 'quiz' && !selectedQuiz) return;
+
     bulkCreateMutation.mutate({
       quote_ids: selectedQuotes,
       board_id: boardId,
       schedule_strategy: strategy,
       spread_days: strategy === 'spread' ? spreadDays : undefined,
       include_mockups: includeMockups,
+      link_type: linkType,
+      custom_url: linkType === 'custom' ? customUrl : undefined,
+      landing_page_slug: linkType === 'landing_page' ? selectedLandingPage : undefined,
+      quiz_slug: linkType === 'quiz' ? selectedQuiz : undefined,
     });
   };
+
+  const landingPages = landingPagesData?.pages || [];
+  const quizzes = quizzesData?.quizzes || [];
 
   const totalImages = selectedQuotes.reduce((acc, quoteId) => {
     const quote = quotes.find((q) => q.id === quoteId);
@@ -279,6 +332,77 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                   })),
                 ]}
               />
+            </div>
+
+            {/* Link Destination */}
+            <div>
+              <Label>Link Destination</Label>
+              <p className="text-xs text-[var(--color-text-tertiary)] mb-2">
+                Where should pins link to when clicked?
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                {[
+                  { value: 'product', label: 'Product', icon: ShoppingBag, description: 'Quote product link' },
+                  { value: 'custom', label: 'Custom URL', icon: ExternalLink, description: 'Any URL' },
+                  { value: 'landing_page', label: 'Landing Page', icon: FileText, description: 'Your pages' },
+                  { value: 'quiz', label: 'Quiz', icon: HelpCircle, description: 'Lead capture' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                      linkType === option.value
+                        ? 'border-sage bg-sage/10 ring-1 ring-sage'
+                        : 'border-[var(--color-border-primary)] hover:border-sage/50'
+                    }`}
+                    onClick={() => setLinkType(option.value as LinkType)}
+                  >
+                    <option.icon className="h-4 w-4 mb-1" />
+                    <p className="text-xs font-medium">{option.label}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">{option.description}</p>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom URL Input */}
+              {linkType === 'custom' && (
+                <Input
+                  type="url"
+                  placeholder="https://your-shop.com/collection/..."
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                />
+              )}
+
+              {/* Landing Page Select */}
+              {linkType === 'landing_page' && (
+                <Select
+                  value={selectedLandingPage}
+                  onChange={(value) => setSelectedLandingPage(typeof value === 'string' ? value : '')}
+                  options={[
+                    { value: '', label: 'Select a landing page...' },
+                    ...landingPages.map((page: { slug: string; title: string }) => ({
+                      value: page.slug,
+                      label: page.title,
+                    })),
+                  ]}
+                />
+              )}
+
+              {/* Quiz Select */}
+              {linkType === 'quiz' && (
+                <Select
+                  value={selectedQuiz}
+                  onChange={(value) => setSelectedQuiz(typeof value === 'string' ? value : '')}
+                  options={[
+                    { value: '', label: 'Select a quiz...' },
+                    ...quizzes.map((quiz: { slug: string; title: string }) => ({
+                      value: quiz.slug,
+                      label: quiz.title,
+                    })),
+                  ]}
+                />
+              )}
             </div>
 
             {/* Scheduling Strategy */}
