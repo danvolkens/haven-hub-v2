@@ -15,6 +15,8 @@ import {
   Settings,
   AlertTriangle,
   Link as LinkIcon,
+  Send,
+  X,
 } from 'lucide-react';
 import {
   Button,
@@ -118,8 +120,11 @@ function TemplateEditor({
   onSave,
   onDelete,
   onSync,
+  onSendTest,
   isSaving,
   isSyncing,
+  isSendingTest,
+  testEmailResult,
 }: {
   template: EmailTemplate | null;
   position: number;
@@ -129,8 +134,11 @@ function TemplateEditor({
   onSave: (data: Partial<EmailTemplate>) => void;
   onDelete: () => void;
   onSync: () => void;
+  onSendTest: (templateId: string, toEmail: string) => void;
   isSaving: boolean;
   isSyncing: boolean;
+  isSendingTest: boolean;
+  testEmailResult: { success: boolean; message: string } | null;
 }) {
   const labels = EMAIL_LABELS[flowType] || [];
   const delays = DEFAULT_DELAYS[flowType] || [];
@@ -140,6 +148,8 @@ function TemplateEditor({
   const defaultButtonText = buttonTexts[position - 1] || 'Shop Now';
 
   const [showPreview, setShowPreview] = useState(false);
+  const [showTestForm, setShowTestForm] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
   const [formData, setFormData] = useState({
     name: template?.name || label,
     subject: template?.subject || '',
@@ -305,6 +315,55 @@ function TemplateEditor({
           </div>
         )}
 
+        {/* Test Email Form */}
+        {showTestForm && template?.id && (
+          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-medium text-blue-900">Send Test Email</h4>
+              <button
+                type="button"
+                onClick={() => setShowTestForm(false)}
+                className="text-blue-600 hover:text-blue-800 cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="email"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="Enter email address..."
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  if (template?.id && testEmail) {
+                    onSendTest(template.id, testEmail);
+                  }
+                }}
+                disabled={isSendingTest || !testEmail}
+                className="cursor-pointer"
+              >
+                {isSendingTest ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Send
+              </Button>
+            </div>
+            {testEmailResult && (
+              <div className={`mt-2 text-sm ${testEmailResult.success ? 'text-green-700' : 'text-red-600'}`}>
+                {testEmailResult.message}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-blue-700">
+              Test email will include "[TEST]" prefix and use placeholder values for Klaviyo variables.
+            </p>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-2">
@@ -321,20 +380,30 @@ function TemplateEditor({
               {template?.id ? 'Update' : 'Create'} Template
             </Button>
             {template?.id && (
-              <Button
-                variant="secondary"
-                onClick={onSync}
-                disabled={isSyncing || !hasBaseTemplate}
-                className="cursor-pointer"
-                title={!hasBaseTemplate ? 'Set up a base template first' : undefined}
-              >
-                {isSyncing ? (
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Sync to Klaviyo
-              </Button>
+              <>
+                <Button
+                  variant="secondary"
+                  onClick={onSync}
+                  disabled={isSyncing || !hasBaseTemplate}
+                  className="cursor-pointer"
+                  title={!hasBaseTemplate ? 'Set up a base template first' : undefined}
+                >
+                  {isSyncing ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Sync to Klaviyo
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowTestForm(!showTestForm)}
+                  className="cursor-pointer"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Test
+                </Button>
+              </>
             )}
           </div>
           {template?.id && (
@@ -422,6 +491,37 @@ export default function FlowTemplateEditorPage() {
       api.post('/email-workflows/templates/sync', { sync_all: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'templates'] });
+    },
+  });
+
+  // Test email state and mutation
+  const [testingTemplateId, setTestingTemplateId] = useState<string | null>(null);
+  const [testEmailResult, setTestEmailResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const testEmailMutation = useMutation<
+    { success: boolean; message: string },
+    Error,
+    { templateId: string; toEmail: string }
+  >({
+    mutationFn: async ({ templateId, toEmail }) => {
+      const result = await api.post('/email-workflows/templates/test', {
+        template_id: templateId,
+        to_email: toEmail
+      });
+      return result as { success: boolean; message: string };
+    },
+    onMutate: ({ templateId }) => {
+      setTestingTemplateId(templateId);
+      setTestEmailResult(null);
+    },
+    onSuccess: (data) => {
+      setTestEmailResult({ success: true, message: data.message || 'Test email sent successfully!' });
+    },
+    onError: (error) => {
+      setTestEmailResult({ success: false, message: error.message || 'Failed to send test email' });
+    },
+    onSettled: () => {
+      setTestingTemplateId(null);
     },
   });
 
@@ -547,8 +647,11 @@ export default function FlowTemplateEditorPage() {
                 onSave={(data) => saveMutation.mutate(data)}
                 onDelete={() => template?.id && deleteMutation.mutate(template.id)}
                 onSync={() => template?.id && syncMutation.mutate(template.id)}
+                onSendTest={(templateId, toEmail) => testEmailMutation.mutate({ templateId, toEmail })}
                 isSaving={saveMutation.isPending}
                 isSyncing={syncMutation.isPending}
+                isSendingTest={testEmailMutation.isPending && testingTemplateId === template?.id}
+                testEmailResult={testingTemplateId === template?.id ? testEmailResult : null}
               />
             );
           })}
