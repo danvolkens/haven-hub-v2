@@ -36,6 +36,7 @@ import {
   Calendar,
   Check,
 } from 'lucide-react';
+import { BulkPinCreator } from '@/components/pinterest/bulk-pin-creator';
 
 interface Board {
   id: string;
@@ -273,8 +274,9 @@ export default function PinterestPage() {
               Analytics
             </Button>
           </Link>
+          <BulkPinCreator boards={boards} />
           <Link href="/dashboard/assets">
-            <Button>
+            <Button variant="secondary">
               <Plus className="h-4 w-4 mr-2" />
               Create Pin
             </Button>
