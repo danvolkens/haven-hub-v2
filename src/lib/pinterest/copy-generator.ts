@@ -143,7 +143,7 @@ function generateDescription(quote: QuoteMetadata, mood: string, room: string): 
 
 This ${mood} minimalist print brings intention to your ${room}. Part of our ${capitalize(quote.collection)} Collection - designed for those seeking quiet anchors in turbulent times.
 
-Available in multiple sizes (4x6 to 24x36)
+Available in multiple sizes (8x10 to 24x36)
 Print-ready 300 DPI
 Instant digital download
 
