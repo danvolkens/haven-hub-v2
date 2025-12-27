@@ -36,36 +36,66 @@ type EditorMode = 'visual' | 'preview' | 'code';
 
 // Helper to extract body content from email HTML
 function extractBodyContent(html: string): string {
-  // Try to find content between <div class="content"> tags
-  const contentMatch = html.match(/<div\s+class="content"[^>]*>([\s\S]*?)<\/div>\s*<div\s+class="footer"/i);
-  if (contentMatch) {
-    return contentMatch[1].trim();
+  // Find the content div start
+  const contentStart = html.indexOf('<div class="content">');
+  if (contentStart === -1) {
+    // Fallback: extract body content
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch) {
+      return bodyMatch[1].trim();
+    }
+    return html;
   }
 
-  // Fallback: extract body content
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) {
-    return bodyMatch[1].trim();
+  // Find where content ends (before footer div)
+  const footerStart = html.indexOf('<div class="footer">');
+  if (footerStart === -1) {
+    // No footer, find closing body
+    const bodyEnd = html.indexOf('</body>');
+    if (bodyEnd === -1) return html;
+
+    // Extract from after content opening tag to before body close
+    const contentTagEnd = contentStart + '<div class="content">'.length;
+    return html.slice(contentTagEnd, bodyEnd).replace(/<\/div>\s*<\/div>\s*$/i, '').trim();
   }
 
-  return html;
+  // Extract from after content opening tag to before footer
+  const contentTagEnd = contentStart + '<div class="content">'.length;
+  // Find the </div> that closes the content div (just before footer)
+  const contentEndMatch = html.slice(0, footerStart).lastIndexOf('</div>');
+  if (contentEndMatch === -1) return html;
+
+  return html.slice(contentTagEnd, contentEndMatch).trim();
 }
 
 // Helper to inject body content back into email HTML
 function injectBodyContent(fullHtml: string, newContent: string): string {
-  // Try to replace content between <div class="content"> tags
-  const contentRegex = /(<div\s+class="content"[^>]*>)([\s\S]*?)(<\/div>\s*<div\s+class="footer")/i;
-  if (contentRegex.test(fullHtml)) {
-    return fullHtml.replace(contentRegex, `$1\n      ${newContent}\n    $3`);
+  // Find the content div
+  const contentStart = fullHtml.indexOf('<div class="content">');
+  if (contentStart === -1) {
+    return fullHtml; // Can't inject without content div
   }
 
-  // Fallback: replace body content
-  const bodyRegex = /(<body[^>]*>)([\s\S]*?)(<\/body>)/i;
-  if (bodyRegex.test(fullHtml)) {
-    return fullHtml.replace(bodyRegex, `$1${newContent}$3`);
+  const contentTagEnd = contentStart + '<div class="content">'.length;
+
+  // Find where footer starts
+  const footerStart = fullHtml.indexOf('<div class="footer">');
+  if (footerStart === -1) {
+    return fullHtml; // Can't inject without footer reference
   }
 
-  return newContent;
+  // Find the </div> that closes content (just before footer)
+  const beforeFooter = fullHtml.slice(0, footerStart);
+  const contentEndIndex = beforeFooter.lastIndexOf('</div>');
+  if (contentEndIndex === -1) {
+    return fullHtml;
+  }
+
+  // Rebuild: before content + new content + closing div and everything after
+  const beforeContent = fullHtml.slice(0, contentTagEnd);
+  const afterContent = fullHtml.slice(contentEndIndex);
+
+  return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
 }
 
 interface EmailTemplate {
