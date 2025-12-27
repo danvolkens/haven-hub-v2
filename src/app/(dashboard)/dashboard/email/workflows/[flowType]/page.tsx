@@ -15,6 +15,8 @@ import {
   Clock,
   Eye,
   Code,
+  Type,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Button,
@@ -25,9 +27,46 @@ import {
   Input,
   Textarea,
 } from '@/components/ui';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { PageContainer } from '@/components/layout/page-container';
 import { api } from '@/lib/fetcher';
 import Link from 'next/link';
+
+type EditorMode = 'visual' | 'preview' | 'code';
+
+// Helper to extract body content from email HTML
+function extractBodyContent(html: string): string {
+  // Try to find content between <div class="content"> tags
+  const contentMatch = html.match(/<div\s+class="content"[^>]*>([\s\S]*?)<\/div>\s*<div\s+class="footer"/i);
+  if (contentMatch) {
+    return contentMatch[1].trim();
+  }
+
+  // Fallback: extract body content
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    return bodyMatch[1].trim();
+  }
+
+  return html;
+}
+
+// Helper to inject body content back into email HTML
+function injectBodyContent(fullHtml: string, newContent: string): string {
+  // Try to replace content between <div class="content"> tags
+  const contentRegex = /(<div\s+class="content"[^>]*>)([\s\S]*?)(<\/div>\s*<div\s+class="footer")/i;
+  if (contentRegex.test(fullHtml)) {
+    return fullHtml.replace(contentRegex, `$1\n      ${newContent}\n    $3`);
+  }
+
+  // Fallback: replace body content
+  const bodyRegex = /(<body[^>]*>)([\s\S]*?)(<\/body>)/i;
+  if (bodyRegex.test(fullHtml)) {
+    return fullHtml.replace(bodyRegex, `$1${newContent}$3`);
+  }
+
+  return newContent;
+}
 
 interface EmailTemplate {
   id: string;
@@ -129,7 +168,19 @@ function TemplateEditor({
     delay_hours: template?.delay_hours ?? defaultDelay,
   });
 
-  const [showCode, setShowCode] = useState(false);
+  const [editorMode, setEditorMode] = useState<EditorMode>('visual');
+  const [bodyContent, setBodyContent] = useState(() =>
+    extractBodyContent(template?.html_content || getDefaultTemplate(label))
+  );
+
+  // Sync body content back to full HTML when it changes
+  const handleBodyContentChange = (newContent: string) => {
+    setBodyContent(newContent);
+    setFormData(prev => ({
+      ...prev,
+      html_content: injectBodyContent(prev.html_content, newContent),
+    }));
+  };
 
   const handleSave = () => {
     onSave({
@@ -173,14 +224,37 @@ function TemplateEditor({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-md p-0.5">
             <Button
-              variant="secondary"
+              variant={editorMode === 'visual' ? 'primary' : 'ghost'}
               size="sm"
-              onClick={() => setShowCode(!showCode)}
-              className="cursor-pointer"
+              onClick={() => setEditorMode('visual')}
+              className="cursor-pointer h-7 px-2"
+              title="Visual Editor"
             >
-              {showCode ? <Eye className="h-4 w-4" /> : <Code className="h-4 w-4" />}
+              <Type className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={editorMode === 'preview' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setEditorMode('preview')}
+              className="cursor-pointer h-7 px-2"
+              title="Preview"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={editorMode === 'code' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => {
+                // When switching to code, sync body content
+                setBodyContent(extractBodyContent(formData.html_content));
+                setEditorMode('code');
+              }}
+              className="cursor-pointer h-7 px-2"
+              title="HTML Code"
+            >
+              <Code className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -205,23 +279,55 @@ function TemplateEditor({
           </div>
         </div>
 
-        {showCode ? (
+        {editorMode === 'visual' && (
           <div>
-            <label className="block text-body-sm font-medium mb-1">HTML Content</label>
+            <label className="block text-body-sm font-medium mb-1">Email Content</label>
+            <RichTextEditor
+              content={bodyContent}
+              onChange={handleBodyContentChange}
+              placeholder="Write your email content here..."
+            />
+            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+              Use {'{{ first_name }}'} for personalization. Switch to Code view for advanced HTML editing.
+            </p>
+          </div>
+        )}
+
+        {editorMode === 'preview' && (
+          <div>
+            <label className="block text-body-sm font-medium mb-1">Email Preview</label>
+            <div
+              className="border rounded-md bg-white overflow-auto"
+              style={{ maxHeight: '500px' }}
+            >
+              <iframe
+                srcDoc={formData.html_content}
+                className="w-full min-h-[400px] border-0"
+                title="Email preview"
+              />
+            </div>
+          </div>
+        )}
+
+        {editorMode === 'code' && (
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <label className="block text-body-sm font-medium">HTML Content</label>
+              <div className="flex items-center gap-1 text-xs text-amber-600">
+                <AlertTriangle className="h-3 w-3" />
+                <span>Only edit content section - preserve table structure for email compatibility</span>
+              </div>
+            </div>
             <Textarea
               value={formData.html_content}
-              onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
-              rows={15}
+              onChange={(e) => {
+                setFormData({ ...formData, html_content: e.target.value });
+                // Also update body content for when user switches back to visual
+                setBodyContent(extractBodyContent(e.target.value));
+              }}
+              rows={20}
               className="font-mono text-sm"
               placeholder="<html>...</html>"
-            />
-          </div>
-        ) : (
-          <div>
-            <label className="block text-body-sm font-medium mb-1">Preview</label>
-            <div
-              className="border rounded-md p-4 bg-white min-h-[200px] overflow-auto"
-              dangerouslySetInnerHTML={{ __html: formData.html_content }}
             />
           </div>
         )}
