@@ -87,7 +87,8 @@ export const navigation: (NavItem | NavSection)[] = [
       { name: 'Quotes', href: '/dashboard/quotes', icon: Quote },
       { name: 'Assets', href: '/dashboard/assets', icon: Image },
       { name: 'Mockups', href: '/dashboard/settings/mockups', icon: Frame },
-      { name: 'Copy Templates', href: '/dashboard/settings/copy-templates', icon: FileText },
+      { name: 'Pin Templates', href: '/dashboard/settings/pin-templates', icon: FileText },
+      { name: 'Copy Engine', href: '/dashboard/settings/copy-templates', icon: Settings },
     ],
   },
   {
