@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
 import { invalidate, cacheKey, CACHE_PREFIX } from '@/lib/cache/cache-utils';
 import { triggerAutoMockupQueue } from '@/lib/trigger/client';
+import { deleteFile } from '@/lib/storage/storage-utils';
 
 const actionSchema = z.object({
   action: z.enum(['approve', 'reject', 'skip']),
@@ -136,6 +137,59 @@ export async function PATCH(
             status: 'approved',
             updated_at: new Date().toISOString(),
           })
+          .eq('id', data.reference_id)
+          .eq('user_id', userId);
+      }
+    }
+
+    // Handle rejection - delete files from storage
+    if (action === 'reject') {
+      // If asset rejected: delete from R2 and database
+      if (data.type === 'asset' && data.reference_id) {
+        const { data: asset } = await (supabase as any)
+          .from('assets')
+          .select('file_key')
+          .eq('id', data.reference_id)
+          .eq('user_id', userId)
+          .single();
+
+        if (asset?.file_key) {
+          try {
+            await deleteFile(asset.file_key);
+          } catch (err) {
+            console.error('Failed to delete asset file from storage:', err);
+          }
+        }
+
+        // Delete the asset record
+        await (supabase as any)
+          .from('assets')
+          .delete()
+          .eq('id', data.reference_id)
+          .eq('user_id', userId);
+      }
+
+      // If mockup rejected: delete from R2 and database
+      if (data.type === 'mockup' && data.reference_id) {
+        const { data: mockup } = await (supabase as any)
+          .from('mockups')
+          .select('file_key')
+          .eq('id', data.reference_id)
+          .eq('user_id', userId)
+          .single();
+
+        if (mockup?.file_key) {
+          try {
+            await deleteFile(mockup.file_key);
+          } catch (err) {
+            console.error('Failed to delete mockup file from storage:', err);
+          }
+        }
+
+        // Delete the mockup record
+        await (supabase as any)
+          .from('mockups')
+          .delete()
           .eq('id', data.reference_id)
           .eq('user_id', userId);
       }

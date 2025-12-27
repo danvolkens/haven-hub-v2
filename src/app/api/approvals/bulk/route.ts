@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
 import { invalidate, cacheKey, CACHE_PREFIX } from '@/lib/cache/cache-utils';
 import { triggerAutoMockupQueue } from '@/lib/trigger/client';
+import { deleteFiles } from '@/lib/storage/storage-utils';
 
 const bulkActionSchema = z.object({
   action: z.enum(['approve', 'reject']),
@@ -99,6 +100,75 @@ export async function POST(request: NextRequest) {
           })
           .in('id', mockupIds)
           .eq('user_id', userId);
+      }
+    }
+
+    // Handle bulk rejection - delete files from storage
+    if (action === 'reject') {
+      // Get rejected items to find file keys
+      const { data: rejectedItems } = await (supabase as any)
+        .from('approval_items')
+        .select('type, reference_id')
+        .in('id', itemIds);
+
+      if (rejectedItems && rejectedItems.length > 0) {
+        // Get asset file keys
+        const assetIds = rejectedItems
+          .filter((item: any) => item.type === 'asset')
+          .map((item: any) => item.reference_id);
+
+        if (assetIds.length > 0) {
+          const { data: assets } = await (supabase as any)
+            .from('assets')
+            .select('file_key')
+            .in('id', assetIds)
+            .eq('user_id', userId);
+
+          const assetFileKeys = assets?.map((a: any) => a.file_key).filter(Boolean) || [];
+          if (assetFileKeys.length > 0) {
+            try {
+              await deleteFiles(assetFileKeys);
+            } catch (err) {
+              console.error('Failed to delete asset files from storage:', err);
+            }
+          }
+
+          // Delete asset records
+          await (supabase as any)
+            .from('assets')
+            .delete()
+            .in('id', assetIds)
+            .eq('user_id', userId);
+        }
+
+        // Get mockup file keys
+        const mockupIds = rejectedItems
+          .filter((item: any) => item.type === 'mockup')
+          .map((item: any) => item.reference_id);
+
+        if (mockupIds.length > 0) {
+          const { data: mockups } = await (supabase as any)
+            .from('mockups')
+            .select('file_key')
+            .in('id', mockupIds)
+            .eq('user_id', userId);
+
+          const mockupFileKeys = mockups?.map((m: any) => m.file_key).filter(Boolean) || [];
+          if (mockupFileKeys.length > 0) {
+            try {
+              await deleteFiles(mockupFileKeys);
+            } catch (err) {
+              console.error('Failed to delete mockup files from storage:', err);
+            }
+          }
+
+          // Delete mockup records
+          await (supabase as any)
+            .from('mockups')
+            .delete()
+            .in('id', mockupIds)
+            .eq('user_id', userId);
+        }
       }
     }
 
