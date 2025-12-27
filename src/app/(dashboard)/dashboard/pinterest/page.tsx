@@ -59,6 +59,7 @@ interface PinRecord {
   description: string;
   image_url: string;
   link: string;
+  alt_text: string | null;
   status: 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed' | 'retired';
   scheduled_for: string | null;
   published_at: string | null;
@@ -532,7 +533,8 @@ export default function PinterestPage() {
                     {scheduledPins.map((pin) => (
                       <div
                         key={pin.id}
-                        className="flex items-center gap-4 p-4 border rounded-lg"
+                        className="flex items-center gap-4 p-4 border rounded-lg hover:bg-[var(--color-bg-secondary)] transition-colors cursor-pointer"
+                        onClick={() => setSelectedPin(pin)}
                       >
                         <img
                           src={pin.image_url}
@@ -550,7 +552,7 @@ export default function PinterestPage() {
                             </p>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                           <Button
                             size="sm"
                             onClick={() => publishPinMutation.mutate(pin.id)}
@@ -580,40 +582,79 @@ export default function PinterestPage() {
       <Modal
         isOpen={!!selectedPin}
         onClose={() => setSelectedPin(null)}
-        title={selectedPin?.title || 'Pin Details'}
+        title="Pin Preview"
         size="lg"
       >
         {selectedPin && (
           <div className="space-y-4">
+            {/* Image */}
             <img
               src={selectedPin.image_url}
               alt={selectedPin.title}
-              className="w-full max-h-96 object-contain rounded-lg bg-[var(--color-bg-secondary)]"
+              className="w-full max-h-80 object-contain rounded-lg bg-[var(--color-bg-secondary)]"
             />
+
+            {/* Status and Board */}
             <div className="flex items-center justify-between">
-              <div>{getStatusBadge(selectedPin.status)}</div>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(selectedPin.status)}
+                {selectedPin.scheduled_for && selectedPin.status === 'scheduled' && (
+                  <span className="flex items-center gap-1 text-xs text-[var(--color-text-tertiary)]">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(selectedPin.scheduled_for).toLocaleString()}
+                  </span>
+                )}
+              </div>
               <div className="text-sm text-[var(--color-text-secondary)]">
                 {selectedPin.pinterest_boards?.name}
               </div>
             </div>
+
+            {/* Title */}
+            <div>
+              <h4 className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Title</h4>
+              <p className="font-medium">{selectedPin.title}</p>
+            </div>
+
+            {/* Description */}
             {selectedPin.description && (
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                {selectedPin.description}
-              </p>
-            )}
-            {selectedPin.link && (
-              <div className="flex items-center gap-2 text-sm">
-                <LinkIcon className="h-4 w-4" />
-                <a
-                  href={selectedPin.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-teal-600 hover:underline truncate"
-                >
-                  {selectedPin.link}
-                </a>
+              <div>
+                <h4 className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Description</h4>
+                <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
+                  {selectedPin.description}
+                </p>
               </div>
             )}
+
+            {/* Link */}
+            {selectedPin.link && (
+              <div>
+                <h4 className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Destination Link</h4>
+                <div className="flex items-center gap-2 text-sm">
+                  <LinkIcon className="h-4 w-4 text-[var(--color-text-tertiary)]" />
+                  <a
+                    href={selectedPin.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-teal-600 hover:underline truncate"
+                  >
+                    {selectedPin.link}
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Alt Text */}
+            {selectedPin.alt_text && (
+              <div>
+                <h4 className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Alt Text</h4>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {selectedPin.alt_text}
+                </p>
+              </div>
+            )}
+
+            {/* Stats for published pins */}
             {selectedPin.status === 'published' && (
               <div className="grid grid-cols-3 gap-4 p-4 bg-[var(--color-bg-secondary)] rounded-lg">
                 <div className="text-center">
@@ -630,6 +671,44 @@ export default function PinterestPage() {
                 </div>
               </div>
             )}
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2 border-t">
+              {(selectedPin.status === 'draft' || selectedPin.status === 'scheduled' || selectedPin.status === 'failed') && (
+                <Button
+                  onClick={() => {
+                    publishPinMutation.mutate(selectedPin.id);
+                    setSelectedPin(null);
+                  }}
+                  disabled={publishPinMutation.isPending}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Publish Now
+                </Button>
+              )}
+              {selectedPin.pinterest_pin_id && (
+                <a
+                  href={`https://pinterest.com/pin/${selectedPin.pinterest_pin_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="secondary">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View on Pinterest
+                  </Button>
+                </a>
+              )}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowDeleteConfirm(selectedPin.id);
+                  setSelectedPin(null);
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            </div>
           </div>
         )}
       </Modal>

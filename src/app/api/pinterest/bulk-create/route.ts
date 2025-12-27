@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
       quoteText: string;
       collection: string;
       mood?: string;
+      productLink?: string;
       type: 'asset' | 'mockup';
     }
 
@@ -195,6 +196,7 @@ export async function POST(request: NextRequest) {
         quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
         collection: item.collection || item.payload?.collection || 'grounding',
         mood: item.payload?.mood,
+        productLink: item.payload?.productLink || item.payload?.product_link,
         type: 'asset' as const,
       })),
       ...filteredMockups.map((item: any) => ({
@@ -205,6 +207,7 @@ export async function POST(request: NextRequest) {
         quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
         collection: item.collection || item.payload?.collection || 'grounding',
         mood: item.payload?.mood,
+        productLink: item.payload?.productLink || item.payload?.product_link,
         type: 'mockup' as const,
       })),
     ].filter(item => item.imageUrl); // Only include items with valid image URLs
@@ -214,6 +217,32 @@ export async function POST(request: NextRequest) {
         { error: 'No approved Pinterest assets found for the selected quotes' },
         { status: 404 }
       );
+    }
+
+    // Get user settings for default shop URL
+    const { data: userSettings } = await (supabase as any)
+      .from('user_settings')
+      .select('shop_url, shop_name')
+      .eq('user_id', userId)
+      .single();
+
+    const defaultShopUrl = userSettings?.shop_url || 'https://havenandhold.com';
+
+    // Fetch product links for quotes that don't have them in payload
+    const quoteIdsNeedingLinks = [...new Set(allImages.filter(img => !img.productLink && img.quoteId).map(img => img.quoteId))];
+    const quoteProductLinks = new Map<string, string>();
+
+    if (quoteIdsNeedingLinks.length > 0) {
+      const { data: quotes } = await (supabase as any)
+        .from('quotes')
+        .select('id, product_link')
+        .in('id', quoteIdsNeedingLinks);
+
+      for (const quote of quotes || []) {
+        if (quote.product_link) {
+          quoteProductLinks.set(quote.id, quote.product_link);
+        }
+      }
     }
 
     // Calculate scheduling times
@@ -256,7 +285,7 @@ export async function POST(request: NextRequest) {
             title: copy.title,
             description: `${copy.description}\n\n${copy.hashtags.map((h: string) => `#${h}`).join(' ')}`,
             alt_text: copy.alt_text,
-            link: item.quoteId ? `https://havenandhold.com/products/${item.quoteId}` : 'https://havenandhold.com',
+            link: item.productLink || quoteProductLinks.get(item.quoteId) || defaultShopUrl,
             image_url: item.imageUrl,
             collection: item.collection,
             status: schedule_strategy === 'immediate' ? 'draft' : 'scheduled',
