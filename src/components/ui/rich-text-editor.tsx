@@ -6,6 +6,7 @@ import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
+import Placeholder from '@tiptap/extension-placeholder';
 import {
   Bold,
   Italic,
@@ -34,12 +35,78 @@ interface RichTextEditorProps {
 }
 
 const BRAND_COLORS = [
+  { name: 'Charcoal', value: '#36454F' },
   { name: 'Sage', value: '#7c9082' },
   { name: 'Dark', value: '#333333' },
   { name: 'Gray', value: '#666666' },
   { name: 'Light Gray', value: '#999999' },
-  { name: 'White', value: '#ffffff' },
 ];
+
+// Custom styles for email-like rendering in the editor
+const EDITOR_STYLES = `
+  .ProseMirror {
+    font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #36454F;
+  }
+  .ProseMirror h1 {
+    font-family: 'Crimson Text', Georgia, serif;
+    font-size: 32px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #36454F;
+  }
+  .ProseMirror h2 {
+    font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 24px;
+    margin-bottom: 16px;
+    color: #36454F;
+  }
+  .ProseMirror h3 {
+    font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.3;
+    margin-top: 20px;
+    margin-bottom: 12px;
+    color: #36454F;
+  }
+  .ProseMirror p {
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+  .ProseMirror p:last-child {
+    margin-bottom: 0;
+  }
+  .ProseMirror ul, .ProseMirror ol {
+    margin-top: 0;
+    margin-bottom: 16px;
+    padding-left: 24px;
+  }
+  .ProseMirror li {
+    margin-bottom: 8px;
+  }
+  .ProseMirror a {
+    color: #7c9082;
+    text-decoration: underline;
+  }
+  .ProseMirror strong {
+    font-weight: 600;
+  }
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #adb5bd;
+    pointer-events: none;
+    height: 0;
+  }
+`;
 
 function ToolbarButton({
   onClick,
@@ -91,6 +158,9 @@ export function RichTextEditor({
       Underline,
       TextStyle,
       Color,
+      Placeholder.configure({
+        placeholder,
+      }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
@@ -104,7 +174,7 @@ export function RichTextEditor({
     },
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[200px] p-4',
+        class: 'focus:outline-none min-h-[200px] p-4 bg-white',
       },
     },
   });
@@ -141,6 +211,9 @@ export function RichTextEditor({
 
   return (
     <div className={`border rounded-md overflow-hidden ${className}`}>
+      {/* Inject editor styles */}
+      <style dangerouslySetInnerHTML={{ __html: EDITOR_STYLES }} />
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 p-2 border-b bg-gray-50">
         {/* Undo/Redo */}
