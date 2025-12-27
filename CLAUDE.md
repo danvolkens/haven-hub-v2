@@ -192,19 +192,6 @@ TRIGGER_API_URL=
 
 ## Notes for Claude
 
-### CRITICAL: src/ Directory Mapping
-The plan files were written without the `src/` prefix. When implementing:
-- `app/` in plans → create in `src/app/`
-- `components/` in plans → create in `src/components/`
-- `lib/` in plans → create in `src/lib/`
-- `hooks/` in plans → create in `src/hooks/`
-- `types/` in plans → create in `src/types/`
-
-Only these stay at root (no src/ prefix):
-- `trigger/` → `trigger/`
-- `supabase/migrations/` → `supabase/migrations/`
-- `plans/` → `plans/`
-
 ### Known Type Issues & Fixes
 
 **Supabase table not in types:**
@@ -247,6 +234,3 @@ import { createClient } from '@/lib/supabase/client';
 - Run `npx supabase db push` after migrations
 - Fix errors before moving to next step
 - Commit after each successful step
-
-### React Compiler
-This project uses React Compiler. No need for manual `useMemo`, `useCallback`, or `React.memo` - they're auto-optimized. If plans include them, implement as written (they become no-ops).

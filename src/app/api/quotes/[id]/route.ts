@@ -10,6 +10,8 @@ const updateQuoteSchema = z.object({
   mood: z.enum(['calm', 'warm', 'hopeful', 'reflective', 'empowering']).optional(),
   temporal_tags: z.array(z.string()).optional(),
   status: z.enum(['active', 'archived']).optional(),
+  product_id: z.string().uuid().nullable().optional(),
+  product_link: z.string().url().nullable().optional(),
 });
 
 export async function GET(

@@ -21,6 +21,8 @@ export interface Quote {
   import_batch_id: string | null;
   master_image_url: string | null;
   master_image_key: string | null;
+  product_id: string | null;
+  product_link: string | null;
   created_at: string;
   updated_at: string;
 }

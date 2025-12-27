@@ -26,6 +26,8 @@ import {
   FileText,
   HelpCircle,
   ShoppingBag,
+  Sparkles,
+  FileEdit,
 } from 'lucide-react';
 
 interface Quote {
@@ -45,6 +47,15 @@ interface Board {
   pin_count: number;
 }
 
+interface CopyTemplate {
+  id: string;
+  name: string;
+  variant: string;
+  collection: string | null;
+  times_used: number;
+  avg_engagement_rate: number | null;
+}
+
 interface BulkPinCreatorProps {
   boards: Board[];
 }
@@ -62,6 +73,7 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
   const [customUrl, setCustomUrl] = useState('');
   const [selectedLandingPage, setSelectedLandingPage] = useState('');
   const [selectedQuiz, setSelectedQuiz] = useState('');
+  const [copyTemplateId, setCopyTemplateId] = useState<string>('');
   const queryClient = useQueryClient();
 
   // Fetch quotes with approved assets
@@ -97,6 +109,19 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     enabled: isOpen && linkType === 'quiz',
   });
 
+  // Fetch copy templates
+  const { data: templatesData } = useQuery({
+    queryKey: ['copy-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/copy-templates');
+      if (!res.ok) return { templates: [] };
+      return res.json();
+    },
+    enabled: isOpen,
+  });
+
+  const copyTemplates: CopyTemplate[] = templatesData?.templates || [];
+
   // Bulk create mutation
   const bulkCreateMutation = useMutation({
     mutationFn: async (data: {
@@ -109,6 +134,7 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
       custom_url?: string;
       landing_page_slug?: string;
       quiz_slug?: string;
+      copy_template_id?: string;
     }) => {
       const res = await fetch('/api/pinterest/bulk-create', {
         method: 'POST',
@@ -145,6 +171,7 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     setCustomUrl('');
     setSelectedLandingPage('');
     setSelectedQuiz('');
+    setCopyTemplateId('');
   };
 
   const toggleQuote = (quoteId: string) => {
@@ -181,6 +208,7 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
       custom_url: linkType === 'custom' ? customUrl : undefined,
       landing_page_slug: linkType === 'landing_page' ? selectedLandingPage : undefined,
       quiz_slug: linkType === 'quiz' ? selectedQuiz : undefined,
+      copy_template_id: copyTemplateId || undefined,
     });
   };
 
@@ -493,6 +521,64 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                   }`}
                 />
               </button>
+            </div>
+
+            {/* Copy Template Selection */}
+            <div>
+              <Label>Pin Copy Style</Label>
+              <p className="text-xs text-[var(--color-text-tertiary)] mb-2">
+                How should titles and descriptions be generated?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                    !copyTemplateId
+                      ? 'border-sage bg-sage/10 ring-1 ring-sage'
+                      : 'border-[var(--color-border-primary)] hover:border-sage/50'
+                  }`}
+                  onClick={() => setCopyTemplateId('')}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Sparkles className="h-4 w-4" />
+                    <span className="text-sm font-medium">Auto-Generate</span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">
+                    AI creates unique copy for each pin
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                    copyTemplateId
+                      ? 'border-sage bg-sage/10 ring-1 ring-sage'
+                      : 'border-[var(--color-border-primary)] hover:border-sage/50'
+                  }`}
+                  onClick={() => copyTemplates.length > 0 && setCopyTemplateId(copyTemplates[0].id)}
+                  disabled={copyTemplates.length === 0}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileEdit className="h-4 w-4" />
+                    <span className="text-sm font-medium">Use Template</span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">
+                    {copyTemplates.length > 0 ? 'Apply your saved template' : 'No templates saved yet'}
+                  </p>
+                </button>
+              </div>
+
+              {/* Template Selector Dropdown */}
+              {copyTemplateId && copyTemplates.length > 0 && (
+                <Select
+                  value={copyTemplateId}
+                  onChange={(value) => setCopyTemplateId(typeof value === 'string' ? value : '')}
+                  options={copyTemplates.map((template) => ({
+                    value: template.id,
+                    label: `${template.name}${template.collection ? ` (${template.collection})` : ''}${template.avg_engagement_rate ? ` - ${(template.avg_engagement_rate * 100).toFixed(1)}% eng` : ''}`,
+                  }))}
+                  className="mt-2"
+                />
+              )}
             </div>
 
             {/* Summary */}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApiUserId } from '@/lib/auth/session';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generatePinCopy } from '@/lib/pinterest/copy-generator';
+import { generatePinCopy, applyTemplate } from '@/lib/pinterest/copy-generator';
 
 interface BulkPinRequest {
   quote_ids: string[];
@@ -13,6 +13,7 @@ interface BulkPinRequest {
   custom_url?: string;
   landing_page_slug?: string;
   quiz_slug?: string;
+  copy_template_id?: string; // Optional copy template to use instead of auto-generation
 }
 
 interface BulkCreateResult {
@@ -95,6 +96,7 @@ export async function POST(request: NextRequest) {
       custom_url,
       landing_page_slug,
       quiz_slug,
+      copy_template_id,
     } = body;
 
     if (!quote_ids?.length) {
@@ -256,14 +258,50 @@ export async function POST(request: NextRequest) {
     if (allQuoteIds.length > 0) {
       const { data: quotes } = await (supabase as any)
         .from('quotes')
-        .select('id, text, product_link')
+        .select('id, text, product_link, product_id')
         .in('id', allQuoteIds);
 
+      // Also fetch products linked to these quotes (via products.quote_id)
+      const { data: products } = await (supabase as any)
+        .from('products')
+        .select('id, quote_id, shopify_handle, shopify_product_id')
+        .eq('user_id', userId)
+        .in('quote_id', allQuoteIds);
+
+      // Build a map of quote_id to product URL
+      const quoteProductMap = new Map<string, string>();
+      const shopUrl = userSettings?.shop_url || 'https://havenandhold.com';
+
+      for (const product of products || []) {
+        if (product.quote_id && product.shopify_handle) {
+          // Build Shopify product URL
+          const productUrl = `${shopUrl.replace(/\/$/, '')}/products/${product.shopify_handle}`;
+          quoteProductMap.set(product.quote_id, productUrl);
+        }
+      }
+
       for (const quote of quotes || []) {
+        // Priority: quote.product_link (manual) > product from products table > null
+        const productLink = quote.product_link || quoteProductMap.get(quote.id) || null;
         quoteDataMap.set(quote.id, {
           text: quote.text || '',
-          product_link: quote.product_link,
+          product_link: productLink,
         });
+      }
+    }
+
+    // Fetch copy template if specified
+    let copyTemplate: { title_template: string; description_template: string } | null = null;
+    if (copy_template_id) {
+      const { data: template } = await (supabase as any)
+        .from('pin_copy_templates')
+        .select('title_template, description_template')
+        .eq('id', copy_template_id)
+        .eq('user_id', userId)
+        .single();
+
+      if (template) {
+        copyTemplate = template;
       }
     }
 
@@ -291,12 +329,40 @@ export async function POST(request: NextRequest) {
         const quoteData = item.quoteId ? quoteDataMap.get(item.quoteId) : null;
         const quoteText = item.quoteText || quoteData?.text || '';
 
-        // Generate copy
-        const copy = generatePinCopy({
-          quote_text: quoteText,
-          collection: item.collection as 'grounding' | 'wholeness' | 'growth',
-          mood: item.mood,
-        });
+        // Generate copy - use template if provided, otherwise auto-generate
+        let copy: { title: string; description: string; alt_text: string; hashtags: string[] };
+
+        if (copyTemplate) {
+          // Apply the copy template with variable substitution
+          const templateResult = applyTemplate(copyTemplate, {
+            quote: quoteText,
+            collection: item.collection,
+            mood: item.mood,
+            product_link: overrideLink || item.productLink || quoteData?.product_link || defaultShopUrl,
+            shop_name: userSettings?.shop_name || 'Haven & Hold',
+          });
+
+          // Generate hashtags and alt_text using the auto-generator
+          const autoCopy = generatePinCopy({
+            quote_text: quoteText,
+            collection: item.collection as 'grounding' | 'wholeness' | 'growth',
+            mood: item.mood,
+          });
+
+          copy = {
+            title: templateResult.title,
+            description: templateResult.description,
+            alt_text: autoCopy.alt_text,
+            hashtags: autoCopy.hashtags,
+          };
+        } else {
+          // Auto-generate copy
+          copy = generatePinCopy({
+            quote_text: quoteText,
+            collection: item.collection as 'grounding' | 'wholeness' | 'growth',
+            mood: item.mood,
+          });
+        }
 
         // Create the pin record
         const { data: pin, error: pinError } = await (supabase as any)
@@ -356,6 +422,8 @@ export async function POST(request: NextRequest) {
           boardName: board.name,
           linkType: link_type,
           linkDestination: overrideLink || 'product',
+          copyTemplateId: copy_template_id || null,
+          copySource: copy_template_id ? 'template' : 'auto-generated',
         },
         p_executed: true,
         p_module: 'pinterest',
