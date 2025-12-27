@@ -92,13 +92,16 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .single();
 
-    const fromEmail = settings?.email_from_address || 'noreply@havenandhold.com';
     const fromName = settings?.email_from_name || 'Haven & Hold';
     const subject = subject_override || template.subject || 'Test Email';
 
+    // For test emails, use Resend's test domain to avoid domain verification issues
+    // Production emails should use the verified domain through Klaviyo
+    const testFromEmail = 'onboarding@resend.dev';
+
     // Send via Resend
     const { data: emailResult, error: emailError } = await resend.emails.send({
-      from: `${fromName} <${fromEmail}>`,
+      from: `${fromName} <${testFromEmail}>`,
       to: [to_email],
       subject: `[TEST] ${subject}`,
       html: htmlContent,
