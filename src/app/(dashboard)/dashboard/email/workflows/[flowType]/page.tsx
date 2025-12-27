@@ -73,6 +73,7 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
   // Find the content div
   const contentStart = fullHtml.indexOf('<div class="content">');
   if (contentStart === -1) {
+    console.warn('[injectBodyContent] No <div class="content"> found');
     return fullHtml; // Can't inject without content div
   }
 
@@ -81,6 +82,7 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
   // Find where footer starts
   const footerStart = fullHtml.indexOf('<div class="footer">');
   if (footerStart === -1) {
+    console.warn('[injectBodyContent] No <div class="footer"> found');
     return fullHtml; // Can't inject without footer reference
   }
 
@@ -88,6 +90,7 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
   const beforeFooter = fullHtml.slice(0, footerStart);
   const contentEndIndex = beforeFooter.lastIndexOf('</div>');
   if (contentEndIndex === -1) {
+    console.warn('[injectBodyContent] No closing </div> found before footer');
     return fullHtml;
   }
 
@@ -95,6 +98,7 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
   const beforeContent = fullHtml.slice(0, contentTagEnd);
   const afterContent = fullHtml.slice(contentEndIndex);
 
+  console.log('[injectBodyContent] Successfully injected content');
   return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
 }
 
@@ -205,11 +209,16 @@ function TemplateEditor({
 
   // Sync body content back to full HTML when it changes
   const handleBodyContentChange = (newContent: string) => {
+    console.log('[handleBodyContentChange] Called with:', newContent.substring(0, 100));
     setBodyContent(newContent);
-    setFormData(prev => ({
-      ...prev,
-      html_content: injectBodyContent(prev.html_content, newContent),
-    }));
+    setFormData(prev => {
+      const newHtml = injectBodyContent(prev.html_content, newContent);
+      console.log('[handleBodyContentChange] New HTML length:', newHtml.length, 'Old:', prev.html_content.length);
+      return {
+        ...prev,
+        html_content: newHtml,
+      };
+    });
   };
 
   const handleSave = () => {
