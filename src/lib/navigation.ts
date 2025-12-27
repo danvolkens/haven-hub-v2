@@ -107,6 +107,7 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Email',
     items: [
       { name: 'Overview', href: '/dashboard/email', icon: Mail },
+      { name: 'Workflows', href: '/dashboard/email/workflows', icon: Zap },
       { name: 'Flows', href: '/dashboard/email/flows', icon: Zap },
       { name: 'Lists', href: '/dashboard/email/lists', icon: ListChecks },
       { name: 'Tags', href: '/dashboard/email/tags', icon: Tags },

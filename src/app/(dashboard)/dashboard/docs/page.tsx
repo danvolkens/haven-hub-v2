@@ -240,6 +240,12 @@ export default function DocsPage() {
           icon: <Zap className="h-4 w-4" />,
           content: <EmailFlowsSection />,
         },
+        {
+          id: 'email-workflows',
+          title: 'Workflow Automation',
+          icon: <Zap className="h-4 w-4" />,
+          content: <EmailWorkflowsSection />,
+        },
       ],
     },
     {
@@ -2734,6 +2740,111 @@ function EmailFlowsSection() {
           <li>Revenue attributed to the flow</li>
           <li>Flow status (live, draft, paused)</li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function EmailWorkflowsSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Workflow Automation</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Create, manage, and deploy email flows directly from Haven Hub. Templates are stored locally
+          with version control, then synced to Klaviyo and deployed as complete flows with one click.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">How It Works</h3>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center text-sm font-medium">1</div>
+            <div>
+              <div className="font-medium">Configure Templates</div>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Edit subject lines, preview text, and HTML content for each email in the flow.
+                Pre-built branded templates are seeded automatically.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center text-sm font-medium">2</div>
+            <div>
+              <div className="font-medium">Sync to Klaviyo</div>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Push templates to Klaviyo's Template Library. Each template gets a Klaviyo ID for flow creation.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="w-6 h-6 rounded-full bg-sage/20 flex items-center justify-center text-sm font-medium">3</div>
+            <div>
+              <div className="font-medium">Deploy Flow</div>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                One-click deployment creates the complete flow in Klaviyo with correct triggers, delays, and email actions.
+                Flows are created in draft status for review before going live.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Available Flows</h3>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="font-medium text-blue-800 mb-1">Welcome Flow (4 emails)</div>
+            <p className="text-sm text-blue-700">
+              Trigger: Added to "All Leads" list. Introduces brand, shares collections, and offers first-purchase discount.
+            </p>
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="font-medium text-purple-800 mb-1">Quiz Result Flow (4 emails)</div>
+            <p className="text-sm text-purple-700">
+              Trigger: Quiz Completed event. Personalized recommendations based on their chosen collection.
+            </p>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="font-medium text-orange-800 mb-1">Cart Abandonment Flow (3 emails)</div>
+            <p className="text-sm text-orange-700">
+              Trigger: Checkout Started event. Gentle reminders at 1 hour, 24 hours, and 72 hours.
+            </p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="font-medium text-green-800 mb-1">Post-Purchase Flow (4 emails)</div>
+            <p className="text-sm text-green-700">
+              Trigger: Placed Order event. Thank you, care guide, review request, and cross-sell.
+            </p>
+          </div>
+          <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
+            <div className="font-medium text-pink-800 mb-1">Win-Back Flow (3 emails)</div>
+            <p className="text-sm text-pink-700">
+              Trigger: Win Back Started event. Re-engage customers who haven't purchased in 90+ days.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Content Library</h3>
+        <p className="text-[var(--color-text-secondary)]">
+          All email copy is version-controlled in the Content Library. You can:
+        </p>
+        <ul className="list-disc list-inside space-y-1 text-[var(--color-text-secondary)] mt-2">
+          <li>View all email content across flows</li>
+          <li>Search and filter by flow type</li>
+          <li>Copy content for use in other channels</li>
+          <li>Track version history and activate previous versions</li>
+        </ul>
+      </div>
+
+      <div className="bg-sage/5 border border-sage/20 rounded-lg p-4">
+        <p className="text-sm">
+          <strong>Tip:</strong> Go to <strong>Email → Workflows</strong> to configure and deploy your flows.
+          The seed button will populate all 18 branded email templates if you haven't already.
+        </p>
       </div>
     </div>
   );
