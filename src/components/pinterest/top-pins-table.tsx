@@ -1,12 +1,33 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import Image from 'next/image';
-import { ExternalLink, TrendingUp, TrendingDown } from 'lucide-react';
+import { ExternalLink, TrendingUp, TrendingDown, ImageOff } from 'lucide-react';
 import { Card, CardHeader, CardContent, Badge, Button } from '@/components/ui';
 import { api } from '@/lib/fetcher';
 import { formatNumber, formatPercent } from '@/lib/utils';
 import type { Pin } from '@/types/pinterest';
+
+function PinImage({ src, alt }: { src: string; alt: string }) {
+  const [error, setError] = useState(false);
+
+  if (error || !src) {
+    return (
+      <div className="h-12 w-12 rounded bg-elevated flex items-center justify-center">
+        <ImageOff className="h-5 w-5 text-[var(--color-text-tertiary)]" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="h-12 w-12 rounded object-cover"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 export function TopPinsTable() {
   const { data, isLoading } = useQuery({
@@ -77,13 +98,8 @@ export function TopPinsTable() {
                   <tr key={pin.id} className="hover:bg-elevated/50">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 rounded overflow-hidden bg-elevated shrink-0">
-                          <Image
-                            src={pin.image_url}
-                            alt={pin.title}
-                            fill
-                            className="object-cover"
-                          />
+                        <div className="shrink-0">
+                          <PinImage src={pin.image_url} alt={pin.title} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-body-sm font-medium truncate max-w-[200px]">
