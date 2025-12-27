@@ -298,7 +298,7 @@ function TemplateCard({
       </button>
       <div className="p-3">
         <div className="flex items-start justify-between gap-2">
-          <button onClick={onClick} className="flex-1 text-left cursor-pointer">
+          <button onClick={onClick} className="flex-1 min-w-0 text-left cursor-pointer">
             <p className="text-body-sm font-medium truncate">{template.name}</p>
             {template.description && (
               <p className="text-caption text-[var(--color-text-tertiary)] truncate mt-0.5">
