@@ -22,19 +22,20 @@ export function createMockRequest(
     urlObj.searchParams.set(key, value);
   });
 
-  const requestInit = {
+  const requestInit: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
-  } as Parameters<typeof NextRequest>[1];
+  };
 
   if (body && method !== 'GET' && method !== 'HEAD') {
-    requestInit!.body = JSON.stringify(body);
+    requestInit.body = JSON.stringify(body);
   }
 
-  return new NextRequest(urlObj, requestInit);
+  // Use type assertion to handle Next.js RequestInit differences
+  return new NextRequest(urlObj, requestInit as never);
 }
 
 /**
