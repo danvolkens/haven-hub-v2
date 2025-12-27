@@ -138,36 +138,13 @@ function generateTitle(quote: QuoteMetadata, hook: string): string {
 function generateDescription(quote: QuoteMetadata, mood: string, room: string): string {
   const quotePreview = truncate(quote.quote_text, 80);
 
+  // Pinterest doesn't render line breaks well, so use flowing text with separators
   const templates = [
-    `"${quotePreview}"
+    `"${quotePreview}" ✨ This ${mood} minimalist print brings intention to your ${room}. Part of our ${capitalize(quote.collection)} Collection - designed for those seeking quiet anchors in turbulent times. 🖼️ Multiple sizes (8x10 to 24x36) • Print-ready 300 DPI • Instant digital download. Perfect for therapy offices, bedrooms, and spaces that hold you.`,
 
-This ${mood} minimalist print brings intention to your ${room}. Part of our ${capitalize(quote.collection)} Collection - designed for those seeking quiet anchors in turbulent times.
+    `"${quotePreview}" ✨ A ${mood} reminder for your ${room}. This mindful wall art from our ${capitalize(quote.collection)} Collection creates a sanctuary of intention wherever you place it. 🖼️ Multiple sizes included • Professional 300 DPI quality • Instant download. Designed for meaningful spaces.`,
 
-Available in multiple sizes (8x10 to 24x36)
-Print-ready 300 DPI
-Instant digital download
-
-Perfect for therapy offices, bedrooms, and spaces that hold you.`,
-
-    `"${quotePreview}"
-
-A ${mood} reminder for your ${room}. This mindful wall art from our ${capitalize(quote.collection)} Collection creates a sanctuary of intention wherever you place it.
-
-Includes multiple sizes
-Professional 300 DPI quality
-Instant download after purchase
-
-Designed for meaningful spaces.`,
-
-    `"${quotePreview}"
-
-Transform your ${room} with this ${mood} piece from the ${capitalize(quote.collection)} Collection. Simple words. Powerful impact.
-
-Multiple sizes included
-High-quality 300 DPI
-Digital download - print at home or local print shop
-
-For the moments when you need a gentle reminder.`,
+    `"${quotePreview}" ✨ Transform your ${room} with this ${mood} piece from the ${capitalize(quote.collection)} Collection. Simple words. Powerful impact. 🖼️ Multiple sizes • High-quality 300 DPI • Digital download - print at home or local print shop. For the moments when you need a gentle reminder.`,
   ];
 
   const description = getRandomItem(templates);
