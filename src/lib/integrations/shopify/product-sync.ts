@@ -180,49 +180,86 @@ async function upsertProductFromShopify(
   const productData = {
     user_id: userId,
     shopify_product_id: String(shopifyProduct.id),
+    shopify_handle: shopifyProduct.handle,
     title: shopifyProduct.title,
     description: shopifyProduct.body_html || '',
-    status: shopifyProduct.status === 'active' ? 'published' : 'draft',
-    shopify_status: shopifyProduct.status,
-    price: shopifyProduct.variants[0]?.price
-      ? parseFloat(shopifyProduct.variants[0].price)
-      : null,
-    inventory_quantity: calculateTotalInventory(shopifyProduct.variants),
-    variants: shopifyProduct.variants.map((v) => ({
-      id: v.id,
-      title: v.title,
-      price: v.price,
-      sku: v.sku,
-      inventory_quantity: v.inventory_quantity,
-      option1: v.option1,
-      option2: v.option2,
-      option3: v.option3,
-    })),
-    images: shopifyProduct.images.map((img) => ({
-      id: img.id,
-      src: img.src,
-      alt: img.alt,
-      position: img.position,
-    })),
+    status: shopifyProduct.status === 'active' ? 'active' : 'draft',
     tags: shopifyProduct.tags ? shopifyProduct.tags.split(',').map((t) => t.trim()) : [],
     vendor: shopifyProduct.vendor,
     product_type: shopifyProduct.product_type,
+    last_synced_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
+
+  let productId: string;
 
   if (existing) {
     await (adminClient as any)
       .from('products')
       .update(productData)
       .eq('id', existing.id);
-    return { created: false };
+    productId = existing.id;
   } else {
-    await (adminClient as any).from('products').insert({
-      ...productData,
-      created_at: new Date().toISOString(),
-    });
-    return { created: true };
+    const { data: newProduct, error } = await (adminClient as any)
+      .from('products')
+      .insert({
+        ...productData,
+        created_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (error || !newProduct) {
+      throw new Error(`Failed to create product: ${error?.message}`);
+    }
+    productId = newProduct.id;
   }
+
+  // Sync variants - delete existing and re-insert
+  await (adminClient as any)
+    .from('product_variants')
+    .delete()
+    .eq('product_id', productId);
+
+  if (shopifyProduct.variants?.length > 0) {
+    const variantData = shopifyProduct.variants.map((v, index) => ({
+      product_id: productId,
+      user_id: userId,
+      shopify_variant_id: String(v.id),
+      title: v.title || 'Default',
+      sku: v.sku,
+      size: v.option1 || 'Default', // Assuming first option is size
+      frame_style: v.option2 || null,
+      price: parseFloat(v.price) || 0,
+      compare_at_price: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
+      inventory_quantity: v.inventory_quantity || 0,
+      is_active: true,
+    }));
+
+    await (adminClient as any).from('product_variants').insert(variantData);
+  }
+
+  // Sync images - delete existing and re-insert
+  await (adminClient as any)
+    .from('product_images')
+    .delete()
+    .eq('product_id', productId);
+
+  if (shopifyProduct.images?.length > 0) {
+    const imageData = shopifyProduct.images.map((img) => ({
+      product_id: productId,
+      user_id: userId,
+      shopify_image_id: String(img.id),
+      position: img.position || 0,
+      src: img.src,
+      alt: img.alt || '',
+      source_type: 'upload',
+    }));
+
+    await (adminClient as any).from('product_images').insert(imageData);
+  }
+
+  return { created: !existing };
 }
 
 function calculateTotalInventory(variants: ShopifyVariant[]): number {

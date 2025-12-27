@@ -37,6 +37,7 @@ import {
   Store,
   Database,
   Plug,
+  Package,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -60,6 +61,11 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    name: 'Products',
+    href: '/dashboard/products',
+    icon: Package,
   },
   {
     name: 'Approvals',

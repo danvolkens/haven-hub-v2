@@ -127,6 +127,7 @@ export interface ShopifyShop {
 export interface ShopifyProduct {
   id: number;
   title: string;
+  handle: string;
   body_html: string;
   vendor: string;
   product_type: string;
@@ -142,6 +143,7 @@ export interface ShopifyVariant {
   product_id: number;
   title: string;
   price: string;
+  compare_at_price: string | null;
   sku: string;
   inventory_quantity: number;
   option1: string | null;
