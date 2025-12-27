@@ -8,6 +8,7 @@ import {
   Check,
   Loader2,
   ArrowLeft,
+  Star,
 } from 'lucide-react';
 import {
   Button,
@@ -33,6 +34,7 @@ interface MockupTemplate {
   preview_url: string | null;
   dm_template_id: string | null;
   recommended_collections: string[] | null;
+  is_default?: boolean;
   config?: {
     collection_name?: string;
   };
@@ -65,6 +67,17 @@ export default function GenerateAssetsPage() {
     queryFn: () => api.get<{ templates: MockupTemplate[] }>('/mockups/templates/sync'),
   });
   const mockupTemplates = templatesData?.templates || [];
+
+  // Fetch default templates for "Use Defaults" button
+  const { data: defaultsData } = useQuery({
+    queryKey: ['mockup-default-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/mockups/templates/defaults');
+      if (!res.ok) throw new Error('Failed to fetch defaults');
+      return res.json();
+    },
+  });
+  const defaultTemplates = defaultsData?.templates || [];
 
   // Extract unique Dynamic Mockups collection names
   const dmCollections = [...new Set(
@@ -278,6 +291,18 @@ export default function GenerateAssetsPage() {
                             </option>
                           ))}
                         </select>
+                        {defaultTemplates.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const defaultSceneKeys = defaultTemplates.map((t: MockupTemplate) => t.scene_key);
+                              setSelectedScenes(defaultSceneKeys);
+                            }}
+                          >
+                            Use Defaults ({defaultTemplates.length})
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
@@ -314,6 +339,11 @@ export default function GenerateAssetsPage() {
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-[var(--color-text-tertiary)]">
                                 <Sparkles className="h-8 w-8" />
+                              </div>
+                            )}
+                            {defaultTemplates.some((d: MockupTemplate) => d.scene_key === template.scene_key) && (
+                              <div className="absolute top-2 left-2">
+                                <Star className="h-5 w-5 text-yellow-400 fill-yellow-400 drop-shadow" />
                               </div>
                             )}
                             {selectedScenes.includes(template.scene_key) && (
