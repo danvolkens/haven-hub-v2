@@ -172,6 +172,15 @@ export function ApprovalQueueList() {
         </div>
 
         <div className="flex items-center gap-2">
+          {items.length > 0 && (
+            <Button
+              variant={allSelected ? 'secondary' : 'ghost'}
+              size="sm"
+              onClick={toggleSelectAll}
+            >
+              {allSelected ? 'Deselect All' : 'Select All'}
+            </Button>
+          )}
           <Select
             options={typeOptions}
             value={filters.type || ''}
