@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
-import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X } from 'lucide-react';
+import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X, Trash2 } from 'lucide-react';
 
 interface Mockup {
   id: string;
@@ -100,6 +100,7 @@ export default function AssetsPage() {
     hashtags: [],
     publishNow: false,
   });
+  const [deleteItem, setDeleteItem] = useState<PreviewItem | null>(null);
 
   // Fetch approved items from approval_items
   const { data: approvedData, isLoading: loadingApproved } = useQuery({
@@ -222,6 +223,36 @@ export default function AssetsPage() {
       });
     },
   });
+
+  // Delete asset/mockup mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (item: PreviewItem) => {
+      const res = await fetch(`/api/assets/${item.id}?type=${item.type}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['approved-items'] });
+      queryClient.invalidateQueries({ queryKey: ['mockups'] });
+      setDeleteItem(null);
+      setPreviewItem(null);
+    },
+  });
+
+  const handleDelete = (item: PreviewItem) => {
+    setDeleteItem(item);
+  };
+
+  const confirmDelete = () => {
+    if (deleteItem) {
+      deleteMutation.mutate(deleteItem);
+    }
+  };
 
   const approvedItems: ApprovalItem[] = approvedData?.items || [];
   const approvedMockups = approvedItems.filter(item => item.type === 'mockup');
@@ -425,6 +456,26 @@ export default function AssetsPage() {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            const approvalItem = approvedMockups.find(m => m.reference_id === mockup.id);
+                            if (approvalItem) {
+                              handleDelete({
+                                id: approvalItem.id,
+                                type: 'mockup',
+                                imageUrl: mockup.file_url,
+                                title: mockup.assets?.quotes?.text || 'Mockup',
+                                date: mockup.created_at,
+                                referenceId: mockup.id,
+                              });
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -496,6 +547,21 @@ export default function AssetsPage() {
                                 onClick={() => handleDownload(imageUrl, `asset-${asset.id}.png`)}
                               >
                                 <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                onClick={() => handleDelete({
+                                  id: asset.id,
+                                  type: 'asset',
+                                  imageUrl: imageUrl,
+                                  title: asset.payload.quoteText || 'Asset',
+                                  date: asset.created_at,
+                                  referenceId: asset.reference_id,
+                                })}
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </>
                           )}
@@ -571,6 +637,14 @@ export default function AssetsPage() {
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download
+                </Button>
+                <Button
+                  variant="secondary"
+                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  onClick={() => handleDelete(previewItem)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
                 </Button>
               </div>
             </div>
@@ -861,6 +935,71 @@ export default function AssetsPage() {
                   <>
                     <Pin className="h-4 w-4 mr-2" />
                     Save as Draft
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
+        title="Delete Asset"
+        size="sm"
+        showCloseButton={true}
+      >
+        {deleteItem && (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <div className="w-20 h-20 bg-[var(--color-bg-secondary)] rounded-lg overflow-hidden flex-shrink-0">
+                <img
+                  src={deleteItem.imageUrl}
+                  alt={deleteItem.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium truncate">{deleteItem.title.slice(0, 50)}{deleteItem.title.length > 50 ? '...' : ''}</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {deleteItem.type === 'mockup' ? 'Mockup' : 'Asset'}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Are you sure you want to delete this {deleteItem.type}? This action cannot be undone and will remove the file from storage.
+            </p>
+
+            {deleteMutation.error && (
+              <p className="text-sm text-red-500">{deleteMutation.error.message}</p>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => setDeleteItem(null)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={confirmDelete}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
                   </>
                 )}
               </Button>
