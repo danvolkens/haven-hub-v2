@@ -50,11 +50,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, subject, preview_text, html_content, flow_type, position, delay_hours } = body;
+    const {
+      name,
+      subject,
+      preview_text,
+      html_content,
+      content_html,
+      button_text,
+      button_url,
+      flow_type,
+      position,
+      delay_hours
+    } = body;
 
-    if (!name || !subject || !html_content || !flow_type) {
+    if (!name || !subject || !flow_type) {
       return NextResponse.json({
-        error: 'Missing required fields: name, subject, html_content, flow_type'
+        error: 'Missing required fields: name, subject, flow_type'
       }, { status: 400 });
     }
 
@@ -73,6 +84,9 @@ export async function POST(request: NextRequest) {
         subject,
         preview_text,
         html_content,
+        content_html,
+        button_text: button_text || 'Shop Now',
+        button_url: button_url || '{{ url }}',
         flow_type,
         position: position || 1,
         delay_hours: delay_hours || 0,

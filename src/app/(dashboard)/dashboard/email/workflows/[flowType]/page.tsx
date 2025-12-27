@@ -5,18 +5,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
-  Mail,
   Save,
   Trash2,
-  Plus,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
   Clock,
   Eye,
-  Code,
-  Type,
+  Settings,
   AlertTriangle,
+  Link as LinkIcon,
 } from 'lucide-react';
 import {
   Button,
@@ -25,98 +23,12 @@ import {
   CardContent,
   Badge,
   Input,
-  Textarea,
 } from '@/components/ui';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { PageContainer } from '@/components/layout/page-container';
 import { api } from '@/lib/fetcher';
 import Link from 'next/link';
-
-type EditorMode = 'visual' | 'preview' | 'code';
-
-// Helper to extract body content from email HTML
-function extractBodyContent(html: string): string {
-  // Method 1: Check for our simple template structure
-  const contentDivStart = html.indexOf('<div class="content">');
-  if (contentDivStart !== -1) {
-    const footerStart = html.indexOf('<div class="footer">');
-    if (footerStart !== -1) {
-      const contentTagEnd = contentDivStart + '<div class="content">'.length;
-      const contentEndMatch = html.slice(0, footerStart).lastIndexOf('</div>');
-      if (contentEndMatch !== -1) {
-        return html.slice(contentTagEnd, contentEndMatch).trim();
-      }
-    }
-  }
-
-  // Method 2: Klaviyo template - find the main kl-text block with content
-  // Look for the first substantial kl-text div (contains h1 or multiple paragraphs)
-  const klTextMatch = html.match(/<td[^>]*class="kl-text"[^>]*>[\s\S]*?<div[^>]*>([\s\S]*?)<\/div>[\s]*<\/td>/i);
-  if (klTextMatch && klTextMatch[1]) {
-    // Found Klaviyo text block - return its inner content
-    return klTextMatch[1].trim();
-  }
-
-  // Method 3: Fallback - extract from body
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if (bodyMatch) {
-    return bodyMatch[1].trim();
-  }
-
-  return html;
-}
-
-// Helper to inject body content back into email HTML
-function injectBodyContent(fullHtml: string, newContent: string): string {
-  // Method 1: Simple template with content div
-  const contentDivStart = fullHtml.indexOf('<div class="content">');
-  if (contentDivStart !== -1) {
-    const contentTagEnd = contentDivStart + '<div class="content">'.length;
-    const footerStart = fullHtml.indexOf('<div class="footer">');
-    if (footerStart !== -1) {
-      const beforeFooter = fullHtml.slice(0, footerStart);
-      const contentEndIndex = beforeFooter.lastIndexOf('</div>');
-      if (contentEndIndex !== -1) {
-        const beforeContent = fullHtml.slice(0, contentTagEnd);
-        const afterContent = fullHtml.slice(contentEndIndex);
-        return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
-      }
-    }
-  }
-
-  // Method 2: Klaviyo template - find and replace kl-text content
-  // Match the pattern: <td class="kl-text"...><div...>CONTENT</div></td>
-  const klTextRegex = /(<td[^>]*class="kl-text"[^>]*>[\s\S]*?<div[^>]*>)([\s\S]*?)(<\/div>[\s]*<\/td>)/i;
-  const klMatch = fullHtml.match(klTextRegex);
-  if (klMatch) {
-    const beforeContent = klMatch[1];
-    const afterContent = klMatch[3];
-    const matchStart = fullHtml.indexOf(klMatch[0]);
-    const matchEnd = matchStart + klMatch[0].length;
-
-    return fullHtml.slice(0, matchStart) + beforeContent + newContent + afterContent + fullHtml.slice(matchEnd);
-  }
-
-  // Method 3: Fallback for unknown templates - wrap in body
-  const bodyOpenMatch = fullHtml.match(/<body[^>]*>/i);
-  const bodyCloseIndex = fullHtml.lastIndexOf('</body>');
-
-  if (bodyOpenMatch && bodyCloseIndex !== -1) {
-    const bodyOpenEnd = (bodyOpenMatch.index ?? 0) + bodyOpenMatch[0].length;
-    const beforeBody = fullHtml.slice(0, bodyOpenEnd);
-    const afterBody = fullHtml.slice(bodyCloseIndex);
-
-    return beforeBody + `
-  <div class="container" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <div class="content" style="background: #fff; padding: 30px; border-radius: 8px;">
-      ${newContent}
-    </div>
-  </div>
-` + afterBody;
-  }
-
-  return fullHtml;
-}
+import { mergeTemplate, getDefaultBaseTemplate } from '@/lib/email/template-merge';
 
 interface EmailTemplate {
   id: string;
@@ -124,6 +36,9 @@ interface EmailTemplate {
   subject: string;
   preview_text: string;
   html_content: string;
+  content_html: string;
+  button_text: string;
+  button_url: string;
   flow_type: string;
   position: number;
   delay_hours: number;
@@ -131,12 +46,12 @@ interface EmailTemplate {
   is_active: boolean;
 }
 
-interface FlowBlueprint {
+interface BaseTemplate {
   id: string;
-  flow_type: string;
   name: string;
-  description: string;
-  default_delays: number[];
+  html_content: string;
+  placeholders: string[];
+  is_active: boolean;
 }
 
 const FLOW_NAMES: Record<string, string> = {
@@ -186,10 +101,20 @@ const DEFAULT_DELAYS: Record<string, number[]> = {
   win_back: [0, 72, 168],
 };
 
+const DEFAULT_BUTTON_TEXTS: Record<string, string[]> = {
+  welcome: ['Download Your Free Print', 'Explore Our Story', 'Shop Best Sellers', 'Shop Now & Save'],
+  quiz_result: ['See Your Collection', 'Explore Your Style', 'Get Inspired', 'Claim Your Discount'],
+  cart_abandonment: ['Complete Your Order', 'Return to Cart', 'Get 10% Off'],
+  post_purchase: ['Track Your Order', 'Care Guide', 'Leave a Review', 'Shop More'],
+  win_back: ['Come Back & Save', 'See What\'s New', 'Last Chance - 20% Off'],
+};
+
 function TemplateEditor({
   template,
   position,
   flowType,
+  baseTemplateHtml,
+  hasBaseTemplate,
   onSave,
   onDelete,
   onSync,
@@ -199,6 +124,8 @@ function TemplateEditor({
   template: EmailTemplate | null;
   position: number;
   flowType: string;
+  baseTemplateHtml: string;
+  hasBaseTemplate: boolean;
   onSave: (data: Partial<EmailTemplate>) => void;
   onDelete: () => void;
   onSync: () => void;
@@ -207,37 +134,52 @@ function TemplateEditor({
 }) {
   const labels = EMAIL_LABELS[flowType] || [];
   const delays = DEFAULT_DELAYS[flowType] || [];
+  const buttonTexts = DEFAULT_BUTTON_TEXTS[flowType] || [];
   const label = labels[position - 1] || `Email ${position}`;
   const defaultDelay = delays[position - 1] || 0;
+  const defaultButtonText = buttonTexts[position - 1] || 'Shop Now';
 
+  const [showPreview, setShowPreview] = useState(false);
   const [formData, setFormData] = useState({
     name: template?.name || label,
     subject: template?.subject || '',
     preview_text: template?.preview_text || '',
-    html_content: template?.html_content || getDefaultTemplate(label),
+    content_html: template?.content_html || getDefaultContent(label),
+    button_text: template?.button_text || defaultButtonText,
+    button_url: template?.button_url || '{{ url }}',
     delay_hours: template?.delay_hours ?? defaultDelay,
   });
 
-  const [editorMode, setEditorMode] = useState<EditorMode>('visual');
-  const [bodyContent, setBodyContent] = useState(() =>
-    extractBodyContent(template?.html_content || getDefaultTemplate(label))
-  );
-
-  // Sync body content back to full HTML when it changes
-  const handleBodyContentChange = (newContent: string) => {
-    setBodyContent(newContent);
-    setFormData(prev => ({
-      ...prev,
-      html_content: injectBodyContent(prev.html_content, newContent),
-    }));
-  };
-
   const handleSave = () => {
+    // Generate full HTML by merging with base template
+    const fullHtml = mergeTemplate({
+      baseHtml: baseTemplateHtml,
+      content: formData.content_html,
+      buttonText: formData.button_text,
+      buttonUrl: formData.button_url,
+    });
+
     onSave({
       id: template?.id,
-      ...formData,
+      name: formData.name,
+      subject: formData.subject,
+      preview_text: formData.preview_text,
+      content_html: formData.content_html,
+      button_text: formData.button_text,
+      button_url: formData.button_url,
+      html_content: fullHtml, // Store merged HTML for Klaviyo sync
       flow_type: flowType,
       position,
+      delay_hours: formData.delay_hours,
+    });
+  };
+
+  const getPreviewHtml = () => {
+    return mergeTemplate({
+      baseHtml: baseTemplateHtml,
+      content: formData.content_html,
+      buttonText: formData.button_text,
+      buttonUrl: formData.button_url,
     });
   };
 
@@ -274,42 +216,19 @@ function TemplateEditor({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1 bg-gray-100 rounded-md p-0.5">
-            <Button
-              variant={editorMode === 'visual' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setEditorMode('visual')}
-              className="cursor-pointer h-7 px-2"
-              title="Visual Editor"
-            >
-              <Type className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={editorMode === 'preview' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setEditorMode('preview')}
-              className="cursor-pointer h-7 px-2"
-              title="Preview"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={editorMode === 'code' ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => {
-                // When switching to code, sync body content
-                setBodyContent(extractBodyContent(formData.html_content));
-                setEditorMode('code');
-              }}
-              className="cursor-pointer h-7 px-2"
-              title="HTML Code"
-            >
-              <Code className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant={showPreview ? 'primary' : 'secondary'}
+            size="sm"
+            onClick={() => setShowPreview(!showPreview)}
+            className="cursor-pointer"
+          >
+            <Eye className="h-4 w-4 mr-1" />
+            {showPreview ? 'Hide Preview' : 'Preview'}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Subject & Preview Text */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-body-sm font-medium mb-1">Subject Line</label>
@@ -329,29 +248,56 @@ function TemplateEditor({
           </div>
         </div>
 
-        {editorMode === 'visual' && (
+        {/* Content Editor */}
+        <div>
+          <label className="block text-body-sm font-medium mb-1">Email Content</label>
+          <RichTextEditor
+            key={template?.id || position}
+            content={formData.content_html}
+            onChange={(html) => setFormData({ ...formData, content_html: html })}
+            placeholder="Write your email content here..."
+          />
+          <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+            Tip: Use {'{{ first_name }}'} for personalization. Klaviyo variables work here.
+          </p>
+        </div>
+
+        {/* Button Settings */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
           <div>
-            <label className="block text-body-sm font-medium mb-1">Email Content</label>
-            <RichTextEditor
-              content={bodyContent}
-              onChange={handleBodyContentChange}
-              placeholder="Write your email content here..."
+            <label className="block text-body-sm font-medium mb-1">
+              <LinkIcon className="h-3 w-3 inline mr-1" />
+              Button Text
+            </label>
+            <Input
+              value={formData.button_text}
+              onChange={(e) => setFormData({ ...formData, button_text: e.target.value })}
+              placeholder="Shop Now"
             />
-            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
-              Use {'{{ first_name }}'} for personalization. Switch to Code view for advanced HTML editing.
+          </div>
+          <div>
+            <label className="block text-body-sm font-medium mb-1">Button URL</label>
+            <Input
+              value={formData.button_url}
+              onChange={(e) => setFormData({ ...formData, button_url: e.target.value })}
+              placeholder="{{ url }}"
+            />
+            <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+              Use {'{{ url }}'} for Klaviyo's dynamic URL
             </p>
           </div>
-        )}
+        </div>
 
-        {editorMode === 'preview' && (
+        {/* Preview */}
+        {showPreview && (
           <div>
-            <label className="block text-body-sm font-medium mb-1">Email Preview</label>
+            <label className="block text-body-sm font-medium mb-2">Email Preview</label>
             <div
               className="border rounded-md bg-white overflow-auto"
               style={{ maxHeight: '500px' }}
             >
               <iframe
-                srcDoc={formData.html_content}
+                srcDoc={getPreviewHtml()}
                 className="w-full min-h-[400px] border-0"
                 title="Email preview"
               />
@@ -359,29 +305,7 @@ function TemplateEditor({
           </div>
         )}
 
-        {editorMode === 'code' && (
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <label className="block text-body-sm font-medium">HTML Content</label>
-              <div className="flex items-center gap-1 text-xs text-amber-600">
-                <AlertTriangle className="h-3 w-3" />
-                <span>Only edit content section - preserve table structure for email compatibility</span>
-              </div>
-            </div>
-            <Textarea
-              value={formData.html_content}
-              onChange={(e) => {
-                setFormData({ ...formData, html_content: e.target.value });
-                // Also update body content for when user switches back to visual
-                setBodyContent(extractBodyContent(e.target.value));
-              }}
-              rows={20}
-              className="font-mono text-sm"
-              placeholder="<html>...</html>"
-            />
-          </div>
-        )}
-
+        {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t">
           <div className="flex items-center gap-2">
             <Button
@@ -400,8 +324,9 @@ function TemplateEditor({
               <Button
                 variant="secondary"
                 onClick={onSync}
-                disabled={isSyncing}
+                disabled={isSyncing || !hasBaseTemplate}
                 className="cursor-pointer"
+                title={!hasBaseTemplate ? 'Set up a base template first' : undefined}
               >
                 {isSyncing ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -428,44 +353,10 @@ function TemplateEditor({
   );
 }
 
-function getDefaultTemplate(emailName: string): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-    .header { text-align: center; margin-bottom: 30px; }
-    .content { background: #fff; padding: 30px; border-radius: 8px; }
-    .button { display: inline-block; background: #7c9082; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
-    .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Haven & Hold</h1>
-    </div>
-    <div class="content">
-      <p>{{ first_name|default:'Friend' }},</p>
-
-      <p>This is a template for: ${emailName}</p>
-
-      <p>Replace this content with your email copy.</p>
-
-      <a href="{{ url }}" class="button">Call to Action</a>
-
-      <p>Held gently,<br>Haven & Hold</p>
-    </div>
-    <div class="footer">
-      <p>Haven & Hold | Your space for quiet holding</p>
-      <p><a href="{{ unsubscribe_url }}">Unsubscribe</a></p>
-    </div>
-  </div>
-</body>
-</html>`;
+function getDefaultContent(emailName: string): string {
+  return `<h1 style="font-family: 'Crimson Text', serif; font-weight: 400; color: #36454F;">{{ first_name|default:'Friend' }},</h1>
+<p style="font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif; color: #36454F;">This is the <strong>${emailName}</strong> email.</p>
+<p style="font-family: 'Plus Jakarta Sans', Helvetica, Arial, sans-serif; color: #36454F;">Replace this content with your email copy.</p>`;
 }
 
 export default function FlowTemplateEditorPage() {
@@ -476,6 +367,16 @@ export default function FlowTemplateEditorPage() {
 
   const flowName = FLOW_NAMES[flowType] || 'Unknown Flow';
   const emailCount = (DEFAULT_DELAYS[flowType] || []).length;
+
+  // Fetch base template
+  const { data: baseTemplateData } = useQuery<{ templates: BaseTemplate[]; active: BaseTemplate | null }>({
+    queryKey: ['email-workflows', 'base-templates'],
+    queryFn: () => api.get('/email-workflows/base-templates?active_only=true'),
+  });
+
+  const baseTemplate = baseTemplateData?.active;
+  const baseTemplateHtml = baseTemplate?.html_content || getDefaultBaseTemplate();
+  const hasBaseTemplate = !!baseTemplate;
 
   // Fetch templates for this flow
   const { data: templatesData, isLoading } = useQuery<{ templates: EmailTemplate[] }>({
@@ -545,8 +446,14 @@ export default function FlowTemplateEditorPage() {
           </Button>
         </Link>
         <div className="flex items-center gap-3">
+          <Link href="/dashboard/email/workflows/base-template">
+            <Button variant="secondary" className="cursor-pointer">
+              <Settings className="h-4 w-4 mr-2" />
+              Base Template
+            </Button>
+          </Link>
           <span className="text-body-sm text-[var(--color-text-secondary)]">
-            {templates.length}/{emailCount} templates created, {syncedCount} synced
+            {templates.length}/{emailCount} templates, {syncedCount} synced
           </span>
           <Button
             onClick={() => syncAllMutation.mutate()}
@@ -558,12 +465,35 @@ export default function FlowTemplateEditorPage() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Sync All to Klaviyo
+            Sync All
           </Button>
         </div>
       </div>
 
-      {/* Status banner */}
+      {/* Base template warning */}
+      {!hasBaseTemplate && (
+        <Card className="mb-6 bg-amber-50 border-amber-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div className="flex-1">
+                <p className="text-amber-800 font-medium">No base template configured</p>
+                <p className="text-amber-700 text-sm">
+                  Set up your Klaviyo template for consistent branding across all emails.
+                </p>
+              </div>
+              <Link href="/dashboard/email/workflows/base-template">
+                <Button size="sm" className="cursor-pointer">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Set Up Template
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All synced status */}
       {allSynced && (
         <Card className="mb-6 bg-green-50 border-green-200">
           <CardContent className="p-4">
@@ -612,6 +542,8 @@ export default function FlowTemplateEditorPage() {
                 template={template}
                 position={position}
                 flowType={flowType}
+                baseTemplateHtml={baseTemplateHtml}
+                hasBaseTemplate={hasBaseTemplate}
                 onSave={(data) => saveMutation.mutate(data)}
                 onDelete={() => template?.id && deleteMutation.mutate(template.id)}
                 onSync={() => template?.id && syncMutation.mutate(template.id)}
