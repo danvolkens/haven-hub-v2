@@ -70,36 +70,49 @@ function extractBodyContent(html: string): string {
 
 // Helper to inject body content back into email HTML
 function injectBodyContent(fullHtml: string, newContent: string): string {
-  // Find the content div
+  // Try method 1: Find the content div (newer templates)
   const contentStart = fullHtml.indexOf('<div class="content">');
-  if (contentStart === -1) {
-    console.warn('[injectBodyContent] No <div class="content"> found');
-    return fullHtml; // Can't inject without content div
+  if (contentStart !== -1) {
+    const contentTagEnd = contentStart + '<div class="content">'.length;
+
+    // Find where footer starts
+    const footerStart = fullHtml.indexOf('<div class="footer">');
+    if (footerStart !== -1) {
+      // Find the </div> that closes content (just before footer)
+      const beforeFooter = fullHtml.slice(0, footerStart);
+      const contentEndIndex = beforeFooter.lastIndexOf('</div>');
+      if (contentEndIndex !== -1) {
+        // Rebuild: before content + new content + closing div and everything after
+        const beforeContent = fullHtml.slice(0, contentTagEnd);
+        const afterContent = fullHtml.slice(contentEndIndex);
+        return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
+      }
+    }
   }
 
-  const contentTagEnd = contentStart + '<div class="content">'.length;
+  // Method 2: For templates without content div, try to replace body inner content
+  // This preserves the <head> and basic structure while allowing content editing
+  const bodyOpenMatch = fullHtml.match(/<body[^>]*>/i);
+  const bodyCloseIndex = fullHtml.lastIndexOf('</body>');
 
-  // Find where footer starts
-  const footerStart = fullHtml.indexOf('<div class="footer">');
-  if (footerStart === -1) {
-    console.warn('[injectBodyContent] No <div class="footer"> found');
-    return fullHtml; // Can't inject without footer reference
+  if (bodyOpenMatch && bodyCloseIndex !== -1) {
+    const bodyOpenEnd = (bodyOpenMatch.index ?? 0) + bodyOpenMatch[0].length;
+    const beforeBody = fullHtml.slice(0, bodyOpenEnd);
+    const afterBody = fullHtml.slice(bodyCloseIndex);
+
+    // Wrap in container structure for email compatibility
+    return beforeBody + `
+  <div class="container" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div class="content" style="background: #fff; padding: 30px; border-radius: 8px;">
+      ${newContent}
+    </div>
+  </div>
+` + afterBody;
   }
 
-  // Find the </div> that closes content (just before footer)
-  const beforeFooter = fullHtml.slice(0, footerStart);
-  const contentEndIndex = beforeFooter.lastIndexOf('</div>');
-  if (contentEndIndex === -1) {
-    console.warn('[injectBodyContent] No closing </div> found before footer');
-    return fullHtml;
-  }
-
-  // Rebuild: before content + new content + closing div and everything after
-  const beforeContent = fullHtml.slice(0, contentTagEnd);
-  const afterContent = fullHtml.slice(contentEndIndex);
-
-  console.log('[injectBodyContent] Successfully injected content');
-  return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
+  // Method 3: Return as-is if we can't find injection points
+  console.warn('[injectBodyContent] Could not find injection point');
+  return fullHtml;
 }
 
 interface EmailTemplate {
@@ -209,16 +222,11 @@ function TemplateEditor({
 
   // Sync body content back to full HTML when it changes
   const handleBodyContentChange = (newContent: string) => {
-    console.log('[handleBodyContentChange] Called with:', newContent.substring(0, 100));
     setBodyContent(newContent);
-    setFormData(prev => {
-      const newHtml = injectBodyContent(prev.html_content, newContent);
-      console.log('[handleBodyContentChange] New HTML length:', newHtml.length, 'Old:', prev.html_content.length);
-      return {
-        ...prev,
-        html_content: newHtml,
-      };
-    });
+    setFormData(prev => ({
+      ...prev,
+      html_content: injectBodyContent(prev.html_content, newContent),
+    }));
   };
 
   const handleSave = () => {
