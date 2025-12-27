@@ -38,6 +38,7 @@ import {
   Database,
   Webhook,
   Frame,
+  Type,
 } from 'lucide-react';
 
 interface DocSection {
@@ -307,6 +308,12 @@ export default function DocsPage() {
           title: 'Account Settings',
           icon: <Settings className="h-4 w-4" />,
           content: <SettingsSection />,
+        },
+        {
+          id: 'copy-templates',
+          title: 'Copy Templates',
+          icon: <Type className="h-4 w-4" />,
+          content: <CopyTemplatesSection />,
         },
       ],
     },
@@ -2389,6 +2396,155 @@ function SettingsSection() {
           <li>Delete account and data permanently</li>
           <li>View API usage and logs</li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function CopyTemplatesSection() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Copy Templates</h2>
+        <p className="text-[var(--color-text-secondary)]">
+          Copy Templates power the automatic generation of Pinterest pin titles and descriptions.
+          By customizing these templates, you can ensure all your pins match your brand voice while
+          maintaining variety to keep Pinterest&apos;s algorithm happy.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">How It Works</h3>
+        <p className="text-[var(--color-text-secondary)] mb-3">
+          When you bulk-create pins, the system randomly combines elements from three template categories
+          to generate unique, engaging copy for each pin:
+        </p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 font-mono text-sm">
+          <div className="text-[var(--color-text-tertiary)]">// Example generated title:</div>
+          <div>&quot;Find your anchor | Minimalist Quote Print&quot;</div>
+          <div className="mt-3 text-[var(--color-text-tertiary)]">// Example generated description:</div>
+          <div>&quot;Your quote here&quot; ✨ This peaceful minimalist print brings intention to your therapy office...</div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Template Categories</h3>
+        <div className="space-y-4">
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" /> Collection Hooks
+            </h4>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+              Opening phrases tied to each collection that set the emotional tone.
+            </p>
+            <div className="grid gap-2 md:grid-cols-3">
+              <div className="bg-green-50 rounded p-2">
+                <div className="text-xs font-medium text-green-800 mb-1">Grounding</div>
+                <ul className="text-xs text-green-700 space-y-0.5">
+                  <li>&quot;Find your anchor&quot;</li>
+                  <li>&quot;Stay rooted&quot;</li>
+                  <li>&quot;Present moment living&quot;</li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 rounded p-2">
+                <div className="text-xs font-medium text-blue-800 mb-1">Wholeness</div>
+                <ul className="text-xs text-blue-700 space-y-0.5">
+                  <li>&quot;You are already complete&quot;</li>
+                  <li>&quot;Embrace all of you&quot;</li>
+                  <li>&quot;All parts welcome&quot;</li>
+                </ul>
+              </div>
+              <div className="bg-amber-50 rounded p-2">
+                <div className="text-xs font-medium text-amber-800 mb-1">Growth</div>
+                <ul className="text-xs text-amber-700 space-y-0.5">
+                  <li>&quot;Becoming takes time&quot;</li>
+                  <li>&quot;Trust the process&quot;</li>
+                  <li>&quot;Bloom at your own pace&quot;</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Palette className="h-4 w-4 text-purple-500" /> Mood Descriptors
+            </h4>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+              Adjectives that match the asset&apos;s mood setting, adding variety to descriptions.
+            </p>
+            <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-5">
+              {[
+                { mood: 'Calm', words: 'peaceful, serene, tranquil' },
+                { mood: 'Warm', words: 'comforting, nurturing, cozy' },
+                { mood: 'Hopeful', words: 'uplifting, inspiring, bright' },
+                { mood: 'Reflective', words: 'contemplative, mindful' },
+                { mood: 'Empowering', words: 'strong, bold, confident' },
+              ].map((item) => (
+                <div key={item.mood} className="bg-[var(--color-bg-secondary)] rounded p-2">
+                  <div className="text-xs font-medium mb-0.5">{item.mood}</div>
+                  <div className="text-xs text-[var(--color-text-tertiary)]">{item.words}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border border-[var(--color-border-primary)] rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Frame className="h-4 w-4 text-teal-500" /> Room Contexts
+            </h4>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-3">
+              Places where your art might be displayed, helping buyers visualize the product in their space.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                'bedroom sanctuary',
+                'therapy office',
+                'reading nook',
+                'home office',
+                'meditation corner',
+                'living room',
+                'nursery',
+                'yoga space',
+              ].map((room) => (
+                <span
+                  key={room}
+                  className="px-2 py-1 bg-[var(--color-bg-secondary)] rounded text-xs"
+                >
+                  {room}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="font-semibold text-lg mb-3">Auto-Generated Hashtags</h3>
+        <p className="text-[var(--color-text-secondary)] mb-3">
+          Each pin also gets relevant hashtags based on its collection:
+        </p>
+        <div className="grid gap-2 md:grid-cols-2">
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="text-sm font-medium mb-1">Collection Tags</div>
+            <div className="text-xs text-[var(--color-text-tertiary)]">
+              #grounding #mindfulness #selfacceptance #personalgrowth
+            </div>
+          </div>
+          <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+            <div className="text-sm font-medium mb-1">Universal Tags</div>
+            <div className="text-xs text-[var(--color-text-tertiary)]">
+              #wallart #homedecor #quoteart #printableart #therapyoffice
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-sage/10 rounded-lg p-4">
+        <h3 className="font-semibold mb-2">Customization</h3>
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          Go to <strong>Settings → Copy Templates</strong> to add your own hooks, mood descriptors,
+          and room contexts. The more options you add, the more variety in your generated pin copy.
+        </p>
       </div>
     </div>
   );

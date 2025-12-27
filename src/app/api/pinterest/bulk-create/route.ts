@@ -228,20 +228,21 @@ export async function POST(request: NextRequest) {
 
     const defaultShopUrl = userSettings?.shop_url || 'https://havenandhold.com';
 
-    // Fetch product links for quotes that don't have them in payload
-    const quoteIdsNeedingLinks = [...new Set(allImages.filter(img => !img.productLink && img.quoteId).map(img => img.quoteId))];
-    const quoteProductLinks = new Map<string, string>();
+    // Fetch quote data (text and product_link) for all quotes
+    const allQuoteIds = [...new Set(allImages.filter(img => img.quoteId).map(img => img.quoteId))];
+    const quoteDataMap = new Map<string, { text: string; product_link: string | null }>();
 
-    if (quoteIdsNeedingLinks.length > 0) {
+    if (allQuoteIds.length > 0) {
       const { data: quotes } = await (supabase as any)
         .from('quotes')
-        .select('id, product_link')
-        .in('id', quoteIdsNeedingLinks);
+        .select('id, text, product_link')
+        .in('id', allQuoteIds);
 
       for (const quote of quotes || []) {
-        if (quote.product_link) {
-          quoteProductLinks.set(quote.id, quote.product_link);
-        }
+        quoteDataMap.set(quote.id, {
+          text: quote.text || '',
+          product_link: quote.product_link,
+        });
       }
     }
 
@@ -265,9 +266,13 @@ export async function POST(request: NextRequest) {
       const item = allImages[i];
 
       try {
+        // Get quote text - prefer payload, fall back to database
+        const quoteData = item.quoteId ? quoteDataMap.get(item.quoteId) : null;
+        const quoteText = item.quoteText || quoteData?.text || '';
+
         // Generate copy
         const copy = generatePinCopy({
-          quote_text: item.quoteText,
+          quote_text: quoteText,
           collection: item.collection as 'grounding' | 'wholeness' | 'growth',
           mood: item.mood,
         });
@@ -285,7 +290,7 @@ export async function POST(request: NextRequest) {
             title: copy.title,
             description: `${copy.description}\n\n${copy.hashtags.map((h: string) => `#${h}`).join(' ')}`,
             alt_text: copy.alt_text,
-            link: item.productLink || quoteProductLinks.get(item.quoteId) || defaultShopUrl,
+            link: item.productLink || quoteData?.product_link || defaultShopUrl,
             image_url: item.imageUrl,
             collection: item.collection,
             status: schedule_strategy === 'immediate' ? 'draft' : 'scheduled',
