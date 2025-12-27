@@ -56,21 +56,29 @@ export async function POST(request: NextRequest) {
     for (const template of templates) {
       try {
         let klaviyoTemplateId = template.klaviyo_template_id;
+        let wasUpdated = false;
 
         if (klaviyoTemplateId) {
-          // Update existing template in Klaviyo
-          await klaviyo.updateTemplate(klaviyoTemplateId, {
-            name: `Haven Hub - ${template.name}`,
-            html: template.html_content,
-          });
+          try {
+            // Try to update existing template in Klaviyo
+            await klaviyo.updateTemplate(klaviyoTemplateId, {
+              name: `Haven Hub - ${template.name}`,
+              html: template.html_content,
+            });
+            wasUpdated = true;
+          } catch (updateError) {
+            // If template doesn't exist in Klaviyo anymore, create a new one
+            const errorMessage = updateError instanceof Error ? updateError.message : '';
+            if (errorMessage.includes('does not exist')) {
+              console.log(`Template ${klaviyoTemplateId} no longer exists in Klaviyo, creating new one`);
+              klaviyoTemplateId = null; // Reset to create new
+            } else {
+              throw updateError; // Re-throw other errors
+            }
+          }
+        }
 
-          results.push({
-            id: template.id,
-            name: template.name,
-            klaviyo_template_id: klaviyoTemplateId,
-            status: 'updated',
-          });
-        } else {
+        if (!klaviyoTemplateId) {
           // Create new template in Klaviyo
           const klaviyoTemplate = await klaviyo.createTemplate({
             name: `Haven Hub - ${template.name}`,
@@ -79,19 +87,19 @@ export async function POST(request: NextRequest) {
 
           klaviyoTemplateId = klaviyoTemplate.id;
 
-          // Update local record with Klaviyo ID
+          // Update local record with new Klaviyo ID
           await (supabase as any)
             .from('email_templates')
             .update({ klaviyo_template_id: klaviyoTemplateId })
             .eq('id', template.id);
-
-          results.push({
-            id: template.id,
-            name: template.name,
-            klaviyo_template_id: klaviyoTemplateId,
-            status: 'created',
-          });
         }
+
+        results.push({
+          id: template.id,
+          name: template.name,
+          klaviyo_template_id: klaviyoTemplateId,
+          status: wasUpdated ? 'updated' : 'created',
+        });
       } catch (error) {
         console.error(`Error syncing template ${template.id}:`, error);
         results.push({
