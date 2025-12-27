@@ -109,8 +109,8 @@ export async function checkAutoGeneration(
     templates = allTemplates || [];
   }
 
-  // 6. Apply max limit
-  templates = templates.slice(0, settings.max_per_quote);
+  // 6. Shuffle templates randomly, then apply max limit
+  templates = shuffleArray(templates).slice(0, settings.max_per_quote);
 
   if (templates.length === 0) {
     return {
@@ -150,4 +150,16 @@ export async function checkAutoGeneration(
  */
 export function getSceneKeysFromTemplates(templates: MockupSceneTemplate[]): string[] {
   return templates.map((t) => t.scene_key);
+}
+
+/**
+ * Fisher-Yates shuffle to randomize template selection
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
