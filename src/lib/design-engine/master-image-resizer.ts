@@ -40,11 +40,12 @@ export async function resizeMasterImage(
       fit: 'fill', // Exact dimensions, no cropping
     });
   } else {
-    // Different aspect ratio - fill + center crop
-    // Equivalent to: magick -resize WxH^ -gravity center -extent WxH
+    // Different aspect ratio - fill + smart crop
+    // Use 'attention' for content-aware cropping that focuses on important areas
+    // This is better than center for images with text/logos
     pipeline = pipeline.resize(width, height, {
       fit: 'cover',        // Fill the target (may overflow)
-      position: 'center',  // Center gravity for cropping
+      position: 'attention',  // Smart crop focusing on important content
     });
   }
 
