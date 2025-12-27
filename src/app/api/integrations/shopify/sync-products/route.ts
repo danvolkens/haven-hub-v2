@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { getAdminClient } from '@/lib/supabase/admin';
 import { getApiUserId } from '@/lib/auth/session';
 import { importProductsFromShopify } from '@/lib/integrations/shopify/product-sync';
+import { getCredential } from '@/lib/integrations/credentials';
 
 export async function POST() {
   try {
     const userId = await getApiUserId();
     const supabase = await createServerSupabaseClient();
-    const adminClient = getAdminClient();
 
     // Get integration
     const { data: integration, error: integrationError } = await (supabase as any)
@@ -19,22 +18,20 @@ export async function POST() {
       .single();
 
     if (integrationError || !integration || integration.status !== 'connected') {
+      console.error('Shopify integration check failed:', { integrationError, status: integration?.status });
       return NextResponse.json(
-        { error: 'Shopify not connected' },
+        { error: 'Shopify not connected', details: integrationError?.message },
         { status: 400 }
       );
     }
 
-    // Get access token from vault
-    const { data: accessToken } = await (adminClient as any).rpc('get_credential', {
-      p_user_id: userId,
-      p_provider: 'shopify',
-      p_credential_type: 'access_token',
-    });
+    // Get access token (tries Vault first, falls back to metadata)
+    const accessToken = await getCredential(userId, 'shopify', 'access_token');
 
     if (!accessToken) {
+      console.error('Shopify access token not found for user:', userId);
       return NextResponse.json(
-        { error: 'Access token not found' },
+        { error: 'Access token not found. Please reconnect Shopify.' },
         { status: 400 }
       );
     }

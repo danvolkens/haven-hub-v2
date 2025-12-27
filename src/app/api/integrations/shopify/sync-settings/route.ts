@@ -14,16 +14,18 @@ export async function GET() {
   }
 
   try {
-    // Get sync settings from user_settings
+    // Get sync settings from module_overrides JSONB
     const { data: settings } = await (supabase as any)
       .from('user_settings')
-      .select('shopify_sync_settings')
+      .select('module_overrides')
       .eq('user_id', user.id)
       .single();
 
+    const syncSettings = settings?.module_overrides?.shopify_sync || {};
+
     return NextResponse.json({
-      autoSync: settings?.shopify_sync_settings?.autoSync ?? false,
-      syncFrequency: settings?.shopify_sync_settings?.syncFrequency ?? '24h',
+      autoSync: syncSettings.autoSync ?? false,
+      syncFrequency: syncSettings.syncFrequency ?? '24h',
     });
   } catch (error) {
     console.error('Error fetching sync settings:', error);
@@ -53,11 +55,12 @@ export async function POST(request: NextRequest) {
     // Get current settings
     const { data: currentSettings } = await (supabase as any)
       .from('user_settings')
-      .select('shopify_sync_settings')
+      .select('module_overrides')
       .eq('user_id', user.id)
       .single();
 
-    const currentSyncSettings = currentSettings?.shopify_sync_settings || {};
+    const currentOverrides = currentSettings?.module_overrides || {};
+    const currentSyncSettings = currentOverrides.shopify_sync || {};
 
     // Merge with new settings
     const newSyncSettings = {
@@ -67,17 +70,17 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    // Upsert settings
+    // Update module_overrides with shopify_sync settings
     const { error: updateError } = await (supabase as any)
       .from('user_settings')
-      .upsert(
-        {
-          user_id: user.id,
-          shopify_sync_settings: newSyncSettings,
-          updated_at: new Date().toISOString(),
+      .update({
+        module_overrides: {
+          ...currentOverrides,
+          shopify_sync: newSyncSettings,
         },
-        { onConflict: 'user_id' }
-      );
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id);
 
     if (updateError) {
       throw updateError;

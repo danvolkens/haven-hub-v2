@@ -85,14 +85,9 @@ export async function GET(request: NextRequest) {
     const client = new ShopifyClient({ shop, accessToken: access_token });
     const { shop: shopInfo } = await client.getShop();
 
-    // Store access token securely in vault
-    const adminClient = getAdminClient();
-    await (adminClient as any).rpc('store_credential', {
-      p_user_id: userId,
-      p_provider: 'shopify',
-      p_credential_type: 'access_token',
-      p_credential_value: access_token,
-    });
+    // Store access token (tries Vault first, falls back to metadata)
+    const { storeCredential } = await import('@/lib/integrations/credentials');
+    await storeCredential(userId, 'shopify', 'access_token', access_token);
 
     // Update integration record
     await (supabase as any)

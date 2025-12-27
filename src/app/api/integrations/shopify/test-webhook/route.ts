@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getAdminClient } from '@/lib/supabase/admin';
 
 // Test payloads for different webhook topics
 const testPayloads: Record<string, object> = {
@@ -121,7 +120,6 @@ const testPayloads: Record<string, object> = {
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
-  const adminClient = getAdminClient();
 
   const {
     data: { user },
@@ -161,29 +159,24 @@ export async function POST(request: NextRequest) {
 
     const shopDomain = integration.metadata?.shop_domain || 'test-shop.myshopify.com';
 
-    // Log the test webhook event
-    await (adminClient as any).from('shopify_webhook_events').insert({
-      user_id: user.id,
-      topic,
-      shop_domain: shopDomain,
-      shopify_id: `test-${Date.now()}`,
-      payload: {
-        ...testPayloads[topic],
-        _test: true,
-        _test_timestamp: new Date().toISOString(),
-      },
-      processed: true,
-    });
-
-    // Update webhook receive stats
-    await (adminClient as any)
-      .from('shopify_webhooks')
-      .update({
-        last_received_at: new Date().toISOString(),
-        receive_count: (adminClient as any).raw('receive_count + 1'),
-      })
-      .eq('user_id', user.id)
-      .eq('topic', topic);
+    // Log the test webhook event to activity log
+    try {
+      await (supabase as any).rpc('log_activity', {
+        p_user_id: user.id,
+        p_action_type: 'webhook_test',
+        p_details: {
+          topic,
+          shop_domain: shopDomain,
+          test: true,
+          payload_sample: Object.keys(testPayloads[topic]).slice(0, 5),
+        },
+        p_executed: true,
+        p_module: 'shopify',
+      });
+    } catch (logError) {
+      // Activity logging is optional, don't fail the request
+      console.warn('Failed to log test webhook activity:', logError);
+    }
 
     return NextResponse.json({
       success: true,
