@@ -36,53 +36,47 @@ type EditorMode = 'visual' | 'preview' | 'code';
 
 // Helper to extract body content from email HTML
 function extractBodyContent(html: string): string {
-  // Find the content div start
-  const contentStart = html.indexOf('<div class="content">');
-  if (contentStart === -1) {
-    // Fallback: extract body content
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    if (bodyMatch) {
-      return bodyMatch[1].trim();
+  // Method 1: Check for our simple template structure
+  const contentDivStart = html.indexOf('<div class="content">');
+  if (contentDivStart !== -1) {
+    const footerStart = html.indexOf('<div class="footer">');
+    if (footerStart !== -1) {
+      const contentTagEnd = contentDivStart + '<div class="content">'.length;
+      const contentEndMatch = html.slice(0, footerStart).lastIndexOf('</div>');
+      if (contentEndMatch !== -1) {
+        return html.slice(contentTagEnd, contentEndMatch).trim();
+      }
     }
-    return html;
   }
 
-  // Find where content ends (before footer div)
-  const footerStart = html.indexOf('<div class="footer">');
-  if (footerStart === -1) {
-    // No footer, find closing body
-    const bodyEnd = html.indexOf('</body>');
-    if (bodyEnd === -1) return html;
-
-    // Extract from after content opening tag to before body close
-    const contentTagEnd = contentStart + '<div class="content">'.length;
-    return html.slice(contentTagEnd, bodyEnd).replace(/<\/div>\s*<\/div>\s*$/i, '').trim();
+  // Method 2: Klaviyo template - find the main kl-text block with content
+  // Look for the first substantial kl-text div (contains h1 or multiple paragraphs)
+  const klTextMatch = html.match(/<td[^>]*class="kl-text"[^>]*>[\s\S]*?<div[^>]*>([\s\S]*?)<\/div>[\s]*<\/td>/i);
+  if (klTextMatch && klTextMatch[1]) {
+    // Found Klaviyo text block - return its inner content
+    return klTextMatch[1].trim();
   }
 
-  // Extract from after content opening tag to before footer
-  const contentTagEnd = contentStart + '<div class="content">'.length;
-  // Find the </div> that closes the content div (just before footer)
-  const contentEndMatch = html.slice(0, footerStart).lastIndexOf('</div>');
-  if (contentEndMatch === -1) return html;
+  // Method 3: Fallback - extract from body
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) {
+    return bodyMatch[1].trim();
+  }
 
-  return html.slice(contentTagEnd, contentEndMatch).trim();
+  return html;
 }
 
 // Helper to inject body content back into email HTML
 function injectBodyContent(fullHtml: string, newContent: string): string {
-  // Try method 1: Find the content div (newer templates)
-  const contentStart = fullHtml.indexOf('<div class="content">');
-  if (contentStart !== -1) {
-    const contentTagEnd = contentStart + '<div class="content">'.length;
-
-    // Find where footer starts
+  // Method 1: Simple template with content div
+  const contentDivStart = fullHtml.indexOf('<div class="content">');
+  if (contentDivStart !== -1) {
+    const contentTagEnd = contentDivStart + '<div class="content">'.length;
     const footerStart = fullHtml.indexOf('<div class="footer">');
     if (footerStart !== -1) {
-      // Find the </div> that closes content (just before footer)
       const beforeFooter = fullHtml.slice(0, footerStart);
       const contentEndIndex = beforeFooter.lastIndexOf('</div>');
       if (contentEndIndex !== -1) {
-        // Rebuild: before content + new content + closing div and everything after
         const beforeContent = fullHtml.slice(0, contentTagEnd);
         const afterContent = fullHtml.slice(contentEndIndex);
         return beforeContent + '\n      ' + newContent + '\n    ' + afterContent;
@@ -90,8 +84,20 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
     }
   }
 
-  // Method 2: For templates without content div, try to replace body inner content
-  // This preserves the <head> and basic structure while allowing content editing
+  // Method 2: Klaviyo template - find and replace kl-text content
+  // Match the pattern: <td class="kl-text"...><div...>CONTENT</div></td>
+  const klTextRegex = /(<td[^>]*class="kl-text"[^>]*>[\s\S]*?<div[^>]*>)([\s\S]*?)(<\/div>[\s]*<\/td>)/i;
+  const klMatch = fullHtml.match(klTextRegex);
+  if (klMatch) {
+    const beforeContent = klMatch[1];
+    const afterContent = klMatch[3];
+    const matchStart = fullHtml.indexOf(klMatch[0]);
+    const matchEnd = matchStart + klMatch[0].length;
+
+    return fullHtml.slice(0, matchStart) + beforeContent + newContent + afterContent + fullHtml.slice(matchEnd);
+  }
+
+  // Method 3: Fallback for unknown templates - wrap in body
   const bodyOpenMatch = fullHtml.match(/<body[^>]*>/i);
   const bodyCloseIndex = fullHtml.lastIndexOf('</body>');
 
@@ -100,7 +106,6 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
     const beforeBody = fullHtml.slice(0, bodyOpenEnd);
     const afterBody = fullHtml.slice(bodyCloseIndex);
 
-    // Wrap in container structure for email compatibility
     return beforeBody + `
   <div class="container" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div class="content" style="background: #fff; padding: 30px; border-radius: 8px;">
@@ -110,8 +115,6 @@ function injectBodyContent(fullHtml: string, newContent: string): string {
 ` + afterBody;
   }
 
-  // Method 3: Return as-is if we can't find injection points
-  console.warn('[injectBodyContent] Could not find injection point');
   return fullHtml;
 }
 
