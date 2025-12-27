@@ -277,19 +277,19 @@ export default function EmailWorkflowsPage() {
   // Fetch blueprints
   const { data: blueprintsData, isLoading: loadingBlueprints } = useQuery<{ blueprints: FlowBlueprint[] }>({
     queryKey: ['email-workflows', 'blueprints'],
-    queryFn: () => api.get('/api/email-workflows/blueprints'),
+    queryFn: () => api.get('/email-workflows/blueprints'),
   });
 
   // Fetch templates
   const { data: templatesData, isLoading: loadingTemplates } = useQuery<{ templates: EmailTemplate[] }>({
     queryKey: ['email-workflows', 'templates'],
-    queryFn: () => api.get('/api/email-workflows/templates'),
+    queryFn: () => api.get('/email-workflows/templates'),
   });
 
   // Deploy mutation
   const deployMutation = useMutation({
     mutationFn: (flowType: string) =>
-      api.post('/api/email-workflows/deploy', {
+      api.post('/email-workflows/deploy', {
         flow_type: flowType,
         from_email: deployConfig.from_email,
         from_label: deployConfig.from_label,

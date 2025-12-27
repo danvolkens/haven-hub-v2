@@ -127,7 +127,13 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"$\\(cat <<''EOF''\nRemove fake flow metrics - show only real Klaviyo data\n\nThe flows page was showing random placeholder data that changed\non each refresh. Now it shows:\n- Real flow counts \\(active, draft, paused, total\\)\n- Real flow names, status, and triggers from Klaviyo\n- Link to view metrics in Klaviyo directly\n\nPer-flow metrics require Klaviyo''s premium Flow Analytics API.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git restore:*)",
       "Bash(npx playwright install:*)",
-      "Bash(npm run test:run:*)"
+      "Bash(npm run test:run:*)",
+      "WebFetch(domain:developers.klaviyo.com)",
+      "Bash(unzip:*)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 add src/lib/navigation.ts src/app/\\\\\\(dashboard\\\\\\)/dashboard/docs/page.tsx)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"Add navigation and docs for Email Workflows\n\n- Add ''Workflows'' entry to Email section in sidebar navigation\n- Add ''Workflow Automation'' section to /dashboard/docs with:\n  - How it works \\(3-step process\\)\n  - Available flows \\(5 flows with descriptions\\)\n  - Content Library features\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\")",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 add -A)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"Fix double /api prefix in email-workflows API calls\n\nThe fetcher already adds /api prefix, so remove it from API calls\nin workflows pages to prevent /api/api/ URLs.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\")"
     ]
   }
 }

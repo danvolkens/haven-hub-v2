@@ -187,13 +187,13 @@ export default function ContentLibraryPage() {
   // Fetch content library
   const { data: contentData, isLoading } = useQuery<{ content: ContentEntry[] }>({
     queryKey: ['email-workflows', 'content', filterFlow],
-    queryFn: () => api.get(`/api/email-workflows/content?active_only=false`),
+    queryFn: () => api.get(`/email-workflows/content?active_only=false`),
   });
 
   // Activate version mutation
   const activateMutation = useMutation({
     mutationFn: (id: string) =>
-      api.patch('/api/email-workflows/content', { id, activate: true }),
+      api.patch('/email-workflows/content', { id, activate: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'content'] });
     },

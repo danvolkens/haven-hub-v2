@@ -324,7 +324,7 @@ export default function FlowTemplateEditorPage() {
   // Fetch templates for this flow
   const { data: templatesData, isLoading } = useQuery<{ templates: EmailTemplate[] }>({
     queryKey: ['email-workflows', 'templates', flowType],
-    queryFn: () => api.get(`/api/email-workflows/templates?flow_type=${flowType}`),
+    queryFn: () => api.get(`/email-workflows/templates?flow_type=${flowType}`),
   });
 
   const templates: EmailTemplate[] = templatesData?.templates || [];
@@ -333,9 +333,9 @@ export default function FlowTemplateEditorPage() {
   const saveMutation = useMutation({
     mutationFn: (data: Partial<EmailTemplate>) => {
       if (data.id) {
-        return api.patch('/api/email-workflows/templates', data);
+        return api.patch('/email-workflows/templates', data);
       }
-      return api.post('/api/email-workflows/templates', data);
+      return api.post('/email-workflows/templates', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'templates'] });
@@ -344,7 +344,7 @@ export default function FlowTemplateEditorPage() {
 
   // Delete template mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => api.delete(`/api/email-workflows/templates?id=${id}`),
+    mutationFn: (id: string) => api.delete(`/email-workflows/templates?id=${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'templates'] });
     },
@@ -353,7 +353,7 @@ export default function FlowTemplateEditorPage() {
   // Sync template mutation
   const syncMutation = useMutation({
     mutationFn: (templateId: string) =>
-      api.post('/api/email-workflows/templates/sync', { template_id: templateId }),
+      api.post('/email-workflows/templates/sync', { template_id: templateId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'templates'] });
     },
@@ -362,7 +362,7 @@ export default function FlowTemplateEditorPage() {
   // Sync all templates
   const syncAllMutation = useMutation({
     mutationFn: () =>
-      api.post('/api/email-workflows/templates/sync', { sync_all: true }),
+      api.post('/email-workflows/templates/sync', { sync_all: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['email-workflows', 'templates'] });
     },
