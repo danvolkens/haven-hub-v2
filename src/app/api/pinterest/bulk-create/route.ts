@@ -127,78 +127,87 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get approved Pinterest assets for these quotes
-    const { data: assets, error: assetsError } = await (supabase as any)
-      .from('assets')
-      .select(`
-        id,
-        file_url,
-        format,
-        quote_id,
-        quotes (
-          id,
-          text,
-          attribution,
-          collection,
-          mood
-        )
-      `)
+    // Get approved assets from approval_items table
+    const { data: approvedAssets, error: assetsError } = await (supabase as any)
+      .from('approval_items')
+      .select('id, reference_id, payload, collection')
       .eq('user_id', userId)
-      .in('quote_id', quote_ids)
-      .in('format', ['pinterest', 'pinterest_portrait', 'pinterest_square'])
+      .eq('type', 'asset')
       .eq('status', 'approved');
 
     if (assetsError) {
-      console.error('Error fetching assets:', assetsError);
-      return NextResponse.json(
-        { error: 'Failed to fetch assets' },
-        { status: 500 }
-      );
+      console.error('Error fetching approved assets:', assetsError);
     }
 
-    // Optionally get approved mockups
-    let mockups: any[] = [];
+    // Get approved mockups from approval_items table
+    let approvedMockups: any[] = [];
     if (include_mockups) {
-      const { data: mockupData } = await (supabase as any)
-        .from('mockups')
-        .select(`
-          id,
-          file_url,
-          quote_id,
-          quotes (
-            id,
-            text,
-            attribution,
-            collection,
-            mood
-          )
-        `)
+      const { data: mockupData, error: mockupsError } = await (supabase as any)
+        .from('approval_items')
+        .select('id, reference_id, payload, collection')
         .eq('user_id', userId)
-        .in('quote_id', quote_ids)
+        .eq('type', 'mockup')
         .eq('status', 'approved');
 
-      mockups = mockupData || [];
+      if (mockupsError) {
+        console.error('Error fetching approved mockups:', mockupsError);
+      }
+      approvedMockups = mockupData || [];
     }
 
-    // Combine assets and mockups into a single list
+    // Filter to only items from selected quotes and Pinterest formats
+    const isPinterestFormat = (format: string | undefined) => {
+      if (!format) return true; // Include if no format specified
+      const lowerFormat = format.toLowerCase();
+      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
+    };
+
+    const filteredAssets = (approvedAssets || []).filter((item: any) => {
+      const payload = item.payload || {};
+      const quoteId = payload.quoteId || payload.quote_id;
+      return quote_ids.includes(quoteId) && isPinterestFormat(payload.format);
+    });
+
+    const filteredMockups = approvedMockups.filter((item: any) => {
+      const payload = item.payload || {};
+      const quoteId = payload.quoteId || payload.quote_id;
+      return quote_ids.includes(quoteId);
+    });
+
+    // Combine into single list
     interface ImageItem {
-      id: string;
-      file_url: string;
-      quote_id: string;
-      quotes: {
-        id: string;
-        text: string;
-        attribution?: string;
-        collection: 'grounding' | 'wholeness' | 'growth';
-        mood?: string;
-      };
+      approvalItemId: string;
+      referenceId: string;
+      imageUrl: string;
+      quoteId: string;
+      quoteText: string;
+      collection: string;
+      mood?: string;
       type: 'asset' | 'mockup';
     }
 
     const allImages: ImageItem[] = [
-      ...(assets || []).map((a: any) => ({ ...a, type: 'asset' as const })),
-      ...mockups.map((m: any) => ({ ...m, type: 'mockup' as const })),
-    ];
+      ...filteredAssets.map((item: any) => ({
+        approvalItemId: item.id,
+        referenceId: item.reference_id,
+        imageUrl: item.payload?.assetUrl || item.payload?.file_url || item.payload?.thumbnailUrl,
+        quoteId: item.payload?.quoteId || item.payload?.quote_id,
+        quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
+        collection: item.collection || item.payload?.collection || 'grounding',
+        mood: item.payload?.mood,
+        type: 'asset' as const,
+      })),
+      ...filteredMockups.map((item: any) => ({
+        approvalItemId: item.id,
+        referenceId: item.reference_id,
+        imageUrl: item.payload?.file_url || item.payload?.thumbnailUrl,
+        quoteId: item.payload?.quoteId || item.payload?.quote_id,
+        quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
+        collection: item.collection || item.payload?.collection || 'grounding',
+        mood: item.payload?.mood,
+        type: 'mockup' as const,
+      })),
+    ].filter(item => item.imageUrl); // Only include items with valid image URLs
 
     if (allImages.length === 0) {
       return NextResponse.json(
@@ -225,15 +234,13 @@ export async function POST(request: NextRequest) {
     // Create pins for each image
     for (let i = 0; i < allImages.length; i++) {
       const item = allImages[i];
-      const quote = item.quotes;
 
       try {
         // Generate copy
         const copy = generatePinCopy({
-          quote_text: quote.text,
-          mantra_text: quote.attribution,
-          collection: quote.collection,
-          mood: quote.mood,
+          quote_text: item.quoteText,
+          collection: item.collection as 'grounding' | 'wholeness' | 'growth',
+          mood: item.mood,
         });
 
         // Create the pin record
@@ -241,17 +248,17 @@ export async function POST(request: NextRequest) {
           .from('pins')
           .insert({
             user_id: userId,
-            asset_id: item.type === 'asset' ? item.id : null,
-            mockup_id: item.type === 'mockup' ? item.id : null,
-            quote_id: quote.id,
+            asset_id: item.type === 'asset' ? item.referenceId : null,
+            mockup_id: item.type === 'mockup' ? item.referenceId : null,
+            quote_id: item.quoteId || null,
             pinterest_board_id: board.pinterest_board_id,
             board_id: board.id,
             title: copy.title,
             description: `${copy.description}\n\n${copy.hashtags.map((h: string) => `#${h}`).join(' ')}`,
             alt_text: copy.alt_text,
-            link: `https://havenandhold.com/products/${quote.id}`,
-            image_url: item.file_url,
-            collection: quote.collection,
+            link: item.quoteId ? `https://havenandhold.com/products/${item.quoteId}` : 'https://havenandhold.com',
+            image_url: item.imageUrl,
+            collection: item.collection,
             status: schedule_strategy === 'immediate' ? 'draft' : 'scheduled',
             scheduled_for: schedule_strategy === 'immediate' ? null : scheduleTimes[i].toISOString(),
           })
@@ -259,7 +266,7 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (pinError) {
-          result.errors.push(`Failed to create pin for ${item.type} ${item.id}: ${pinError.message}`);
+          result.errors.push(`Failed to create pin for ${item.type} ${item.referenceId}: ${pinError.message}`);
           result.failed++;
         } else {
           result.pins.push({
@@ -270,7 +277,7 @@ export async function POST(request: NextRequest) {
           result.created++;
         }
       } catch (err) {
-        result.errors.push(`Error processing ${item.type} ${item.id}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        result.errors.push(`Error processing ${item.type} ${item.referenceId}: ${err instanceof Error ? err.message : 'Unknown error'}`);
         result.failed++;
       }
     }
@@ -317,85 +324,106 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
     const supabase = await createServerSupabaseClient();
 
-    // Get quotes that have at least one approved Pinterest-format asset
-    const { data: quotesWithAssets, error } = await (supabase as any)
-      .from('quotes')
-      .select(`
-        id,
-        text,
-        collection,
-        mood,
-        assets!inner (
-          id,
-          format,
-          status,
-          file_url
-        )
-      `)
+    // Get approved assets from approval_items
+    const { data: approvedAssets, error: assetsError } = await (supabase as any)
+      .from('approval_items')
+      .select('id, reference_id, payload, collection')
       .eq('user_id', userId)
-      .eq('status', 'active')
-      .in('assets.format', ['pinterest', 'pinterest_portrait', 'pinterest_square'])
-      .eq('assets.status', 'approved');
+      .eq('type', 'asset')
+      .eq('status', 'approved');
 
-    if (error) {
-      console.error('Error fetching quotes with assets:', error);
+    if (assetsError) {
+      console.error('Error fetching approved assets:', assetsError);
       return NextResponse.json(
-        { error: 'Failed to fetch quotes' },
+        { error: 'Failed to fetch approved assets' },
         { status: 500 }
       );
     }
 
-    // Also get quotes with approved mockups
-    const { data: quotesWithMockups } = await (supabase as any)
-      .from('quotes')
-      .select(`
-        id,
-        text,
-        collection,
-        mood,
-        mockups!inner (
-          id,
-          status,
-          file_url
-        )
-      `)
+    // Get approved mockups from approval_items
+    const { data: approvedMockups, error: mockupsError } = await (supabase as any)
+      .from('approval_items')
+      .select('id, reference_id, payload, collection')
       .eq('user_id', userId)
-      .eq('status', 'active')
-      .eq('mockups.status', 'approved');
+      .eq('type', 'mockup')
+      .eq('status', 'approved');
 
-    // Merge and deduplicate quotes
-    const quoteMap = new Map<string, any>();
+    if (mockupsError) {
+      console.error('Error fetching approved mockups:', mockupsError);
+    }
 
-    for (const quote of quotesWithAssets || []) {
-      if (!quoteMap.has(quote.id)) {
-        quoteMap.set(quote.id, {
-          id: quote.id,
-          text: quote.text,
-          collection: quote.collection,
-          mood: quote.mood,
-          assetCount: (quote.assets || []).length,
+    // Group by quote
+    const quoteMap = new Map<string, {
+      id: string;
+      text: string;
+      collection: string;
+      mood?: string;
+      assetCount: number;
+      mockupCount: number;
+      previewUrl?: string;
+    }>();
+
+    // Helper to check if format is Pinterest-compatible
+    const isPinterestFormat = (format: string | undefined) => {
+      if (!format) return true; // Include if no format specified
+      const lowerFormat = format.toLowerCase();
+      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
+    };
+
+    // Process approved assets
+    for (const item of approvedAssets || []) {
+      const payload = item.payload || {};
+      const quoteId = payload.quoteId || payload.quote_id;
+      const format = payload.format;
+
+      // Only include Pinterest-format assets
+      if (!quoteId || !isPinterestFormat(format)) continue;
+
+      const imageUrl = payload.assetUrl || payload.file_url || payload.thumbnailUrl;
+
+      if (quoteMap.has(quoteId)) {
+        const existing = quoteMap.get(quoteId)!;
+        existing.assetCount++;
+        if (!existing.previewUrl && imageUrl) {
+          existing.previewUrl = imageUrl;
+        }
+      } else {
+        quoteMap.set(quoteId, {
+          id: quoteId,
+          text: payload.quoteText || payload.quote_text || 'Quote',
+          collection: item.collection || payload.collection || 'grounding',
+          mood: payload.mood,
+          assetCount: 1,
           mockupCount: 0,
-          previewUrl: quote.assets?.[0]?.file_url,
+          previewUrl: imageUrl,
         });
       }
     }
 
-    for (const quote of quotesWithMockups || []) {
-      if (quoteMap.has(quote.id)) {
-        const existing = quoteMap.get(quote.id);
-        existing.mockupCount = (quote.mockups || []).length;
-        if (!existing.previewUrl && quote.mockups?.[0]?.file_url) {
-          existing.previewUrl = quote.mockups[0].file_url;
+    // Process approved mockups
+    for (const item of approvedMockups || []) {
+      const payload = item.payload || {};
+      const quoteId = payload.quoteId || payload.quote_id;
+
+      if (!quoteId) continue;
+
+      const imageUrl = payload.file_url || payload.thumbnailUrl;
+
+      if (quoteMap.has(quoteId)) {
+        const existing = quoteMap.get(quoteId)!;
+        existing.mockupCount++;
+        if (!existing.previewUrl && imageUrl) {
+          existing.previewUrl = imageUrl;
         }
       } else {
-        quoteMap.set(quote.id, {
-          id: quote.id,
-          text: quote.text,
-          collection: quote.collection,
-          mood: quote.mood,
+        quoteMap.set(quoteId, {
+          id: quoteId,
+          text: payload.quoteText || payload.quote_text || 'Quote',
+          collection: item.collection || payload.collection || 'grounding',
+          mood: payload.mood,
           assetCount: 0,
-          mockupCount: (quote.mockups || []).length,
-          previewUrl: quote.mockups?.[0]?.file_url,
+          mockupCount: 1,
+          previewUrl: imageUrl,
         });
       }
     }
