@@ -24,7 +24,7 @@ import {
   Palette,
 } from 'lucide-react';
 import { Button } from './button';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface RichTextEditorProps {
   content: string;
@@ -109,12 +109,9 @@ export function RichTextEditor({
     },
   });
 
-  // Update editor content when prop changes (for reset scenarios)
-  useEffect(() => {
-    if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
-    }
-  }, [content, editor]);
+  // Note: Content is set on mount via useEditor({ content }).
+  // We don't sync on prop changes to avoid overwriting user edits.
+  // If you need to load a different template, remount the component with a new key.
 
   if (!editor) {
     return (
