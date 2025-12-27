@@ -1,45 +1,136 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getApiUserId } from '@/lib/auth/session';
-import {
-  generateEnhancedCopy,
-  generateCopyVariations,
-} from '@/lib/copy-engine/copy-generator';
+import { generatePinCopy, applyTemplate } from '@/lib/pinterest/copy-generator';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+const generateSchema = z.object({
+  // Either provide quote metadata directly
+  quote_text: z.string().min(1).optional(),
+  collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
+  mood: z.string().optional(),
+  // Or reference a quote/mockup/asset by ID
+  quoteId: z.string().uuid().optional(),
+  mockupId: z.string().uuid().optional(),
+  assetId: z.string().uuid().optional(),
+  // Optionally use a specific template
+  templateId: z.string().uuid().optional(),
+  // Product link for templates
+  product_link: z.string().url().optional(),
+});
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getApiUserId();
+    await getApiUserId();
+    const supabase = await createServerSupabaseClient();
+
     const body = await request.json();
+    const data = generateSchema.parse(body);
 
-    const {
-      quote,
-      collection,
-      mood,
-      roomType,
-      productLink,
-      shopName,
-      variations = 1,
-    } = body;
+    let quoteText = data.quote_text;
+    let collection = data.collection;
+    let mood = data.mood;
 
-    const context = {
-      quote,
-      collection,
-      mood,
-      roomType,
-      productLink,
-      shopName,
-    };
+    // If quoteId, mockupId, or assetId provided, fetch the metadata
+    if (data.quoteId) {
+      const { data: quote } = await (supabase as any)
+        .from('quotes')
+        .select('text, collection, mood')
+        .eq('id', data.quoteId)
+        .single();
 
-    if (variations > 1) {
-      const copies = await generateCopyVariations(userId, context, variations);
-      return NextResponse.json({ copies });
+      if (quote) {
+        quoteText = quoteText || quote.text;
+        collection = collection || quote.collection;
+        mood = mood || quote.mood;
+      }
     }
 
-    const copy = await generateEnhancedCopy(userId, context);
-    return NextResponse.json({ copy });
+    if (data.mockupId) {
+      const { data: mockup } = await (supabase as any)
+        .from('mockups')
+        .select('assets(quotes(text, collection, mood))')
+        .eq('id', data.mockupId)
+        .single();
+
+      if (mockup?.assets?.quotes) {
+        const quote = mockup.assets.quotes;
+        quoteText = quoteText || quote.text;
+        collection = collection || quote.collection;
+        mood = mood || quote.mood;
+      }
+    }
+
+    if (data.assetId) {
+      const { data: asset } = await (supabase as any)
+        .from('assets')
+        .select('quotes(text, collection, mood)')
+        .eq('id', data.assetId)
+        .single();
+
+      if (asset?.quotes) {
+        const quote = asset.quotes;
+        quoteText = quoteText || quote.text;
+        collection = collection || quote.collection;
+        mood = mood || quote.mood;
+      }
+    }
+
+    // Ensure we have required data
+    if (!quoteText) {
+      return NextResponse.json(
+        { error: 'Quote text is required. Provide quote_text directly or a valid quoteId/mockupId/assetId.' },
+        { status: 400 }
+      );
+    }
+
+    // If templateId provided, use that template
+    if (data.templateId) {
+      const { data: template } = await (supabase as any)
+        .from('pin_copy_templates')
+        .select('title_template, description_template')
+        .eq('id', data.templateId)
+        .single();
+
+      if (!template) {
+        return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      }
+
+      const result = applyTemplate(template, {
+        quote: quoteText,
+        collection: collection,
+        mood: mood,
+        product_link: data.product_link,
+      });
+
+      return NextResponse.json({
+        title: result.title,
+        description: result.description,
+        alt_text: `Minimalist quote print: "${quoteText.substring(0, 100)}" - wall art`,
+        hashtags: [], // Templates don't generate hashtags
+        source: 'template',
+      });
+    }
+
+    // Generate copy using the auto-generator
+    const generated = generatePinCopy({
+      quote_text: quoteText,
+      collection: collection || 'grounding',
+      mood: mood,
+    });
+
+    return NextResponse.json({
+      ...generated,
+      source: 'auto-generated',
+    });
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
+    }
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    console.error('Error generating copy:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal error' },
       { status: 500 }

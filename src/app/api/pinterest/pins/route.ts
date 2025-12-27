@@ -54,6 +54,10 @@ const createSchema = z.object({
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
   scheduledFor: z.string().datetime().optional(),
   publishNow: z.boolean().optional(),
+  // New fields for copy templates and hashtags
+  copyTemplateId: z.string().uuid().optional(),
+  copyVariant: z.string().max(10).optional(),
+  hashtags: z.array(z.string()).optional(),
 });
 
 export async function POST(request: NextRequest) {

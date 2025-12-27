@@ -244,6 +244,10 @@ export async function createPin(
     quoteId?: string;
     collection?: string;
     scheduledFor?: Date;
+    // New fields for copy templates and hashtags
+    copyTemplateId?: string;
+    copyVariant?: string;
+    hashtags?: string[];
   }
 ): Promise<{ pinId: string; status: string }> {
   const supabase = getAdminClient();
@@ -256,6 +260,21 @@ export async function createPin(
     .eq('pinterest_board_id', data.boardId)
     .single();
 
+  // Build description with hashtags if provided
+  let finalDescription = data.description || '';
+  if (data.hashtags && data.hashtags.length > 0) {
+    const hashtagString = data.hashtags.map(tag => `#${tag.replace(/^#/, '')}`).join(' ');
+    // Append hashtags to description if there's room (500 char limit)
+    if (finalDescription) {
+      const combined = `${finalDescription}\n\n${hashtagString}`;
+      if (combined.length <= 500) {
+        finalDescription = combined;
+      }
+    } else {
+      finalDescription = hashtagString;
+    }
+  }
+
   // Create pin record in database
   const { data: pin, error } = await (supabase as any)
     .from('pins')
@@ -265,13 +284,15 @@ export async function createPin(
       board_id: board?.id,
       image_url: data.imageUrl,
       title: data.title,
-      description: data.description,
+      description: finalDescription || null,
       link: data.link,
       alt_text: data.altText,
       asset_id: data.assetId,
       mockup_id: data.mockupId,
       quote_id: data.quoteId,
       collection: data.collection,
+      copy_template_id: data.copyTemplateId,
+      copy_variant: data.copyVariant,
       status: data.scheduledFor ? 'scheduled' : 'draft',
       scheduled_for: data.scheduledFor?.toISOString(),
     })

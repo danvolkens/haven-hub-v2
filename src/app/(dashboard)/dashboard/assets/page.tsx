@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
-import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send } from 'lucide-react';
+import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X } from 'lucide-react';
 
 interface Mockup {
   id: string;
@@ -60,11 +60,26 @@ interface PinterestBoard {
   is_primary: boolean;
 }
 
+interface CopyTemplate {
+  id: string;
+  name: string;
+  variant: string;
+  title_template: string;
+  description_template: string;
+  collection: string | null;
+  mood: string | null;
+  times_used: number;
+  avg_engagement_rate: number | null;
+}
+
 interface CreatePinData {
   boardId: string;
   title: string;
   description: string;
   link: string;
+  altText: string;
+  hashtags: string[];
+  copyTemplateId?: string;
   publishNow: boolean;
   scheduledFor?: string;
 }
@@ -75,11 +90,14 @@ export default function AssetsPage() {
   const [previewItem, setPreviewItem] = useState<PreviewItem | null>(null);
   const [showCreatePin, setShowCreatePin] = useState(false);
   const [pinItem, setPinItem] = useState<PreviewItem | null>(null);
+  const [hashtagInput, setHashtagInput] = useState('');
   const [pinForm, setPinForm] = useState<CreatePinData>({
     boardId: '',
     title: '',
     description: '',
     link: '',
+    altText: '',
+    hashtags: [],
     publishNow: false,
   });
 
@@ -116,6 +134,50 @@ export default function AssetsPage() {
   const pinterestConnected = pinterestData?.connected || false;
   const boards: PinterestBoard[] = pinterestData?.boards || [];
 
+  // Fetch copy templates
+  const { data: templatesData } = useQuery({
+    queryKey: ['copy-templates'],
+    queryFn: async () => {
+      const res = await fetch('/api/copy-templates');
+      if (!res.ok) return { templates: [] };
+      return res.json();
+    },
+  });
+
+  const copyTemplates: CopyTemplate[] = templatesData?.templates || [];
+
+  // Auto-generate copy mutation
+  const generateCopyMutation = useMutation({
+    mutationFn: async (params: {
+      quote_text?: string;
+      collection?: string;
+      mood?: string;
+      mockupId?: string;
+      assetId?: string;
+      templateId?: string;
+    }) => {
+      const res = await fetch('/api/copy-templates/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to generate copy');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPinForm((prev) => ({
+        ...prev,
+        title: data.title,
+        description: data.description,
+        altText: data.alt_text || prev.altText,
+        hashtags: data.hashtags || prev.hashtags,
+      }));
+    },
+  });
+
   // Create pin mutation
   const createPinMutation = useMutation({
     mutationFn: async (data: {
@@ -124,11 +186,14 @@ export default function AssetsPage() {
       title: string;
       description?: string;
       link?: string;
+      altText?: string;
       mockupId?: string;
       assetId?: string;
       collection?: string;
       publishNow?: boolean;
       scheduledFor?: string;
+      copyTemplateId?: string;
+      hashtags?: string[];
     }) => {
       const res = await fetch('/api/pinterest/pins', {
         method: 'POST',
@@ -145,11 +210,14 @@ export default function AssetsPage() {
       queryClient.invalidateQueries({ queryKey: ['pinterest-pins'] });
       setShowCreatePin(false);
       setPinItem(null);
+      setHashtagInput('');
       setPinForm({
         boardId: '',
         title: '',
         description: '',
         link: '',
+        altText: '',
+        hashtags: [],
         publishNow: false,
       });
     },
@@ -212,14 +280,57 @@ export default function AssetsPage() {
 
   const openCreatePinModal = (item: PreviewItem) => {
     setPinItem(item);
+    setHashtagInput('');
+    // Auto-select board based on collection if available
+    const matchingBoard = item.collection
+      ? boards.find(b => b.collection === item.collection && b.is_primary)
+      : null;
     setPinForm({
-      boardId: '',
+      boardId: matchingBoard?.pinterest_board_id || '',
       title: item.title.slice(0, 100),
       description: '',
       link: '',
+      altText: '',
+      hashtags: [],
       publishNow: false,
     });
     setShowCreatePin(true);
+  };
+
+  const handleAutoGenerate = () => {
+    if (!pinItem) return;
+    generateCopyMutation.mutate({
+      quote_text: pinItem.title,
+      collection: pinItem.collection as 'grounding' | 'wholeness' | 'growth' | undefined,
+      mockupId: pinItem.type === 'mockup' ? pinItem.referenceId : undefined,
+      assetId: pinItem.type === 'asset' ? pinItem.referenceId : undefined,
+    });
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    if (!templateId || !pinItem) {
+      setPinForm((prev) => ({ ...prev, copyTemplateId: undefined }));
+      return;
+    }
+    setPinForm((prev) => ({ ...prev, copyTemplateId: templateId }));
+    // Generate copy using the selected template
+    generateCopyMutation.mutate({
+      quote_text: pinItem.title,
+      collection: pinItem.collection as 'grounding' | 'wholeness' | 'growth' | undefined,
+      templateId,
+    });
+  };
+
+  const addHashtag = () => {
+    const tag = hashtagInput.trim().replace(/^#/, '').toLowerCase();
+    if (tag && !pinForm.hashtags.includes(tag)) {
+      setPinForm((prev) => ({ ...prev, hashtags: [...prev.hashtags, tag] }));
+    }
+    setHashtagInput('');
+  };
+
+  const removeHashtag = (tag: string) => {
+    setPinForm((prev) => ({ ...prev, hashtags: prev.hashtags.filter((t) => t !== tag) }));
   };
 
   const handleCreatePin = () => {
@@ -231,11 +342,14 @@ export default function AssetsPage() {
       title: pinForm.title,
       description: pinForm.description || undefined,
       link: pinForm.link || undefined,
+      altText: pinForm.altText || undefined,
       mockupId: pinItem.type === 'mockup' ? pinItem.referenceId : undefined,
       assetId: pinItem.type === 'asset' ? pinItem.referenceId : undefined,
       collection: pinItem.collection as 'grounding' | 'wholeness' | 'growth' | undefined,
       publishNow: pinForm.publishNow,
       scheduledFor: pinForm.scheduledFor,
+      copyTemplateId: pinForm.copyTemplateId,
+      hashtags: pinForm.hashtags.length > 0 ? pinForm.hashtags : undefined,
     });
   };
 
@@ -470,16 +584,17 @@ export default function AssetsPage() {
         onClose={() => {
           setShowCreatePin(false);
           setPinItem(null);
+          setHashtagInput('');
         }}
         title="Create Pinterest Pin"
         size="lg"
         showCloseButton={true}
       >
         {pinItem && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             {/* Preview */}
             <div className="flex gap-4">
-              <div className="w-32 h-32 bg-[var(--color-bg-secondary)] rounded-lg overflow-hidden flex-shrink-0">
+              <div className="w-28 h-28 bg-[var(--color-bg-secondary)] rounded-lg overflow-hidden flex-shrink-0">
                 <img
                   src={pinItem.imageUrl}
                   alt={pinItem.title}
@@ -499,6 +614,54 @@ export default function AssetsPage() {
               </div>
             </div>
 
+            {/* Auto-Generate Section */}
+            <div className="p-4 bg-[var(--color-bg-secondary)] rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Auto-Generate Copy</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">
+                    Let AI create optimized title, description & hashtags
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleAutoGenerate}
+                  disabled={generateCopyMutation.isPending}
+                >
+                  {generateCopyMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-1" />
+                      Generate
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Copy Template Selector */}
+              {copyTemplates.length > 0 && (
+                <div>
+                  <Label className="text-xs">Or use a template:</Label>
+                  <select
+                    className="w-full mt-1 px-3 py-2 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg"
+                    value={pinForm.copyTemplateId || ''}
+                    onChange={(e) => handleTemplateSelect(e.target.value)}
+                  >
+                    <option value="">Select a template...</option>
+                    {copyTemplates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                        {template.collection && ` (${template.collection})`}
+                        {template.avg_engagement_rate && ` - ${(template.avg_engagement_rate * 100).toFixed(1)}% eng`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
             {/* Board Selection */}
             <div>
               <Label>Board *</Label>
@@ -509,9 +672,10 @@ export default function AssetsPage() {
               >
                 <option value="">Select a board...</option>
                 {boards.map((board) => (
-                  <option key={board.id} value={board.id}>
+                  <option key={board.id} value={board.pinterest_board_id}>
                     {board.name}
                     {board.collection && ` (${board.collection})`}
+                    {board.is_primary && ' *'}
                   </option>
                 ))}
               </select>
@@ -524,7 +688,12 @@ export default function AssetsPage() {
 
             {/* Title */}
             <div>
-              <Label>Title *</Label>
+              <div className="flex items-center justify-between">
+                <Label>Title *</Label>
+                <span className="text-xs text-[var(--color-text-tertiary)]">
+                  {pinForm.title.length}/100
+                </span>
+              </div>
               <Input
                 value={pinForm.title}
                 onChange={(e) => setPinForm({ ...pinForm, title: e.target.value })}
@@ -536,10 +705,15 @@ export default function AssetsPage() {
 
             {/* Description */}
             <div>
-              <Label>Description</Label>
+              <div className="flex items-center justify-between">
+                <Label>Description</Label>
+                <span className="text-xs text-[var(--color-text-tertiary)]">
+                  {pinForm.description.length}/500
+                </span>
+              </div>
               <textarea
                 className="w-full mt-1 px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg resize-none"
-                rows={3}
+                rows={4}
                 value={pinForm.description}
                 onChange={(e) => setPinForm({ ...pinForm, description: e.target.value })}
                 placeholder="Add a description (optional)"
@@ -547,7 +721,67 @@ export default function AssetsPage() {
               />
             </div>
 
-            {/* Link */}
+            {/* Hashtags */}
+            <div>
+              <Label>Hashtags</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="flex-1 relative">
+                  <Hash className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--color-text-tertiary)]" />
+                  <Input
+                    value={hashtagInput}
+                    onChange={(e) => setHashtagInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ',') {
+                        e.preventDefault();
+                        addHashtag();
+                      }
+                    }}
+                    placeholder="Type and press Enter"
+                    className="pl-9"
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={addHashtag}
+                  disabled={!hashtagInput.trim()}
+                >
+                  Add
+                </Button>
+              </div>
+              {pinForm.hashtags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {pinForm.hashtags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-bg-secondary)] rounded-full"
+                    >
+                      #{tag}
+                      <button
+                        type="button"
+                        onClick={() => removeHashtag(tag)}
+                        className="hover:text-red-500"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Alt Text */}
+            <div>
+              <Label>Alt Text (Accessibility)</Label>
+              <Input
+                value={pinForm.altText}
+                onChange={(e) => setPinForm({ ...pinForm, altText: e.target.value })}
+                placeholder="Describe the image for screen readers"
+                maxLength={500}
+                className="mt-1"
+              />
+            </div>
+
+            {/* Destination Link */}
             <div>
               <Label>Destination Link</Label>
               <Input
@@ -585,10 +819,10 @@ export default function AssetsPage() {
               </div>
             )}
 
-            {/* Error */}
-            {createPinMutation.error && (
+            {/* Errors */}
+            {(createPinMutation.error || generateCopyMutation.error) && (
               <p className="text-sm text-red-500">
-                {createPinMutation.error.message}
+                {createPinMutation.error?.message || generateCopyMutation.error?.message}
               </p>
             )}
 
@@ -599,6 +833,7 @@ export default function AssetsPage() {
                 onClick={() => {
                   setShowCreatePin(false);
                   setPinItem(null);
+                  setHashtagInput('');
                 }}
               >
                 Cancel
