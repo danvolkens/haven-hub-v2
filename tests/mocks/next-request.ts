@@ -22,16 +22,16 @@ export function createMockRequest(
     urlObj.searchParams.set(key, value);
   });
 
-  const requestInit: RequestInit = {
+  const requestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
       ...headers,
     },
-  };
+  } as Parameters<typeof NextRequest>[1];
 
   if (body && method !== 'GET' && method !== 'HEAD') {
-    requestInit.body = JSON.stringify(body);
+    requestInit!.body = JSON.stringify(body);
   }
 
   return new NextRequest(urlObj, requestInit);

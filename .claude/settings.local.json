@@ -125,7 +125,9 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"Remove placeholder Recommended Flows section\n\nThe static flow suggestions were not useful - users can manage\nflows directly in Klaviyo.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\")",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 add src/app/api/klaviyo/flows/route.ts src/app/\\\\\\(dashboard\\\\\\)/dashboard/email/flows/page.tsx)",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"$\\(cat <<''EOF''\nRemove fake flow metrics - show only real Klaviyo data\n\nThe flows page was showing random placeholder data that changed\non each refresh. Now it shows:\n- Real flow counts \\(active, draft, paused, total\\)\n- Real flow names, status, and triggers from Klaviyo\n- Link to view metrics in Klaviyo directly\n\nPer-flow metrics require Klaviyo''s premium Flow Analytics API.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(npx playwright install:*)",
+      "Bash(npm run test:run:*)"
     ]
   }
 }
