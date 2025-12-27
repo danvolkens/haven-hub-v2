@@ -111,6 +111,18 @@ const DEFAULT_BUTTON_TEXTS: Record<string, string[]> = {
   win_back: ['Come Back & Save', 'See What\'s New', 'Last Chance - 20% Off'],
 };
 
+interface TestEmailParams {
+  templateId?: string;
+  position?: number;
+  toEmail: string;
+  templateData?: {
+    subject: string;
+    content_html: string;
+    button_text: string;
+    button_url: string;
+  };
+}
+
 function TemplateEditor({
   template,
   position,
@@ -134,7 +146,7 @@ function TemplateEditor({
   onSave: (data: Partial<EmailTemplate>) => void;
   onDelete: () => void;
   onSync: () => void;
-  onSendTest: (templateId: string, toEmail: string) => void;
+  onSendTest: (params: TestEmailParams) => void;
   isSaving: boolean;
   isSyncing: boolean;
   isSendingTest: boolean;
@@ -316,7 +328,7 @@ function TemplateEditor({
         )}
 
         {/* Test Email Form */}
-        {showTestForm && template?.id && (
+        {showTestForm && (
           <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-medium text-blue-900">Send Test Email</h4>
@@ -338,11 +350,26 @@ function TemplateEditor({
               />
               <Button
                 onClick={() => {
-                  if (template?.id && testEmail) {
-                    onSendTest(template.id, testEmail);
+                  if (testEmail) {
+                    if (template?.id) {
+                      // Test saved template
+                      onSendTest({ templateId: template.id, position, toEmail: testEmail });
+                    } else {
+                      // Test unsaved template using form data
+                      onSendTest({
+                        position,
+                        toEmail: testEmail,
+                        templateData: {
+                          subject: formData.subject,
+                          content_html: formData.content_html,
+                          button_text: formData.button_text,
+                          button_url: formData.button_url,
+                        }
+                      });
+                    }
                   }
                 }}
-                disabled={isSendingTest || !testEmail}
+                disabled={isSendingTest || !testEmail || !formData.subject}
                 className="cursor-pointer"
               >
                 {isSendingTest ? (
@@ -360,6 +387,7 @@ function TemplateEditor({
             )}
             <p className="mt-2 text-xs text-blue-700">
               Test email will include "[TEST]" prefix and use placeholder values for Klaviyo variables.
+              {!template?.id && ' (Testing current form content - save to persist.)'}
             </p>
           </div>
         )}
@@ -380,31 +408,31 @@ function TemplateEditor({
               {template?.id ? 'Update' : 'Create'} Template
             </Button>
             {template?.id && (
-              <>
-                <Button
-                  variant="secondary"
-                  onClick={onSync}
-                  disabled={isSyncing || !hasBaseTemplate}
-                  className="cursor-pointer"
-                  title={!hasBaseTemplate ? 'Set up a base template first' : undefined}
-                >
-                  {isSyncing ? (
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                  )}
-                  Sync to Klaviyo
-                </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowTestForm(!showTestForm)}
-                  className="cursor-pointer"
-                >
-                  <Send className="h-4 w-4 mr-2" />
-                  Send Test
-                </Button>
-              </>
+              <Button
+                variant="secondary"
+                onClick={onSync}
+                disabled={isSyncing || !hasBaseTemplate}
+                className="cursor-pointer"
+                title={!hasBaseTemplate ? 'Set up a base template first' : undefined}
+              >
+                {isSyncing ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Sync to Klaviyo
+              </Button>
             )}
+            <Button
+              variant="secondary"
+              onClick={() => setShowTestForm(!showTestForm)}
+              disabled={!formData.subject}
+              className="cursor-pointer"
+              title={!formData.subject ? 'Add a subject line first' : undefined}
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Send Test
+            </Button>
           </div>
           {template?.id && (
             <Button
@@ -501,17 +529,18 @@ export default function FlowTemplateEditorPage() {
   const testEmailMutation = useMutation<
     { success: boolean; message: string },
     Error,
-    { templateId: string; toEmail: string }
+    TestEmailParams
   >({
-    mutationFn: async ({ templateId, toEmail }) => {
+    mutationFn: async (params) => {
       const result = await api.post('/email-workflows/templates/test', {
-        template_id: templateId,
-        to_email: toEmail
+        template_id: params.templateId,
+        to_email: params.toEmail,
+        template_data: params.templateData,
       });
       return result as { success: boolean; message: string };
     },
-    onMutate: ({ templateId }) => {
-      setTestingTemplateId(templateId);
+    onMutate: (params) => {
+      setTestingTemplateId(params.templateId || `pos-${params.position}`);
       setTestEmailResult(null);
     },
     onSuccess: (data) => {
@@ -521,7 +550,7 @@ export default function FlowTemplateEditorPage() {
       setTestEmailResult({ success: false, message: error.message || 'Failed to send test email' });
     },
     onSettled: () => {
-      setTestingTemplateId(null);
+      // Keep testingTemplateId set so result displays
     },
   });
 
@@ -647,11 +676,11 @@ export default function FlowTemplateEditorPage() {
                 onSave={(data) => saveMutation.mutate(data)}
                 onDelete={() => template?.id && deleteMutation.mutate(template.id)}
                 onSync={() => template?.id && syncMutation.mutate(template.id)}
-                onSendTest={(templateId, toEmail) => testEmailMutation.mutate({ templateId, toEmail })}
+                onSendTest={(params) => testEmailMutation.mutate(params)}
                 isSaving={saveMutation.isPending}
                 isSyncing={syncMutation.isPending}
-                isSendingTest={testEmailMutation.isPending && testingTemplateId === template?.id}
-                testEmailResult={testingTemplateId === template?.id ? testEmailResult : null}
+                isSendingTest={testEmailMutation.isPending && (testingTemplateId === template?.id || testingTemplateId === `pos-${position}`)}
+                testEmailResult={(testingTemplateId === template?.id || testingTemplateId === `pos-${position}`) ? testEmailResult : null}
               />
             );
           })}

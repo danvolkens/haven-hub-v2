@@ -15,11 +15,23 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { template_id, to_email, subject_override } = body;
+    const {
+      template_id,
+      to_email,
+      subject_override,
+      // Allow passing template data directly for testing unsaved templates
+      template_data
+    } = body;
 
-    if (!template_id || !to_email) {
+    if (!to_email) {
       return NextResponse.json({
-        error: 'Missing required fields: template_id, to_email'
+        error: 'Missing required field: to_email'
+      }, { status: 400 });
+    }
+
+    if (!template_id && !template_data) {
+      return NextResponse.json({
+        error: 'Must provide either template_id or template_data'
       }, { status: 400 });
     }
 
@@ -29,16 +41,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
 
-    // Get the template
-    const { data: template, error: templateError } = await (supabase as any)
-      .from('email_templates')
-      .select('*')
-      .eq('id', template_id)
-      .eq('user_id', user.id)
-      .single();
+    let template: {
+      subject: string;
+      html_content?: string;
+      content_html?: string;
+      button_text?: string;
+      button_url?: string;
+    };
 
-    if (templateError || !template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+    if (template_id) {
+      // Get the template from database
+      const { data: dbTemplate, error: templateError } = await (supabase as any)
+        .from('email_templates')
+        .select('*')
+        .eq('id', template_id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (templateError || !dbTemplate) {
+        return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      }
+      template = dbTemplate;
+    } else {
+      // Use provided template data
+      template = template_data;
     }
 
     // Get base template if available for proper rendering
@@ -50,7 +76,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     // Determine which HTML to use
-    let htmlContent = template.html_content;
+    let htmlContent = template.html_content || '';
 
     // If we have a base template and content_html, merge them
     if (baseTemplate?.html_content && template.content_html) {
