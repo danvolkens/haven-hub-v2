@@ -4,7 +4,7 @@
  */
 
 const KLAVIYO_API_BASE = 'https://a.klaviyo.com/api';
-const KLAVIYO_REVISION = '2024-02-15';
+const KLAVIYO_REVISION = '2024-10-15'; // Updated for flows/templates API support
 
 interface KlaviyoClientOptions {
   apiKey: string;
@@ -42,6 +42,62 @@ interface PaginatedResponse<T> {
     next?: string;
     prev?: string;
   };
+}
+
+interface KlaviyoTemplate {
+  id: string;
+  name: string;
+  editor_type: 'CODE' | 'DRAG_AND_DROP';
+  html: string;
+  text?: string;
+  created: string;
+  updated: string;
+}
+
+interface KlaviyoFlowAction {
+  temporary_id: string;
+  type: 'SEND_EMAIL' | 'TIME_DELAY' | 'CONDITIONAL_SPLIT';
+  data: {
+    message?: {
+      from_email: string;
+      from_label: string;
+      reply_to_email?: string;
+      subject: string;
+      preview_text?: string;
+      template_id: string;
+    };
+    delay?: {
+      unit: 'hours' | 'days' | 'weeks';
+      value: number;
+    };
+    condition?: any;
+  };
+  links: {
+    next?: string[];
+    next_if_true?: string[];
+    next_if_false?: string[];
+  };
+}
+
+interface KlaviyoFlowDefinition {
+  triggers: Array<{
+    type: 'LIST' | 'METRIC' | 'DATE';
+    data: {
+      list_id?: string;
+      metric_name?: string;
+      date_property?: string;
+    };
+    filter?: any;
+  }>;
+  profile_filter?: any;
+  entry_action_id: string;
+  actions: KlaviyoFlowAction[];
+}
+
+interface CreateFlowRequest {
+  name: string;
+  status?: 'draft' | 'live';
+  definition: KlaviyoFlowDefinition;
 }
 
 export class KlaviyoClient {
@@ -869,6 +925,399 @@ export class KlaviyoClient {
         sentAt: c.sentAt,
         status: c.status,
       })),
+    };
+  }
+
+  // ============================================================================
+  // Templates API
+  // ============================================================================
+
+  /**
+   * Get all email templates
+   */
+  async getTemplates(): Promise<KlaviyoTemplate[]> {
+    const allTemplates: KlaviyoTemplate[] = [];
+    let cursor: string | null = null;
+
+    do {
+      const endpoint: string = cursor ? `/templates/?page[cursor]=${cursor}` : '/templates/';
+      const response = await this.request<PaginatedResponse<{ id: string; attributes: any }> & { links?: { next?: string } }>(endpoint);
+
+      const templates = response.data.map(item => ({
+        id: item.id,
+        name: item.attributes.name,
+        editor_type: item.attributes.editor_type,
+        html: item.attributes.html || '',
+        text: item.attributes.text,
+        created: item.attributes.created,
+        updated: item.attributes.updated,
+      }));
+      allTemplates.push(...templates);
+
+      cursor = null;
+      if (response.links?.next) {
+        const match = response.links.next.match(/page\[cursor\]=([^&]+)/);
+        if (match) cursor = match[1];
+      }
+    } while (cursor);
+
+    return allTemplates;
+  }
+
+  /**
+   * Get a single template by ID
+   */
+  async getTemplate(templateId: string): Promise<KlaviyoTemplate | null> {
+    try {
+      const response = await this.request<{ data: { id: string; attributes: any } }>(`/templates/${templateId}/`);
+      return {
+        id: response.data.id,
+        name: response.data.attributes.name,
+        editor_type: response.data.attributes.editor_type,
+        html: response.data.attributes.html || '',
+        text: response.data.attributes.text,
+        created: response.data.attributes.created,
+        updated: response.data.attributes.updated,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Create a new email template
+   */
+  async createTemplate(params: {
+    name: string;
+    html: string;
+    text?: string;
+  }): Promise<KlaviyoTemplate> {
+    const response = await this.request<{ data: { id: string; attributes: any } }>('/templates/', {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'template',
+          attributes: {
+            name: params.name,
+            editor_type: 'CODE',
+            html: params.html,
+            text: params.text,
+          },
+        },
+      }),
+    });
+
+    return {
+      id: response.data.id,
+      name: response.data.attributes.name,
+      editor_type: response.data.attributes.editor_type,
+      html: response.data.attributes.html || '',
+      text: response.data.attributes.text,
+      created: response.data.attributes.created,
+      updated: response.data.attributes.updated,
+    };
+  }
+
+  /**
+   * Update an existing template
+   */
+  async updateTemplate(templateId: string, params: {
+    name?: string;
+    html?: string;
+    text?: string;
+  }): Promise<KlaviyoTemplate> {
+    const response = await this.request<{ data: { id: string; attributes: any } }>(`/templates/${templateId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        data: {
+          type: 'template',
+          id: templateId,
+          attributes: {
+            ...(params.name && { name: params.name }),
+            ...(params.html && { html: params.html }),
+            ...(params.text !== undefined && { text: params.text }),
+          },
+        },
+      }),
+    });
+
+    return {
+      id: response.data.id,
+      name: response.data.attributes.name,
+      editor_type: response.data.attributes.editor_type,
+      html: response.data.attributes.html || '',
+      text: response.data.attributes.text,
+      created: response.data.attributes.created,
+      updated: response.data.attributes.updated,
+    };
+  }
+
+  /**
+   * Delete a template
+   */
+  async deleteTemplate(templateId: string): Promise<void> {
+    await this.request(`/templates/${templateId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Clone a template with a new name
+   */
+  async cloneTemplate(templateId: string, newName: string): Promise<KlaviyoTemplate> {
+    const original = await this.getTemplate(templateId);
+    if (!original) {
+      throw new Error(`Template ${templateId} not found`);
+    }
+    return this.createTemplate({
+      name: newName,
+      html: original.html,
+      text: original.text,
+    });
+  }
+
+  /**
+   * Render a template with dynamic data (preview)
+   */
+  async renderTemplate(templateId: string, context?: Record<string, any>): Promise<{ html: string; text: string }> {
+    const response = await this.request<{ data: { attributes: { html: string; text: string } } }>(`/templates/${templateId}/render/`, {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'template',
+          id: templateId,
+          attributes: {
+            context: context || {},
+          },
+        },
+      }),
+    });
+
+    return {
+      html: response.data.attributes.html,
+      text: response.data.attributes.text,
+    };
+  }
+
+  // ============================================================================
+  // Flow Creation API (Beta)
+  // ============================================================================
+
+  /**
+   * Get a flow with its full definition (for cloning)
+   */
+  async getFlowWithDefinition(flowId: string): Promise<{
+    id: string;
+    name: string;
+    status: string;
+    definition: any;
+  } | null> {
+    try {
+      const response = await this.request<{ data: { id: string; attributes: any } }>(
+        `/flows/${flowId}/?additional-fields[flow]=definition`
+      );
+      return {
+        id: response.data.id,
+        name: response.data.attributes.name,
+        status: response.data.attributes.status,
+        definition: response.data.attributes.definition,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Create a new flow from a definition
+   * Note: Rate limited to 100 creations per day
+   */
+  async createFlow(params: CreateFlowRequest): Promise<{
+    id: string;
+    name: string;
+    status: string;
+  }> {
+    const response = await this.request<{ data: { id: string; attributes: any } }>('/flows/', {
+      method: 'POST',
+      body: JSON.stringify({
+        data: {
+          type: 'flow',
+          attributes: {
+            name: params.name,
+            status: params.status || 'draft',
+            definition: params.definition,
+          },
+        },
+      }),
+    });
+
+    return {
+      id: response.data.id,
+      name: response.data.attributes.name,
+      status: response.data.attributes.status,
+    };
+  }
+
+  /**
+   * Update flow status (activate, pause, etc.)
+   */
+  async updateFlowStatus(flowId: string, status: 'draft' | 'live' | 'paused'): Promise<void> {
+    await this.request(`/flows/${flowId}/`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        data: {
+          type: 'flow',
+          id: flowId,
+          attributes: { status },
+        },
+      }),
+    });
+  }
+
+  /**
+   * Delete a flow
+   */
+  async deleteFlow(flowId: string): Promise<void> {
+    await this.request(`/flows/${flowId}/`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Build a flow definition for the Welcome Flow
+   */
+  buildWelcomeFlowDefinition(params: {
+    listId: string;
+    templateIds: string[]; // 4 template IDs in order
+    fromEmail: string;
+    fromLabel: string;
+    subjects: string[];
+    previewTexts: string[];
+    delayHours: number[]; // [0, 48, 96, 168]
+  }): KlaviyoFlowDefinition {
+    const actions: KlaviyoFlowAction[] = [];
+
+    params.templateIds.forEach((templateId, index) => {
+      // Add delay before emails 2, 3, 4
+      if (index > 0) {
+        const delayId = `delay_${index}`;
+        actions.push({
+          temporary_id: delayId,
+          type: 'TIME_DELAY',
+          data: {
+            delay: {
+              unit: 'hours',
+              value: params.delayHours[index] - params.delayHours[index - 1],
+            },
+          },
+          links: {
+            next: [`email_${index}`],
+          },
+        });
+      }
+
+      // Add email action
+      const emailId = `email_${index}`;
+      actions.push({
+        temporary_id: emailId,
+        type: 'SEND_EMAIL',
+        data: {
+          message: {
+            from_email: params.fromEmail,
+            from_label: params.fromLabel,
+            subject: params.subjects[index],
+            preview_text: params.previewTexts[index],
+            template_id: templateId,
+          },
+        },
+        links: {
+          next: index < params.templateIds.length - 1 ? [`delay_${index + 1}`] : [],
+        },
+      });
+    });
+
+    // Fix first email to point to first delay
+    if (actions.length > 1) {
+      actions[0].links.next = ['delay_1'];
+    }
+
+    return {
+      triggers: [{
+        type: 'LIST',
+        data: { list_id: params.listId },
+      }],
+      entry_action_id: 'email_0',
+      actions,
+    };
+  }
+
+  /**
+   * Build a flow definition for metric-triggered flows (Quiz, Cart, Purchase, Win-back)
+   */
+  buildMetricFlowDefinition(params: {
+    metricName: string;
+    templateIds: string[];
+    fromEmail: string;
+    fromLabel: string;
+    subjects: string[];
+    previewTexts: string[];
+    delayHours: number[];
+    exitMetric?: string; // e.g., "Placed Order" for cart abandonment
+  }): KlaviyoFlowDefinition {
+    const actions: KlaviyoFlowAction[] = [];
+
+    params.templateIds.forEach((templateId, index) => {
+      // Add delay before all emails (including first for metric triggers)
+      if (params.delayHours[index] > 0) {
+        const delayId = `delay_${index}`;
+        const previousDelay = index > 0 ? params.delayHours[index - 1] : 0;
+        actions.push({
+          temporary_id: delayId,
+          type: 'TIME_DELAY',
+          data: {
+            delay: {
+              unit: 'hours',
+              value: params.delayHours[index] - previousDelay,
+            },
+          },
+          links: {
+            next: [`email_${index}`],
+          },
+        });
+      }
+
+      // Add email action
+      const emailId = `email_${index}`;
+      const hasNextEmail = index < params.templateIds.length - 1;
+      const nextDelayExists = hasNextEmail && params.delayHours[index + 1] > params.delayHours[index];
+
+      actions.push({
+        temporary_id: emailId,
+        type: 'SEND_EMAIL',
+        data: {
+          message: {
+            from_email: params.fromEmail,
+            from_label: params.fromLabel,
+            subject: params.subjects[index],
+            preview_text: params.previewTexts[index],
+            template_id: templateId,
+          },
+        },
+        links: {
+          next: hasNextEmail ? [nextDelayExists ? `delay_${index + 1}` : `email_${index + 1}`] : [],
+        },
+      });
+    });
+
+    // Determine entry action
+    const entryActionId = params.delayHours[0] > 0 ? 'delay_0' : 'email_0';
+
+    return {
+      triggers: [{
+        type: 'METRIC',
+        data: { metric_name: params.metricName },
+      }],
+      entry_action_id: entryActionId,
+      actions,
     };
   }
 }
