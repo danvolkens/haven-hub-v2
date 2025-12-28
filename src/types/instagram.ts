@@ -316,3 +316,239 @@ export const HASHTAG_TIER_CONFIG: Record<HashtagTier, { min: number; max: number
 
 // Total hashtags per post: 15-20
 export const HASHTAG_TARGET = { min: 15, max: 20 };
+
+// ============================================================================
+// Video Types (Prompt 1.2)
+// ============================================================================
+
+export type VideoTemplateStyle =
+  | 'quote_fade'
+  | 'quote_reveal'
+  | 'quote_minimal'
+  | 'before_after'
+  | 'text_sequence'
+  | 'collection_showcase'
+  | 'split_screen'
+  | 'transition_wipe'
+  | 'talking_head_overlay';
+
+export type VideoContentType = 'quote_reveal' | 'educational' | 'transformation' | 'brand_story';
+
+export type HookType = 'pattern_interrupt' | 'question' | 'statement' | 'controversial' | 'story';
+
+export type HookPosition = 'top' | 'center' | 'bottom';
+
+export type Orientation = 'landscape' | 'portrait' | 'square';
+
+// ============================================================================
+// Video Templates
+// ============================================================================
+
+export interface VideoTemplate {
+  id: string;
+  user_id: string | null;
+  creatomate_template_id: string;
+  name: string;
+  description: string | null;
+  preview_url: string | null;
+  template_style: VideoTemplateStyle | null;
+  content_type: VideoContentType | null;
+  output_formats: string[];
+  duration_seconds: number | null;
+  supports_hook_overlay: boolean;
+  hook_position: HookPosition;
+  collections: string[];
+  is_default: boolean;
+  is_system: boolean;
+  is_active: boolean;
+  usage_count: number;
+  avg_completion_rate: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type VideoTemplateInsert = Omit<
+  VideoTemplate,
+  | 'id'
+  | 'created_at'
+  | 'updated_at'
+  | 'usage_count'
+  | 'avg_completion_rate'
+  | 'is_default'
+  | 'is_system'
+  | 'is_active'
+> & {
+  usage_count?: number;
+  avg_completion_rate?: number | null;
+  is_default?: boolean;
+  is_system?: boolean;
+  is_active?: boolean;
+};
+
+export type VideoTemplateUpdate = Partial<
+  Omit<VideoTemplate, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+>;
+
+// ============================================================================
+// Video Hooks
+// ============================================================================
+
+export interface VideoHook {
+  id: string;
+  user_id: string | null;
+  hook_text: string;
+  hook_type: HookType | null;
+  collections: string[];
+  content_types: string[];
+  usage_count: number;
+  avg_completion_rate: number | null;
+  avg_engagement_rate: number | null;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type VideoHookInsert = Omit<
+  VideoHook,
+  'id' | 'created_at' | 'usage_count' | 'avg_completion_rate' | 'avg_engagement_rate'
+> & {
+  usage_count?: number;
+  avg_completion_rate?: number | null;
+  avg_engagement_rate?: number | null;
+};
+
+export type VideoHookUpdate = Partial<Omit<VideoHook, 'id' | 'user_id' | 'created_at'>>;
+
+// ============================================================================
+// Stock Footage
+// ============================================================================
+
+export interface StockFootage {
+  id: string;
+  user_id: string | null;
+  source: string;
+  source_id: string | null;
+  source_url: string;
+  video_url: string;
+  duration_seconds: number | null;
+  width: number | null;
+  height: number | null;
+  aspect_ratio: string | null;
+  orientation: Orientation | null;
+  collection: Collection;
+  mood_tags: string[];
+  notes: string | null;
+  usage_count: number;
+  last_used_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type StockFootageInsert = Omit<
+  StockFootage,
+  'id' | 'created_at' | 'updated_at' | 'usage_count' | 'last_used_at'
+> & {
+  usage_count?: number;
+  last_used_at?: string | null;
+};
+
+export type StockFootageUpdate = Partial<
+  Omit<StockFootage, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+>;
+
+// ============================================================================
+// Music Tracks
+// ============================================================================
+
+export interface MusicTrack {
+  id: string;
+  user_id: string | null;
+  source: string;
+  source_id: string | null;
+  source_url: string;
+  file_url: string;
+  title: string;
+  artist: string | null;
+  duration_seconds: number | null;
+  bpm: number | null;
+  collection: Collection;
+  mood_tags: string[];
+  genre: string | null;
+  notes: string | null;
+  usage_count: number;
+  last_used_at: string | null;
+  license_type: string;
+  license_expires_at: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type MusicTrackInsert = Omit<
+  MusicTrack,
+  'id' | 'created_at' | 'updated_at' | 'usage_count' | 'last_used_at'
+> & {
+  usage_count?: number;
+  last_used_at?: string | null;
+};
+
+export type MusicTrackUpdate = Partial<
+  Omit<MusicTrack, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+>;
+
+// ============================================================================
+// Video Thumbnails
+// ============================================================================
+
+export interface VideoThumbnail {
+  id: string;
+  user_id: string;
+  video_asset_id: string | null;
+  thumbnail_url: string;
+  file_key: string | null;
+  timestamp_seconds: number | null;
+  is_selected: boolean;
+  created_at: string;
+}
+
+export type VideoThumbnailInsert = Omit<VideoThumbnail, 'id' | 'created_at' | 'is_selected'> & {
+  is_selected?: boolean;
+};
+
+export type VideoThumbnailUpdate = Partial<Omit<VideoThumbnail, 'id' | 'user_id' | 'created_at'>>;
+
+// ============================================================================
+// Video Content Type Strategy (for TikTok/Reels)
+// ============================================================================
+
+export const VIDEO_CONTENT_TYPE_TARGETS: Record<VideoContentType, number> = {
+  quote_reveal: 0.4, // 40%
+  educational: 0.3, // 30%
+  transformation: 0.2, // 20%
+  brand_story: 0.1, // 10%
+};
+
+// ============================================================================
+// Pool Health Types
+// ============================================================================
+
+export interface PoolHealthAlert {
+  pool_type: 'footage' | 'music';
+  collection: Collection;
+  total_count: number;
+  unused_count: number;
+  alert_level: 'ok' | 'warning' | 'critical';
+  message: string;
+}
+
+// ============================================================================
+// Mood Tags by Collection
+// ============================================================================
+
+export const COLLECTION_MOOD_TAGS: Record<Collection, string[]> = {
+  grounding: ['cozy', 'warm', 'safe', 'anchored', 'stable'],
+  wholeness: ['tender', 'nurturing', 'gentle', 'soft'],
+  growth: ['emerging', 'hopeful', 'becoming', 'fresh'],
+  general: ['calm', 'neutral', 'sanctuary', 'peaceful'],
+};
