@@ -12,10 +12,13 @@ interface Mockup {
   file_url: string;
   status: string;
   created_at: string;
+  asset_id?: string;
   assets?: {
     id: string;
     file_url: string;
+    quote_id?: string;
     quotes?: {
+      id: string;
       text: string;
       collection: string;
     };
@@ -34,6 +37,8 @@ interface ApprovalItem {
     thumbnailUrl?: string;
     scene?: string;
     quoteText?: string;
+    quoteId?: string;
+    quote_id?: string;
     collection?: string;
     format?: string;
     size?: string;
@@ -50,6 +55,7 @@ interface PreviewItem {
   collection?: string;
   date: string;
   referenceId?: string;
+  quoteId?: string;
 }
 
 interface PinterestBoard {
@@ -333,6 +339,7 @@ export default function AssetsPage() {
       collection: mockup.assets?.quotes?.collection,
       date: mockup.created_at,
       referenceId: mockup.id,
+      quoteId: mockup.assets?.quotes?.id || mockup.assets?.quote_id,
     });
   };
 
@@ -347,19 +354,35 @@ export default function AssetsPage() {
       collection: asset.payload.collection || asset.collection,
       date: asset.created_at,
       referenceId: asset.reference_id,
+      quoteId: asset.payload.quoteId || asset.payload.quote_id,
     });
   };
 
-  const openCreatePinModal = (item: PreviewItem) => {
+  const openCreatePinModal = async (item: PreviewItem) => {
     setPinItem(item);
     setHashtagInput('');
-    setProductLink(null); // Product linking not yet implemented
+    setProductLink(null);
 
     // Auto-select board based on collection if available
     const matchingBoard = item.collection
       ? boards.find(b => b.collection === item.collection && b.is_primary)
       : null;
 
+    // Fetch product link for this quote if quoteId exists
+    let fetchedProductLink: string | null = null;
+    if (item.quoteId) {
+      try {
+        const res = await fetch(`/api/quotes/${item.quoteId}/product-link`);
+        if (res.ok) {
+          const data = await res.json();
+          fetchedProductLink = data.productLink || null;
+        }
+      } catch (err) {
+        console.error('Failed to fetch product link:', err);
+      }
+    }
+
+    setProductLink(fetchedProductLink);
     setPinForm({
       boardId: matchingBoard?.pinterest_board_id || '',
       title: item.title.slice(0, 100),
@@ -368,7 +391,7 @@ export default function AssetsPage() {
       altText: '',
       hashtags: [],
       publishNow: false,
-      linkType: 'custom', // Default to custom since product linking isn't built yet
+      linkType: fetchedProductLink ? 'product' : 'custom',
       selectedLandingPage: '',
       selectedQuiz: '',
       scheduleStrategy: 'draft',
