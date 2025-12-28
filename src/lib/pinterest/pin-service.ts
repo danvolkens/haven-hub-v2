@@ -2,6 +2,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { PinterestClient, CreatePinRequest as PinterestCreatePinRequest } from '@/lib/integrations/pinterest/client';
 import { checkRateLimit, pinterestLimiter } from '@/lib/cache/rate-limiter';
+import { addPinTracking } from '@/lib/pinterest/utm-tracking';
 import type { CreatePinRequest, Pin } from '@/types/pinterest';
 
 interface PinPublishResult {
@@ -207,7 +208,16 @@ export async function publishPin(
 
     const pinterestClient = new PinterestClient({ accessToken: accessToken.data });
 
-    // Publish to Pinterest
+    // Add UTM tracking to the destination link
+    const trackedLink = addPinTracking(pin.link, {
+      pinId: pin.id,
+      collection: pin.collection,
+      quoteId: pin.quote_id,
+      mood: pin.mood,
+      copyVariant: pin.copy_variant,
+    });
+
+    // Publish to Pinterest with tracked link
     const pinterestPin = await pinterestClient.createPin({
       board_id: pin.pinterest_board_id,
       media_source: {
@@ -216,17 +226,18 @@ export async function publishPin(
       },
       title: pin.title,
       description: pin.description || undefined,
-      link: pin.link || undefined,
+      link: trackedLink || undefined,
       alt_text: pin.alt_text || pin.title,
     });
 
-    // Update pin with Pinterest ID
+    // Update pin with Pinterest ID and tracked link
     const { data: updatedPin } = await (supabase as any)
       .from('pins')
       .update({
         pinterest_pin_id: pinterestPin.id,
         status: 'published',
         published_at: new Date().toISOString(),
+        tracked_link: trackedLink,  // Store for attribution reference
         last_error: null,
         retry_count: 0,
       })
