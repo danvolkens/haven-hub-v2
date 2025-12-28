@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
-import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X, Trash2 } from 'lucide-react';
+import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X, Trash2, ShoppingBag, FileText, HelpCircle, Zap, Clock } from 'lucide-react';
 
 interface Mockup {
   id: string;
@@ -72,6 +72,9 @@ interface CopyTemplate {
   avg_engagement_rate: number | null;
 }
 
+type LinkType = 'product' | 'custom' | 'landing_page' | 'quiz';
+type ScheduleStrategy = 'draft' | 'now' | 'optimal' | 'custom';
+
 interface CreatePinData {
   boardId: string;
   title: string;
@@ -82,6 +85,10 @@ interface CreatePinData {
   copyTemplateId?: string;
   publishNow: boolean;
   scheduledFor?: string;
+  linkType: LinkType;
+  selectedLandingPage: string;
+  selectedQuiz: string;
+  scheduleStrategy: ScheduleStrategy;
 }
 
 export default function AssetsPage() {
@@ -99,8 +106,13 @@ export default function AssetsPage() {
     altText: '',
     hashtags: [],
     publishNow: false,
+    linkType: 'product',
+    selectedLandingPage: '',
+    selectedQuiz: '',
+    scheduleStrategy: 'draft',
   });
   const [deleteItem, setDeleteItem] = useState<PreviewItem | null>(null);
+  const [productLink, setProductLink] = useState<string | null>(null);
 
   // Fetch approved items from approval_items
   const { data: approvedData, isLoading: loadingApproved } = useQuery({
@@ -146,6 +158,31 @@ export default function AssetsPage() {
   });
 
   const copyTemplates: CopyTemplate[] = templatesData?.templates || [];
+
+  // Fetch landing pages
+  const { data: landingPagesData } = useQuery({
+    queryKey: ['landing-pages-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/landing-pages');
+      if (!res.ok) return { pages: [] };
+      return res.json();
+    },
+    enabled: showCreatePin && pinForm.linkType === 'landing_page',
+  });
+
+  // Fetch quizzes
+  const { data: quizzesData } = useQuery({
+    queryKey: ['quizzes-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/quiz');
+      if (!res.ok) return { quizzes: [] };
+      return res.json();
+    },
+    enabled: showCreatePin && pinForm.linkType === 'quiz',
+  });
+
+  const landingPages = landingPagesData?.pages || [];
+  const quizzes = quizzesData?.quizzes || [];
 
   // Auto-generate copy mutation
   const generateCopyMutation = useMutation({
@@ -220,6 +257,10 @@ export default function AssetsPage() {
         altText: '',
         hashtags: [],
         publishNow: false,
+        linkType: 'custom',
+        selectedLandingPage: '',
+        selectedQuiz: '',
+        scheduleStrategy: 'now',
       });
     },
   });
@@ -312,10 +353,13 @@ export default function AssetsPage() {
   const openCreatePinModal = (item: PreviewItem) => {
     setPinItem(item);
     setHashtagInput('');
+    setProductLink(null); // Product linking not yet implemented
+
     // Auto-select board based on collection if available
     const matchingBoard = item.collection
       ? boards.find(b => b.collection === item.collection && b.is_primary)
       : null;
+
     setPinForm({
       boardId: matchingBoard?.pinterest_board_id || '',
       title: item.title.slice(0, 100),
@@ -324,6 +368,10 @@ export default function AssetsPage() {
       altText: '',
       hashtags: [],
       publishNow: false,
+      linkType: 'custom', // Default to custom since product linking isn't built yet
+      selectedLandingPage: '',
+      selectedQuiz: '',
+      scheduleStrategy: 'draft',
     });
     setShowCreatePin(true);
   };
@@ -364,21 +412,65 @@ export default function AssetsPage() {
     setPinForm((prev) => ({ ...prev, hashtags: prev.hashtags.filter((t) => t !== tag) }));
   };
 
+  const getComputedLink = (): string | undefined => {
+    switch (pinForm.linkType) {
+      case 'product':
+        return productLink || undefined;
+      case 'custom':
+        return pinForm.link || undefined;
+      case 'landing_page':
+        if (pinForm.selectedLandingPage) {
+          return `${window.location.origin}/landing/${pinForm.selectedLandingPage}`;
+        }
+        return undefined;
+      case 'quiz':
+        if (pinForm.selectedQuiz) {
+          return `${window.location.origin}/quiz/${pinForm.selectedQuiz}`;
+        }
+        return undefined;
+      default:
+        return undefined;
+    }
+  };
+
+  const getScheduleData = (): { publishNow: boolean; scheduledFor?: string } => {
+    switch (pinForm.scheduleStrategy) {
+      case 'now':
+        return { publishNow: true };
+      case 'optimal':
+        // Schedule for next 8 PM slot
+        const now = new Date();
+        const optimal = new Date();
+        optimal.setHours(20, 0, 0, 0); // 8 PM
+        if (optimal <= now) {
+          optimal.setDate(optimal.getDate() + 1); // Tomorrow if past 8 PM
+        }
+        return { publishNow: false, scheduledFor: optimal.toISOString() };
+      case 'custom':
+        return { publishNow: false, scheduledFor: pinForm.scheduledFor };
+      case 'draft':
+      default:
+        return { publishNow: false };
+    }
+  };
+
   const handleCreatePin = () => {
     if (!pinItem || !pinForm.boardId) return;
+
+    const scheduleData = getScheduleData();
 
     createPinMutation.mutate({
       boardId: pinForm.boardId,
       imageUrl: pinItem.imageUrl,
       title: pinForm.title,
       description: pinForm.description || undefined,
-      link: pinForm.link || undefined,
+      link: getComputedLink(),
       altText: pinForm.altText || undefined,
       mockupId: pinItem.type === 'mockup' ? pinItem.referenceId : undefined,
       assetId: pinItem.type === 'asset' ? pinItem.referenceId : undefined,
       collection: pinItem.collection as 'grounding' | 'wholeness' | 'growth' | undefined,
-      publishNow: pinForm.publishNow,
-      scheduledFor: pinForm.scheduledFor,
+      publishNow: scheduleData.publishNow,
+      scheduledFor: scheduleData.scheduledFor,
       copyTemplateId: pinForm.copyTemplateId,
       hashtags: pinForm.hashtags.length > 0 ? pinForm.hashtags : undefined,
     });
@@ -855,34 +947,119 @@ export default function AssetsPage() {
               />
             </div>
 
-            {/* Destination Link */}
+            {/* Link Destination */}
             <div>
-              <Label>Destination Link</Label>
-              <Input
-                value={pinForm.link}
-                onChange={(e) => setPinForm({ ...pinForm, link: e.target.value })}
-                placeholder="https://..."
-                type="url"
-                className="mt-1"
-              />
-            </div>
+              <Label>Link Destination</Label>
+              <p className="text-xs text-[var(--color-text-tertiary)] mb-2">
+                Where should the pin link to when clicked?
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                {[
+                  { value: 'product', label: 'Product', icon: ShoppingBag, description: productLink ? 'Quote product' : 'No product linked' },
+                  { value: 'custom', label: 'Custom URL', icon: ExternalLink, description: 'Any URL' },
+                  { value: 'landing_page', label: 'Landing Page', icon: FileText, description: 'Your pages' },
+                  { value: 'quiz', label: 'Quiz', icon: HelpCircle, description: 'Lead capture' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                      pinForm.linkType === option.value
+                        ? 'border-sage bg-sage/10 ring-1 ring-sage'
+                        : 'border-[var(--color-border-primary)] hover:border-sage/50'
+                    } ${option.value === 'product' && !productLink ? 'opacity-50' : ''}`}
+                    onClick={() => setPinForm({ ...pinForm, linkType: option.value as LinkType })}
+                    disabled={option.value === 'product' && !productLink}
+                  >
+                    <option.icon className="h-4 w-4 mb-1" />
+                    <p className="text-xs font-medium">{option.label}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] truncate">{option.description}</p>
+                  </button>
+                ))}
+              </div>
 
-            {/* Publish Options */}
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={pinForm.publishNow}
-                  onChange={(e) => setPinForm({ ...pinForm, publishNow: e.target.checked, scheduledFor: undefined })}
-                  className="w-4 h-4"
+              {/* Custom URL Input */}
+              {pinForm.linkType === 'custom' && (
+                <Input
+                  type="url"
+                  placeholder="https://your-shop.com/..."
+                  value={pinForm.link}
+                  onChange={(e) => setPinForm({ ...pinForm, link: e.target.value })}
                 />
-                <span className="text-sm">Publish immediately</span>
-              </label>
+              )}
+
+              {/* Landing Page Select */}
+              {pinForm.linkType === 'landing_page' && (
+                <select
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg"
+                  value={pinForm.selectedLandingPage}
+                  onChange={(e) => setPinForm({ ...pinForm, selectedLandingPage: e.target.value })}
+                >
+                  <option value="">Select a landing page...</option>
+                  {landingPages.map((page: { slug: string; title: string }) => (
+                    <option key={page.slug} value={page.slug}>
+                      {page.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Quiz Select */}
+              {pinForm.linkType === 'quiz' && (
+                <select
+                  className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg"
+                  value={pinForm.selectedQuiz}
+                  onChange={(e) => setPinForm({ ...pinForm, selectedQuiz: e.target.value })}
+                >
+                  <option value="">Select a quiz...</option>
+                  {quizzes.map((quiz: { slug: string; title: string }) => (
+                    <option key={quiz.slug} value={quiz.slug}>
+                      {quiz.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {/* Show computed link preview */}
+              {getComputedLink() && (
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-2 truncate">
+                  → {getComputedLink()}
+                </p>
+              )}
             </div>
 
-            {!pinForm.publishNow && (
+            {/* Scheduling Strategy */}
+            <div>
+              <Label>When to Publish</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                {[
+                  { value: 'draft', label: 'Save Draft', icon: Pin, description: 'Review later' },
+                  { value: 'now', label: 'Publish Now', icon: Send, description: 'Immediately' },
+                  { value: 'optimal', label: 'Optimal Time', icon: Clock, description: 'Next 8 PM' },
+                  { value: 'custom', label: 'Custom Time', icon: Calendar, description: 'Pick a time' },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`p-2 rounded-lg border text-left transition-all cursor-pointer ${
+                      pinForm.scheduleStrategy === option.value
+                        ? 'border-sage bg-sage/10 ring-1 ring-sage'
+                        : 'border-[var(--color-border-primary)] hover:border-sage/50'
+                    }`}
+                    onClick={() => setPinForm({ ...pinForm, scheduleStrategy: option.value as ScheduleStrategy, publishNow: option.value === 'now' })}
+                  >
+                    <option.icon className="h-4 w-4 mb-1" />
+                    <p className="text-xs font-medium">{option.label}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">{option.description}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Schedule Time */}
+            {pinForm.scheduleStrategy === 'custom' && (
               <div>
-                <Label>Schedule for later</Label>
+                <Label>Schedule for</Label>
                 <Input
                   type="datetime-local"
                   value={pinForm.scheduledFor || ''}
@@ -921,12 +1098,17 @@ export default function AssetsPage() {
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Creating...
                   </>
-                ) : pinForm.publishNow ? (
+                ) : pinForm.scheduleStrategy === 'now' ? (
                   <>
                     <Send className="h-4 w-4 mr-2" />
                     Publish Now
                   </>
-                ) : pinForm.scheduledFor ? (
+                ) : pinForm.scheduleStrategy === 'optimal' ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2" />
+                    Schedule for 8 PM
+                  </>
+                ) : pinForm.scheduleStrategy === 'custom' && pinForm.scheduledFor ? (
                   <>
                     <Calendar className="h-4 w-4 mr-2" />
                     Schedule Pin
