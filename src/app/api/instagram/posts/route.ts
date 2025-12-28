@@ -29,6 +29,11 @@ export async function GET(request: NextRequest) {
         ),
         instagram_templates:template_id (
           name
+        ),
+        primary_asset:primary_asset_id (
+          url,
+          thumbnail_url,
+          type
         )
       `)
       .eq('user_id', user.id)
@@ -75,8 +80,16 @@ export async function GET(request: NextRequest) {
       caption: post.caption,
       caption_preview: post.caption?.substring(0, 100),
       hashtags: post.hashtags || [],
-      asset_url: post.media_urls?.[0],
-      thumbnail_url: post.thumbnail_url || post.media_urls?.[0],
+      hashtags_as_comment: post.hashtags_as_comment ?? true,
+      alt_text: post.alt_text,
+      asset_url: post.primary_asset?.url || post.media_urls?.[0],
+      thumbnail_url: post.thumbnail_url || post.primary_asset?.thumbnail_url || post.media_urls?.[0],
+      primary_asset_id: post.primary_asset_id,
+      additional_assets: post.additional_assets || [],
+      media_urls: post.media_urls || [],
+      product_id: post.product_id,
+      campaign_tag: post.campaign_tag,
+      crosspost_to_facebook: post.crosspost_to_facebook,
       requires_review: post.requires_review,
       created_at: post.created_at,
       quotes: post.quotes ? {
@@ -110,6 +123,13 @@ export async function POST(request: NextRequest) {
       content_pillar,
       caption,
       hashtags,
+      hashtags_as_comment,
+      alt_text,
+      product_id,
+      campaign_tag,
+      crosspost_to_facebook,
+      primary_asset_id,
+      additional_assets,
       media_urls,
       scheduled_for,  // Accept from frontend
       scheduled_at: scheduled_at_direct,  // Also accept scheduled_at directly
@@ -133,12 +153,18 @@ export async function POST(request: NextRequest) {
       .from('instagram_scheduled_posts')
       .insert({
         user_id: user.id,
-        quote_id,
-        template_id,
+        quote_id: quote_id || null,
+        template_id: template_id || null,
         post_type: post_type || 'feed',
         content_pillar: content_pillar || 'product_showcase',
         caption,
         hashtags: hashtags || [],
+        alt_text: alt_text || null,
+        product_id: product_id || null,
+        campaign_tag: campaign_tag || null,
+        crosspost_to_facebook: crosspost_to_facebook || false,
+        primary_asset_id: primary_asset_id || null,
+        additional_assets: additional_assets || [],
         media_urls: media_urls || [],
         scheduled_at,
         status: shouldRequireReview ? 'draft' : 'scheduled',
