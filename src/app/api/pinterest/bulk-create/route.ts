@@ -13,7 +13,7 @@ interface BulkPinRequest {
   custom_url?: string;
   landing_page_slug?: string;
   quiz_slug?: string;
-  copy_template_id?: string; // Optional copy template to use instead of auto-generation
+  copy_template_ids?: string[]; // Array of template IDs for random selection
 }
 
 interface BulkCreateResult {
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       custom_url,
       landing_page_slug,
       quiz_slug,
-      copy_template_id,
+      copy_template_ids,
     } = body;
 
     if (!quote_ids?.length) {
@@ -290,20 +290,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch copy template if specified
-    let copyTemplate: { title_template: string; description_template: string } | null = null;
-    if (copy_template_id) {
-      const { data: template } = await (supabase as any)
+    // Fetch copy templates if specified (for random distribution)
+    let copyTemplates: Array<{ id: string; title_template: string; description_template: string; collection: string | null }> = [];
+    if (copy_template_ids && copy_template_ids.length > 0) {
+      const { data: templates } = await (supabase as any)
         .from('pin_copy_templates')
-        .select('title_template, description_template')
-        .eq('id', copy_template_id)
-        .eq('user_id', userId)
-        .single();
+        .select('id, title_template, description_template, collection')
+        .in('id', copy_template_ids)
+        .eq('user_id', userId);
 
-      if (template) {
-        copyTemplate = template;
+      if (templates && templates.length > 0) {
+        copyTemplates = templates;
       }
     }
+
+    // Helper to get a random template from the array, filtered by collection
+    const getRandomTemplate = (collection: string | null) => {
+      if (copyTemplates.length === 0) return null;
+
+      // First try to find templates matching this collection
+      const collectionTemplates = collection
+        ? copyTemplates.filter(t => t.collection === collection || t.collection === null)
+        : copyTemplates;
+
+      // If no matching templates, fall back to all templates
+      const templatesPool = collectionTemplates.length > 0 ? collectionTemplates : copyTemplates;
+
+      const randomIndex = Math.floor(Math.random() * templatesPool.length);
+      return templatesPool[randomIndex];
+    };
 
     // Calculate scheduling times
     const scheduleTimes = calculateScheduleTimes(
@@ -332,9 +347,12 @@ export async function POST(request: NextRequest) {
         // Generate copy - use template if provided, otherwise auto-generate
         let copy: { title: string; description: string; alt_text: string; hashtags: string[] };
 
-        if (copyTemplate) {
-          // Apply the copy template with variable substitution
-          const templateResult = applyTemplate(copyTemplate, {
+        // Get a random template for this pin (filtered by collection)
+        const selectedTemplate = getRandomTemplate(item.collection);
+
+        if (selectedTemplate) {
+          // Apply the randomly selected copy template with variable substitution
+          const templateResult = applyTemplate(selectedTemplate, {
             quote: quoteText,
             collection: item.collection,
             mood: item.mood,
@@ -422,8 +440,8 @@ export async function POST(request: NextRequest) {
           boardName: board.name,
           linkType: link_type,
           linkDestination: overrideLink || 'product',
-          copyTemplateId: copy_template_id || null,
-          copySource: copy_template_id ? 'template' : 'auto-generated',
+          copyTemplateIds: copy_template_ids || null,
+          copySource: copy_template_ids && copy_template_ids.length > 0 ? 'random-templates' : 'auto-generated',
         },
         p_executed: true,
         p_module: 'pinterest',

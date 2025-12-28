@@ -28,6 +28,7 @@ import {
   ShoppingBag,
   Sparkles,
   FileEdit,
+  Shuffle,
 } from 'lucide-react';
 
 interface Quote {
@@ -73,7 +74,8 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
   const [customUrl, setCustomUrl] = useState('');
   const [selectedLandingPage, setSelectedLandingPage] = useState('');
   const [selectedQuiz, setSelectedQuiz] = useState('');
-  const [copyTemplateId, setCopyTemplateId] = useState<string>('');
+  const [copyMode, setCopyMode] = useState<'auto' | 'random'>('auto');
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<string[]>([]);
   const queryClient = useQueryClient();
 
   // Fetch quotes with approved assets
@@ -134,7 +136,7 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
       custom_url?: string;
       landing_page_slug?: string;
       quiz_slug?: string;
-      copy_template_id?: string;
+      copy_template_ids?: string[]; // Array of template IDs for random selection
     }) => {
       const res = await fetch('/api/pinterest/bulk-create', {
         method: 'POST',
@@ -171,7 +173,8 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     setCustomUrl('');
     setSelectedLandingPage('');
     setSelectedQuiz('');
-    setCopyTemplateId('');
+    setCopyMode('auto');
+    setSelectedTemplateIds([]);
   };
 
   const toggleQuote = (quoteId: string) => {
@@ -198,6 +201,9 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     if (linkType === 'landing_page' && !selectedLandingPage) return;
     if (linkType === 'quiz' && !selectedQuiz) return;
 
+    // Validate template selection if in random mode
+    if (copyMode === 'random' && selectedTemplateIds.length === 0) return;
+
     bulkCreateMutation.mutate({
       quote_ids: selectedQuotes,
       board_id: boardId,
@@ -208,8 +214,20 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
       custom_url: linkType === 'custom' ? customUrl : undefined,
       landing_page_slug: linkType === 'landing_page' ? selectedLandingPage : undefined,
       quiz_slug: linkType === 'quiz' ? selectedQuiz : undefined,
-      copy_template_id: copyTemplateId || undefined,
+      copy_template_ids: copyMode === 'random' && selectedTemplateIds.length > 0 ? selectedTemplateIds : undefined,
     });
+  };
+
+  const toggleTemplate = (templateId: string) => {
+    setSelectedTemplateIds((prev) =>
+      prev.includes(templateId)
+        ? prev.filter((id) => id !== templateId)
+        : [...prev, templateId]
+    );
+  };
+
+  const selectAllTemplates = () => {
+    setSelectedTemplateIds(copyTemplates.map((t) => t.id));
   };
 
   const landingPages = landingPagesData?.pages || [];
@@ -533,11 +551,14 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                 <button
                   type="button"
                   className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                    !copyTemplateId
+                    copyMode === 'auto'
                       ? 'border-sage bg-sage/10 ring-1 ring-sage'
                       : 'border-[var(--color-border-primary)] hover:border-sage/50'
                   }`}
-                  onClick={() => setCopyTemplateId('')}
+                  onClick={() => {
+                    setCopyMode('auto');
+                    setSelectedTemplateIds([]);
+                  }}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Sparkles className="h-4 w-4" />
@@ -550,34 +571,85 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                 <button
                   type="button"
                   className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${
-                    copyTemplateId
+                    copyMode === 'random'
                       ? 'border-sage bg-sage/10 ring-1 ring-sage'
                       : 'border-[var(--color-border-primary)] hover:border-sage/50'
                   }`}
-                  onClick={() => copyTemplates.length > 0 && setCopyTemplateId(copyTemplates[0].id)}
+                  onClick={() => {
+                    if (copyTemplates.length > 0) {
+                      setCopyMode('random');
+                      // Auto-select all templates when switching to random mode
+                      setSelectedTemplateIds(copyTemplates.map((t) => t.id));
+                    }
+                  }}
                   disabled={copyTemplates.length === 0}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <FileEdit className="h-4 w-4" />
-                    <span className="text-sm font-medium">Use Template</span>
+                    <Shuffle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Random Templates</span>
                   </div>
                   <p className="text-xs text-[var(--color-text-tertiary)]">
-                    {copyTemplates.length > 0 ? 'Apply your saved template' : 'No templates saved yet'}
+                    {copyTemplates.length > 0 ? 'Randomly pick from selected' : 'No templates saved yet'}
                   </p>
                 </button>
               </div>
 
-              {/* Template Selector Dropdown */}
-              {copyTemplateId && copyTemplates.length > 0 && (
-                <Select
-                  value={copyTemplateId}
-                  onChange={(value) => setCopyTemplateId(typeof value === 'string' ? value : '')}
-                  options={copyTemplates.map((template) => ({
-                    value: template.id,
-                    label: `${template.name}${template.collection ? ` (${template.collection})` : ''}${template.avg_engagement_rate ? ` - ${(template.avg_engagement_rate * 100).toFixed(1)}% eng` : ''}`,
-                  }))}
-                  className="mt-2"
-                />
+              {/* Template Multi-Select */}
+              {copyMode === 'random' && copyTemplates.length > 0 && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-[var(--color-text-secondary)]">
+                      Select templates to randomize ({selectedTemplateIds.length} selected)
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllTemplates}
+                      disabled={selectedTemplateIds.length === copyTemplates.length}
+                    >
+                      Select All
+                    </Button>
+                  </div>
+                  <div className="max-h-32 overflow-y-auto border rounded-lg divide-y">
+                    {copyTemplates.map((template) => (
+                      <div
+                        key={template.id}
+                        className={`flex items-center gap-2 p-2 cursor-pointer transition-colors hover:bg-[var(--color-bg-secondary)] ${
+                          selectedTemplateIds.includes(template.id) ? 'bg-sage/10' : ''
+                        }`}
+                        onClick={() => toggleTemplate(template.id)}
+                      >
+                        <button
+                          className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                            selectedTemplateIds.includes(template.id)
+                              ? 'bg-sage border-sage text-white'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {selectedTemplateIds.includes(template.id) && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </button>
+                        <span className="text-sm flex-1 truncate">
+                          {template.name}
+                          {template.collection && (
+                            <Badge
+                              variant="default"
+                              className={`ml-2 text-xs ${getCollectionColor(template.collection)}`}
+                            >
+                              {template.collection}
+                            </Badge>
+                          )}
+                        </span>
+                        {template.avg_engagement_rate && (
+                          <span className="text-xs text-[var(--color-text-tertiary)]">
+                            {(template.avg_engagement_rate * 100).toFixed(1)}% eng
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
