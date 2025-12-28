@@ -18,8 +18,19 @@ import {
   Copy,
   Sparkles,
   Info,
+  Wand2,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface GeneratedTemplate {
+  name: string;
+  title_template: string;
+  description_template: string;
+}
 
 interface PinCopyTemplate {
   id: string;
@@ -62,6 +73,18 @@ export default function PinTemplatesPage() {
     mood: '',
   });
 
+  // AI Generator state
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [generatorInput, setGeneratorInput] = useState({
+    style: '',
+    description: '',
+    collection: '' as string,
+    mood: '',
+  });
+  const [generatedTemplates, setGeneratedTemplates] = useState<GeneratedTemplate[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatorError, setGeneratorError] = useState<string | null>(null);
+
   // Fetch templates
   const { data, isLoading } = useQuery({
     queryKey: ['pin-copy-templates'],
@@ -73,6 +96,53 @@ export default function PinTemplatesPage() {
   });
 
   const templates: PinCopyTemplate[] = data?.templates || [];
+
+  // AI Template Generation
+  const handleGenerate = async () => {
+    if (!generatorInput.style.trim()) return;
+
+    setIsGenerating(true);
+    setGeneratorError(null);
+    setGeneratedTemplates([]);
+
+    try {
+      const res = await fetch('/api/copy-templates/generate-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          style: generatorInput.style,
+          description: generatorInput.description || undefined,
+          collection: generatorInput.collection || undefined,
+          mood: generatorInput.mood || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to generate templates');
+      }
+
+      const data = await res.json();
+      setGeneratedTemplates(data.templates);
+    } catch (error) {
+      setGeneratorError(error instanceof Error ? error.message : 'Generation failed');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const useGeneratedTemplate = (template: GeneratedTemplate) => {
+    setNewTemplate({
+      name: template.name,
+      title_template: template.title_template,
+      description_template: template.description_template,
+      collection: generatorInput.collection || '',
+      mood: generatorInput.mood || '',
+    });
+    setShowNewForm(true);
+    setShowGenerator(false);
+    setGeneratedTemplates([]);
+  };
 
   // Create mutation
   const createMutation = useMutation({
@@ -194,6 +264,147 @@ export default function PinTemplatesPage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      {/* AI Generator Section */}
+      <Card className="p-4 mb-6">
+        <button
+          onClick={() => setShowGenerator(!showGenerator)}
+          className="w-full flex items-center justify-between text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+              <Wand2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-medium">Generate with AI</h3>
+              <p className="text-sm text-muted-foreground">
+                Describe your style and let AI create template options
+              </p>
+            </div>
+          </div>
+          {showGenerator ? (
+            <ChevronUp className="h-5 w-5 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+          )}
+        </button>
+
+        {showGenerator && (
+          <div className="mt-4 pt-4 border-t space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Style / Purpose *</Label>
+                <Input
+                  value={generatorInput.style}
+                  onChange={(e) => setGeneratorInput({ ...generatorInput, style: e.target.value })}
+                  placeholder="e.g., product-focused, emotional story, minimalist, SEO-optimized"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label>Additional Details (optional)</Label>
+                <Input
+                  value={generatorInput.description}
+                  onChange={(e) => setGeneratorInput({ ...generatorInput, description: e.target.value })}
+                  placeholder="e.g., focus on home office decor, target gift buyers"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label>Target Collection (optional)</Label>
+                <select
+                  value={generatorInput.collection}
+                  onChange={(e) => setGeneratorInput({ ...generatorInput, collection: e.target.value })}
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2"
+                >
+                  {COLLECTIONS.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Target Mood (optional)</Label>
+                <Input
+                  value={generatorInput.mood}
+                  onChange={(e) => setGeneratorInput({ ...generatorInput, mood: e.target.value })}
+                  placeholder="e.g., calm, inspiring, warm"
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleGenerate}
+              disabled={!generatorInput.style.trim() || isGenerating}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Templates
+                </>
+              )}
+            </Button>
+
+            {generatorError && (
+              <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-lg">
+                {generatorError}
+              </div>
+            )}
+
+            {/* Generated Templates */}
+            {generatedTemplates.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Sparkles className="h-4 w-4" />
+                  Generated Templates - Click to use
+                </div>
+                {generatedTemplates.map((template, index) => {
+                  const preview = previewTemplate(template.title_template, template.description_template);
+                  return (
+                    <Card
+                      key={index}
+                      className="p-4 cursor-pointer hover:border-primary transition-colors"
+                      onClick={() => useGeneratedTemplate(template)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm mb-2">{template.name}</h4>
+                          <div className="space-y-2">
+                            <div>
+                              <span className="text-xs text-muted-foreground">Title:</span>
+                              <p className="text-sm font-mono bg-muted/50 px-2 py-1 rounded mt-0.5">
+                                {template.title_template}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-muted-foreground">Description:</span>
+                              <p className="text-sm font-mono bg-muted/50 px-2 py-1 rounded mt-0.5">
+                                {template.description_template}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="mt-3 p-2 bg-blue-50 rounded text-xs">
+                            <span className="text-muted-foreground">Preview: </span>
+                            <span className="font-medium">{preview.title}</span>
+                          </div>
+                        </div>
+                        <ArrowRight className="h-5 w-5 text-muted-foreground ml-4 flex-shrink-0" />
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Add New Button */}
