@@ -34,15 +34,16 @@ export async function GET(request: NextRequest) {
       .select(`
         id,
         quote_id,
-        url,
+        file_url,
         thumbnail_url,
-        type,
         format,
         status,
-        width,
-        height,
+        dimensions,
         file_key,
-        metadata,
+        template_id,
+        quality_scores,
+        overall_score,
+        content_pillar,
         created_at,
         updated_at
       `)
@@ -63,18 +64,23 @@ export async function GET(request: NextRequest) {
       query = query.eq('format', format);
     }
 
-    if (type) {
-      query = query.eq('type', type);
-    }
-
     const { data: assets, error } = await query;
+
+    // Transform to expected format (url instead of file_url for compatibility)
+    const transformedAssets = (assets || []).map((asset: any) => ({
+      ...asset,
+      url: asset.file_url,
+      width: asset.dimensions?.width,
+      height: asset.dimensions?.height,
+      type: 'image', // Default to image type
+    }));
 
     if (error) {
       console.error('Error fetching assets:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(assets || []);
+    return NextResponse.json(transformedAssets);
   } catch (error) {
     console.error('Error fetching assets:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

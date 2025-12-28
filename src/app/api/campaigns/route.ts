@@ -29,11 +29,23 @@ export async function GET(request: NextRequest) {
         id,
         name,
         description,
+        type,
         status,
         start_date,
         end_date,
-        tags,
-        metadata,
+        theme,
+        hashtags,
+        target_collections,
+        has_offer,
+        offer_type,
+        offer_value,
+        offer_code,
+        channels,
+        revenue,
+        orders,
+        leads,
+        pins_published,
+        emails_sent,
         created_at,
         updated_at
       `)
@@ -74,10 +86,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, status, start_date, end_date, tags } = body;
+    const { name, description, type, status, start_date, end_date, theme, hashtags } = body;
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+    }
+
+    if (!type) {
+      return NextResponse.json({ error: 'Type is required' }, { status: 400 });
+    }
+
+    if (!start_date || !end_date) {
+      return NextResponse.json({ error: 'Start and end dates are required' }, { status: 400 });
     }
 
     const { data: campaign, error } = await (supabase as any)
@@ -86,10 +106,12 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         name,
         description: description || null,
+        type,
         status: status || 'draft',
-        start_date: start_date || null,
-        end_date: end_date || null,
-        tags: tags || [],
+        start_date,
+        end_date,
+        theme: theme || null,
+        hashtags: hashtags || [],
       })
       .select()
       .single();
