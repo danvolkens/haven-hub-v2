@@ -135,14 +135,14 @@ export function Modal({
         aria-labelledby={title ? 'modal-title' : undefined}
         aria-describedby={description ? 'modal-description' : undefined}
         className={cn(
-          `relative z-50 w-full rounded-lg bg-surface shadow-elevation-3 animate-scale-in`,
+          `relative z-50 w-full rounded-lg bg-surface shadow-elevation-3 animate-scale-in flex flex-col`,
           sizeClasses[size],
-          size !== 'full' && 'mx-4'
+          size !== 'full' && 'mx-4 max-h-[calc(100vh-2rem)]'
         )}
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between border-b p-4">
+          <div className="flex items-start justify-between border-b p-4 flex-shrink-0">
             <div>
               {title && (
                 <h2 id="modal-title" className="text-h2">
@@ -169,12 +169,12 @@ export function Modal({
         )}
 
         {/* Content */}
-        <div className={cn('p-4', size === 'full' && 'overflow-auto max-h-[calc(100vh-12rem)]')}>
+        <div className="p-4 overflow-y-auto flex-1 min-h-0">
           {children}
         </div>
 
         {/* Footer */}
-        {footer && <div className="border-t p-4">{footer}</div>}
+        {footer && <div className="border-t p-4 flex-shrink-0">{footer}</div>}
       </div>
     </div>
   );
