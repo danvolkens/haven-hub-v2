@@ -524,7 +524,8 @@ export async function syncPinAnalytics(userId: string): Promise<{
       synced++;
 
       // Pinterest API returns different structures - handle all cases
-      // Try lifetime_metrics first (Pinterest API v5 format)
+      // Try various formats: all.summary_metrics, lifetime_metrics, all_time
+      const summaryMetrics = (analytics as any).all?.summary_metrics;
       const lifetime = (analytics as any).lifetime_metrics || (analytics as any).all?.lifetime_metrics;
       const allTime = analytics.all_time;
 
@@ -532,7 +533,12 @@ export async function syncPinAnalytics(userId: string): Promise<{
       let saves = 0;
       let clicks = 0;
 
-      if (lifetime) {
+      if (summaryMetrics) {
+        // Pinterest API v5 format: all.summary_metrics.IMPRESSION
+        impressions = summaryMetrics.IMPRESSION || 0;
+        saves = summaryMetrics.SAVE || 0;
+        clicks = (summaryMetrics.PIN_CLICK || 0) + (summaryMetrics.OUTBOUND_CLICK || 0);
+      } else if (lifetime) {
         // Pinterest API v5 format: lifetime_metrics.IMPRESSION
         impressions = lifetime.IMPRESSION || lifetime.impressions || 0;
         saves = lifetime.SAVE || lifetime.saves || 0;
