@@ -40,17 +40,11 @@ export async function resizeMasterImage(
       fit: 'fill', // Exact dimensions, no cropping
     });
   } else {
-    // Different aspect ratio - fill + crop
-    // Determine crop direction based on aspect ratio comparison
-    const targetIsWider = targetAspect > inputAspect;
-
-    // When target is wider: we crop top/bottom - use centre to preserve logo
-    // When target is narrower: we crop sides - attention works well for centering content
-    const cropPosition = targetIsWider ? 'centre' : 'attention';
-
+    // Different aspect ratio - fill + center crop
+    // Matches: magick -resize WxH^ -gravity center -extent WxH
     pipeline = pipeline.resize(width, height, {
       fit: 'cover',
-      position: cropPosition,
+      position: 'centre',
     });
   }
 
