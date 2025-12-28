@@ -251,38 +251,72 @@ export async function POST(request: NextRequest) {
     }
     // If link_type === 'product', overrideLink stays null and we use per-quote product links
 
-    // Fetch quote data (text and product_link) for all quotes
+    // Fetch quote data (text) and linked products for all quotes
     const allQuoteIds = [...new Set(allImages.filter(img => img.quoteId).map(img => img.quoteId))];
     const quoteDataMap = new Map<string, { text: string; product_link: string | null }>();
 
     if (allQuoteIds.length > 0) {
+      // Fetch quotes with their direct product links and linked product_id
       const { data: quotes } = await (supabase as any)
         .from('quotes')
         .select('id, text, product_link, product_id')
         .in('id', allQuoteIds);
 
-      // Also fetch products linked to these quotes (via products.quote_id)
-      const { data: products } = await (supabase as any)
+      // Fetch products linked to these quotes (via products.quote_id OR quotes.product_id)
+      const productIds = (quotes || [])
+        .filter((q: any) => q.product_id)
+        .map((q: any) => q.product_id);
+
+      const { data: productsByQuoteId } = await (supabase as any)
         .from('products')
         .select('id, quote_id, shopify_handle, shopify_product_id')
         .eq('user_id', userId)
         .in('quote_id', allQuoteIds);
 
-      // Build a map of quote_id to product URL
-      const quoteProductMap = new Map<string, string>();
+      const { data: productsByProductId } = productIds.length > 0
+        ? await (supabase as any)
+            .from('products')
+            .select('id, shopify_handle, shopify_product_id')
+            .eq('user_id', userId)
+            .in('id', productIds)
+        : { data: [] };
+
+      // Build maps for product URL lookup
       const shopUrl = userSettings?.shop_url || 'https://havenandhold.com';
 
-      for (const product of products || []) {
+      // Map: quote_id -> product URL (from products.quote_id)
+      const quoteToProductUrl = new Map<string, string>();
+      for (const product of productsByQuoteId || []) {
         if (product.quote_id && product.shopify_handle) {
-          // Build Shopify product URL
           const productUrl = `${shopUrl.replace(/\/$/, '')}/products/${product.shopify_handle}`;
-          quoteProductMap.set(product.quote_id, productUrl);
+          quoteToProductUrl.set(product.quote_id, productUrl);
+        }
+      }
+
+      // Map: product_id -> product URL (from quotes.product_id)
+      const productIdToUrl = new Map<string, string>();
+      for (const product of productsByProductId || []) {
+        if (product.id && product.shopify_handle) {
+          const productUrl = `${shopUrl.replace(/\/$/, '')}/products/${product.shopify_handle}`;
+          productIdToUrl.set(product.id, productUrl);
         }
       }
 
       for (const quote of quotes || []) {
-        // Priority: quote.product_link (manual) > product from products table > null
-        const productLink = quote.product_link || quoteProductMap.get(quote.id) || null;
+        // Priority:
+        // 1. quote.product_link (manual URL)
+        // 2. quote.product_id -> product URL
+        // 3. products.quote_id -> product URL
+        let productLink = quote.product_link || null;
+
+        if (!productLink && quote.product_id) {
+          productLink = productIdToUrl.get(quote.product_id) || null;
+        }
+
+        if (!productLink) {
+          productLink = quoteToProductUrl.get(quote.id) || null;
+        }
+
         quoteDataMap.set(quote.id, {
           text: quote.text || '',
           product_link: productLink,
