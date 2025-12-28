@@ -40,12 +40,12 @@ export async function resizeMasterImage(
       fit: 'fill', // Exact dimensions, no cropping
     });
   } else {
-    // Different aspect ratio - fill + smart crop
-    // Use 'attention' for content-aware cropping that focuses on important areas
-    // This is better than center for images with text/logos
+    // Different aspect ratio - fill + center crop
+    // Use 'centre' for predictable cropping that evenly distributes the crop
+    // This preserves both the logo (bottom) and header (top) better than attention
     pipeline = pipeline.resize(width, height, {
-      fit: 'cover',        // Fill the target (may overflow)
-      position: 'attention',  // Smart crop focusing on important content
+      fit: 'cover',        // Fill the target (may crop overflow)
+      position: 'centre',  // Center crop - predictable, keeps middle content
     });
   }
 
