@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server';
 import { selectFootage } from './stock-footage';
 import { selectMusic } from './music-tracks';
 import { selectHook } from './hooks';
+import { createTikTokQueueEntry } from '@/lib/tiktok/queue-generator';
 import type { Collection, VideoContentType, StockFootage, MusicTrack, VideoHook } from '@/types/instagram';
 
 // ============================================================================
@@ -427,6 +428,33 @@ export async function processWebhookPayload(
 
   // Log activity
   await logRenderActivity(supabase, metadata, videoAsset?.id);
+
+  // Create TikTok queue entry (if video is for reels/TikTok content)
+  if (metadata.content_type === 'quote_reveal' || metadata.content_type === 'transformation') {
+    try {
+      // Get user_id from the quote
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: quote } = await (supabase as any)
+        .from('quotes')
+        .select('user_id')
+        .eq('id', metadata.quote_id)
+        .single();
+
+      if (quote?.user_id) {
+        await createTikTokQueueEntry(
+          quote.user_id,
+          metadata.quote_id,
+          videoAsset?.id,
+          payload.url,
+          thumbnailUrls[1] || thumbnailUrls[0] // Use middle thumbnail as preview
+        );
+        console.log('[Creatomate] Created TikTok queue entry for quote:', metadata.quote_id);
+      }
+    } catch (tikTokError) {
+      // Don't fail the webhook if TikTok queue creation fails
+      console.error('[Creatomate] Failed to create TikTok queue entry:', tikTokError);
+    }
+  }
 
   return {
     success: true,
