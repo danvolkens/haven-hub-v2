@@ -25,8 +25,8 @@ export const SOCIAL_FORMATS: FormatSpec[] = [
     name: 'Instagram Post',
     category: 'social',
     width: 1080,
-    height: 1080,
-    aspectRatio: '1:1',
+    height: 1350,
+    aspectRatio: '4:5',
     dpi: 72,
   },
   {

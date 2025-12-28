@@ -37,10 +37,10 @@ const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const MIN_DIMENSIONS = {
-  feed: { width: 1080, height: 1080 },
+  feed: { width: 1080, height: 1350 },
   reel: { width: 1080, height: 1920 },
   story: { width: 1080, height: 1920 },
-  carousel: { width: 1080, height: 1080 },
+  carousel: { width: 1080, height: 1350 },
 };
 
 // ============================================================================
