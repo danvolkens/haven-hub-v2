@@ -14,13 +14,19 @@ export async function GET() {
     // Get posting log entries ordered by date
     const { data: postingLog, error } = await (supabase as any)
       .from('tiktok_posting_log')
-      .select('posted_at')
+      .select('date, total_posted')
       .eq('user_id', user.id)
-      .order('posted_at', { ascending: false });
+      .gt('total_posted', 0)  // Only count days where we actually posted
+      .order('date', { ascending: false });
 
     if (error) {
+      // Table might not exist yet - return empty streak
       console.error('Error fetching posting log:', error);
-      return NextResponse.json({ error: 'Failed to fetch streak' }, { status: 500 });
+      return NextResponse.json({
+        current: 0,
+        longest: 0,
+        lastPostedAt: null,
+      });
     }
 
     if (!postingLog || postingLog.length === 0) {
@@ -34,7 +40,7 @@ export async function GET() {
     // Calculate current streak
     const today = new Date();
     const postDates = new Set<string>(
-      postingLog.map((p: { posted_at: string }) => format(new Date(p.posted_at), 'yyyy-MM-dd'))
+      postingLog.map((p: { date: string }) => format(new Date(p.date), 'yyyy-MM-dd'))
     );
 
     let currentStreak = 0;
@@ -82,7 +88,7 @@ export async function GET() {
     return NextResponse.json({
       current: currentStreak,
       longest: longestStreak,
-      lastPostedAt: postingLog[0]?.posted_at || null,
+      lastPostedAt: postingLog[0]?.date || null,
     });
   } catch (error) {
     console.error('Error in streak API:', error);
