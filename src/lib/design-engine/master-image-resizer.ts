@@ -40,12 +40,17 @@ export async function resizeMasterImage(
       fit: 'fill', // Exact dimensions, no cropping
     });
   } else {
-    // Different aspect ratio - fill + center crop
-    // Use 'centre' for predictable cropping that evenly distributes the crop
-    // This preserves both the logo (bottom) and header (top) better than attention
+    // Different aspect ratio - fill + crop
+    // Determine crop direction based on aspect ratio comparison
+    const targetIsWider = targetAspect > inputAspect;
+
+    // When target is wider: we crop top/bottom - use centre to preserve logo
+    // When target is narrower: we crop sides - attention works well for centering content
+    const cropPosition = targetIsWider ? 'centre' : 'attention';
+
     pipeline = pipeline.resize(width, height, {
-      fit: 'cover',        // Fill the target (may crop overflow)
-      position: 'centre',  // Center crop - predictable, keeps middle content
+      fit: 'cover',
+      position: cropPosition,
     });
   }
 
