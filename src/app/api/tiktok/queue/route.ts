@@ -38,8 +38,9 @@ export async function GET(request: Request) {
       .order('slot_type', { ascending: true });
 
     if (error) {
+      // Table might not exist yet - return empty array
       console.error('Error fetching TikTok queue:', error);
-      return NextResponse.json({ error: 'Failed to fetch queue' }, { status: 500 });
+      return NextResponse.json([]);
     }
 
     return NextResponse.json(queueItems || []);
