@@ -90,6 +90,38 @@ export type HashtagGroupUpdate = Partial<
 >;
 
 // ============================================================================
+// Hashtag Rotation Sets
+// ============================================================================
+
+export interface HashtagRotationSet {
+  id: string;
+  user_id: string | null;
+  name: string;
+  description: string | null;
+  group_ids: string[];
+  usage_count: number;
+  last_used_at: string | null;
+  avg_engagement_rate: number | null;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type HashtagRotationSetInsert = Omit<
+  HashtagRotationSet,
+  'id' | 'created_at' | 'updated_at' | 'usage_count' | 'last_used_at' | 'avg_engagement_rate'
+> & {
+  usage_count?: number;
+  last_used_at?: string | null;
+  avg_engagement_rate?: number | null;
+};
+
+export type HashtagRotationSetUpdate = Partial<
+  Omit<HashtagRotationSet, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+>;
+
+// ============================================================================
 // Banned Hashtags
 // ============================================================================
 
