@@ -170,7 +170,9 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"Delete rejected assets/mockups from R2 storage\n\nWhen assets or mockups are rejected \\(single or bulk\\), now:\n1. Delete the file from R2 storage\n2. Delete the database record\n\nThis prevents storage buildup from rejected content.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\")",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit -m \"Add ''Select All'' button to approval queue header\n\nAlways visible button to select/deselect all items without needing\nto click individual items first.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\")",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 commit:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 checkout main)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 pull)"
     ]
   }
 }
