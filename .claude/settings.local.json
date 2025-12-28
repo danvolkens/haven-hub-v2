@@ -173,7 +173,8 @@
       "Bash(npx vitest:*)",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 checkout main)",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 pull)",
-      "Bash(git -C /Users/dvolkens/haven-hub-v2 diff --name-only)"
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 diff --name-only)",
+      "Bash(npx trigger.dev@latest deploy:*)"
     ]
   }
 }

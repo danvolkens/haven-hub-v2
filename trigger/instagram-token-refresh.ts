@@ -3,7 +3,7 @@
  * Prompt 9.1: Refresh long-lived tokens before expiry
  */
 
-import { schedules, logger } from '@trigger.dev/sdk/v3';
+import { schedules, logger, task } from '@trigger.dev/sdk/v3';
 import { createClient } from '@supabase/supabase-js';
 import { addDays, isBefore, addWeeks } from 'date-fns';
 
@@ -182,9 +182,9 @@ export const refreshInstagramTokensTask = schedules.task({
 // Manual Token Refresh (for testing)
 // ============================================================================
 
-export const refreshTokenNowTask = schedules.task({
+export const refreshTokenNowTask = task({
   id: 'instagram-refresh-token-now',
-  cron: '0 0 30 2 *', // Never runs automatically (Feb 30)
+  // Manual trigger only - no cron schedule
 
   run: async () => {
     logger.info('Manual token refresh triggered');
