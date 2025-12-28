@@ -1,6 +1,6 @@
 export const INSTAGRAM_CONFIG = {
-  appId: process.env.INSTAGRAM_APP_ID!,
-  appSecret: process.env.INSTAGRAM_APP_SECRET!,
+  appId: process.env.INSTAGRAM_APP_ID || process.env.INSTAGRAM_CLIENT_ID || '',
+  appSecret: process.env.INSTAGRAM_APP_SECRET || process.env.INSTAGRAM_CLIENT_SECRET || '',
   scopes: [
     'instagram_basic',
     'instagram_content_publish',
