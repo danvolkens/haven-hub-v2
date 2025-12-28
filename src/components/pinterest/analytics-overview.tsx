@@ -1,7 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { Eye, Heart, MousePointer, TrendingUp, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Eye, Heart, MousePointer, TrendingUp, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { api } from '@/lib/fetcher';
 import { formatNumber, formatPercent } from '@/lib/utils';
@@ -17,16 +18,44 @@ interface AnalyticsData {
   lastSynced: string | null;
 }
 
+interface SyncResult {
+  success: boolean;
+  synced: number;
+  updated: number;
+  error?: string;
+}
+
 export function AnalyticsOverview() {
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
     queryKey: ['pinterest-analytics-overview'],
     queryFn: () => api.get<AnalyticsData>('/pinterest/analytics/overview'),
     refetchInterval: 300000, // 5 minutes
   });
 
   const handleSync = async () => {
-    await api.post('/pinterest/analytics/sync');
-    refetch();
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await api.post<SyncResult>('/pinterest/analytics/sync');
+      setSyncResult(result);
+      // Refresh all analytics queries
+      queryClient.invalidateQueries({ queryKey: ['pinterest-analytics-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['top-pins'] });
+      queryClient.invalidateQueries({ queryKey: ['pinterest-chart'] });
+    } catch (error) {
+      setSyncResult({
+        success: false,
+        synced: 0,
+        updated: 0,
+        error: error instanceof Error ? error.message : 'Sync failed',
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const metrics = [
@@ -71,12 +100,41 @@ export function AnalyticsOverview() {
           variant="secondary"
           size="sm"
           onClick={handleSync}
-          isLoading={isFetching}
-          leftIcon={<RefreshCw className="h-4 w-4" />}
+          isLoading={isSyncing}
+          leftIcon={<RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />}
         >
-          Sync Now
+          {isSyncing ? 'Syncing...' : 'Sync Now'}
         </Button>
       </div>
+
+      {/* Sync result feedback */}
+      {syncResult && (
+        <div className={`flex items-center gap-2 p-3 rounded-md ${
+          syncResult.success
+            ? 'bg-success/10 text-success'
+            : 'bg-error/10 text-error'
+        }`}>
+          {syncResult.success ? (
+            <>
+              <CheckCircle className="h-4 w-4" />
+              <span className="text-body-sm">
+                Synced {syncResult.synced} pins, updated {syncResult.updated} with new metrics
+              </span>
+            </>
+          ) : (
+            <>
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-body-sm">{syncResult.error}</span>
+            </>
+          )}
+          <button
+            onClick={() => setSyncResult(null)}
+            className="ml-auto text-caption hover:opacity-70"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {metrics.map((metric) => (
