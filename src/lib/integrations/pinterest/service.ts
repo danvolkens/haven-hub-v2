@@ -523,10 +523,39 @@ export async function syncPinAnalytics(userId: string): Promise<{
 
       synced++;
 
-      // Sum up the metrics from all_time aggregate
-      const impressions = analytics.all_time?.impressions || 0;
-      const saves = analytics.all_time?.saves || 0;
-      const clicks = analytics.all_time?.clicks || 0;
+      // Pinterest API returns different structures - handle all cases
+      // Try lifetime_metrics first (Pinterest API v5 format)
+      const lifetime = (analytics as any).lifetime_metrics || (analytics as any).all?.lifetime_metrics;
+      const allTime = analytics.all_time;
+
+      let impressions = 0;
+      let saves = 0;
+      let clicks = 0;
+
+      if (lifetime) {
+        // Pinterest API v5 format: lifetime_metrics.IMPRESSION
+        impressions = lifetime.IMPRESSION || lifetime.impressions || 0;
+        saves = lifetime.SAVE || lifetime.saves || 0;
+        clicks = (lifetime.PIN_CLICK || 0) + (lifetime.OUTBOUND_CLICK || 0) || lifetime.clicks || 0;
+      } else if (allTime) {
+        // Legacy format: all_time.impressions
+        impressions = allTime.impressions || 0;
+        saves = allTime.saves || 0;
+        clicks = allTime.clicks || 0;
+      } else if ((analytics as any).daily_metrics?.length > 0) {
+        // Sum from daily metrics if no aggregate available
+        for (const day of (analytics as any).daily_metrics) {
+          const m = day.metrics || {};
+          impressions += m.IMPRESSION || 0;
+          saves += m.SAVE || 0;
+          clicks += (m.PIN_CLICK || 0) + (m.OUTBOUND_CLICK || 0);
+        }
+      }
+
+      // Log for debugging if still no data
+      if (impressions === 0 && saves === 0 && clicks === 0) {
+        console.log(`Pin ${pin.id} analytics response:`, JSON.stringify(analytics).slice(0, 500));
+      }
 
       // Update pin with analytics
       const { error: updateError } = await (supabase as any)

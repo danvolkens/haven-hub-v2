@@ -96,12 +96,38 @@ export const GET = cronHandler(async (_request: NextRequest) => {
             metric_types: ['IMPRESSION', 'SAVE', 'PIN_CLICK', 'OUTBOUND_CLICK'],
           });
 
-          // Extract metrics from response
+          // Pinterest API returns different structures - handle all cases
+          const lifetime = (analytics as any).lifetime_metrics || (analytics as any).all?.lifetime_metrics;
           const allTime = analytics.all_time as Record<string, number> | undefined;
-          const impressions = allTime?.impressions || pin.impressions || 0;
-          const saves = allTime?.saves || pin.saves || 0;
-          const clicks = allTime?.clicks || pin.clicks || 0;
-          const outboundClicks = allTime?.outbound_clicks || 0;
+
+          let impressions = pin.impressions || 0;
+          let saves = pin.saves || 0;
+          let clicks = pin.clicks || 0;
+          let outboundClicks = 0;
+
+          if (lifetime) {
+            // Pinterest API v5 format
+            impressions = lifetime.IMPRESSION || lifetime.impressions || impressions;
+            saves = lifetime.SAVE || lifetime.saves || saves;
+            clicks = lifetime.PIN_CLICK || lifetime.clicks || clicks;
+            outboundClicks = lifetime.OUTBOUND_CLICK || 0;
+          } else if (allTime) {
+            // Legacy format
+            impressions = allTime.impressions || impressions;
+            saves = allTime.saves || saves;
+            clicks = allTime.clicks || clicks;
+            outboundClicks = allTime.outbound_clicks || 0;
+          } else if ((analytics as any).daily_metrics?.length > 0) {
+            // Sum from daily metrics
+            impressions = 0; saves = 0; clicks = 0; outboundClicks = 0;
+            for (const day of (analytics as any).daily_metrics) {
+              const m = day.metrics || {};
+              impressions += m.IMPRESSION || 0;
+              saves += m.SAVE || 0;
+              clicks += m.PIN_CLICK || 0;
+              outboundClicks += m.OUTBOUND_CLICK || 0;
+            }
+          }
 
           // Calculate performance tier
           const performanceTier = calculatePerformanceTier(impressions, saves, clicks);
