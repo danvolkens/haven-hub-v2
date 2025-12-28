@@ -410,7 +410,11 @@ export default function NewInstagramPostPage() {
               <CardContent className="space-y-4">
                 {/* Preview */}
                 {previewUrl && (
-                  <div className="relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                  <div className={`relative rounded-lg overflow-hidden border bg-muted ${
+                    postType === 'story' || postType === 'reel'
+                      ? 'aspect-[9/16]'
+                      : 'aspect-[4/5]'
+                  }`}>
                     <img
                       src={previewUrl}
                       alt="Selected media"
