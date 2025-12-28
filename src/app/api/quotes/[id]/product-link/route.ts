@@ -20,7 +20,43 @@ export async function GET(
 
     const shopUrl = userSettings?.shop_url || 'https://havenandhold.com';
 
-    // Find product linked to this quote
+    // First check if quote has direct product_link or product_id
+    const { data: quote } = await (supabase as any)
+      .from('quotes')
+      .select('product_link, product_id')
+      .eq('id', quoteId)
+      .eq('user_id', userId)
+      .single();
+
+    // Priority 1: Direct product_link URL on quote
+    if (quote?.product_link) {
+      return NextResponse.json({
+        productLink: quote.product_link,
+        source: 'quote.product_link',
+      });
+    }
+
+    // Priority 2: Quote's product_id -> lookup product
+    if (quote?.product_id) {
+      const { data: linkedProduct } = await (supabase as any)
+        .from('products')
+        .select('id, shopify_handle')
+        .eq('id', quote.product_id)
+        .eq('user_id', userId)
+        .single();
+
+      if (linkedProduct?.shopify_handle) {
+        const productLink = `${shopUrl.replace(/\/$/, '')}/products/${linkedProduct.shopify_handle}`;
+        return NextResponse.json({
+          productLink,
+          productId: linkedProduct.id,
+          shopifyHandle: linkedProduct.shopify_handle,
+          source: 'quote.product_id',
+        });
+      }
+    }
+
+    // Priority 3: Find product with quote_id pointing to this quote
     const { data: product } = await (supabase as any)
       .from('products')
       .select('id, shopify_handle, shopify_product_id')
@@ -34,6 +70,7 @@ export async function GET(
         productLink,
         productId: product.id,
         shopifyHandle: product.shopify_handle,
+        source: 'products.quote_id',
       });
     }
 
