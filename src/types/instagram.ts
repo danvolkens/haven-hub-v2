@@ -552,3 +552,185 @@ export const COLLECTION_MOOD_TAGS: Record<Collection, string[]> = {
   growth: ['emerging', 'hopeful', 'becoming', 'fresh'],
   general: ['calm', 'neutral', 'sanctuary', 'peaceful'],
 };
+
+// ============================================================================
+// Stories Types (Prompt 1.3)
+// ============================================================================
+
+export type StoryType = 'quote_daily' | 'product_highlight' | 'poll' | 'quiz_cta' | 'bts' | 'ugc';
+
+export type StoryScheduleType = 'auto' | 'manual_queue';
+
+export type StoryTimeSlot = 'morning' | 'midday' | 'afternoon' | 'evening';
+
+export type StoryStatus = 'pending' | 'scheduled' | 'posted' | 'expired' | 'failed';
+
+export type BackgroundType = 'image' | 'video' | 'branded_solid';
+
+export type TextPosition = 'top' | 'center' | 'bottom';
+
+// ============================================================================
+// Story Templates
+// ============================================================================
+
+export interface StoryTemplate {
+  id: string;
+  user_id: string | null;
+  name: string;
+  story_type: StoryType | null;
+  background_type: BackgroundType | null;
+  text_overlay_template: string | null;
+  text_position: TextPosition;
+  link_url: string | null;
+  link_label: string | null;
+  is_system: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type StoryTemplateInsert = Omit<StoryTemplate, 'id' | 'created_at' | 'is_system' | 'is_active'> & {
+  is_system?: boolean;
+  is_active?: boolean;
+};
+
+export type StoryTemplateUpdate = Partial<Omit<StoryTemplate, 'id' | 'user_id' | 'created_at'>>;
+
+// ============================================================================
+// Instagram Stories
+// ============================================================================
+
+export interface InstagramStory {
+  id: string;
+  user_id: string;
+  asset_id: string | null;
+  story_type: StoryType | null;
+  template_id: string | null;
+  caption_overlay: string | null;
+  quote_id: string | null;
+  poll_question: string | null;
+  poll_options: string[];
+  schedule_type: StoryScheduleType | null;
+  scheduled_at: string | null;
+  target_time_slot: StoryTimeSlot | null;
+  status: StoryStatus;
+  posted_at: string | null;
+  expires_at: string | null;
+  instagram_media_id: string | null;
+  error_message: string | null;
+  created_at: string;
+}
+
+export type InstagramStoryInsert = Omit<
+  InstagramStory,
+  'id' | 'created_at' | 'status' | 'posted_at' | 'expires_at' | 'instagram_media_id' | 'error_message'
+> & {
+  status?: StoryStatus;
+};
+
+export type InstagramStoryUpdate = Partial<Omit<InstagramStory, 'id' | 'user_id' | 'created_at'>>;
+
+// ============================================================================
+// TikTok Types (Prompt 1.3)
+// ============================================================================
+
+export type TikTokContentType = 'quote_reveal' | 'educational' | 'transformation' | 'story';
+
+export type TikTokSlotType = 'morning' | 'evening';
+
+export type TikTokQueueStatus = 'pending' | 'ready' | 'downloaded' | 'posted';
+
+// ============================================================================
+// TikTok Queue
+// ============================================================================
+
+export interface TikTokQueueItem {
+  id: string;
+  user_id: string;
+  quote_id: string | null;
+  video_asset_id: string | null;
+  content_type: TikTokContentType | null;
+  hook_id: string | null;
+  hook_text: string | null;
+  caption: string;
+  hashtags: string[];
+  target_date: string | null; // DATE as string
+  target_time: string | null; // TIME as string
+  slot_type: TikTokSlotType | null;
+  status: TikTokQueueStatus;
+  downloaded_at: string | null;
+  posted_at: string | null;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  shares: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TikTokQueueInsert = Omit<
+  TikTokQueueItem,
+  | 'id'
+  | 'created_at'
+  | 'updated_at'
+  | 'status'
+  | 'downloaded_at'
+  | 'posted_at'
+  | 'views'
+  | 'likes'
+  | 'comments'
+  | 'shares'
+> & {
+  status?: TikTokQueueStatus;
+};
+
+export type TikTokQueueUpdate = Partial<
+  Omit<TikTokQueueItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+>;
+
+// ============================================================================
+// TikTok Posting Log
+// ============================================================================
+
+export interface TikTokPostingLog {
+  id: string;
+  user_id: string;
+  date: string; // DATE as string
+  morning_posted: boolean;
+  evening_posted: boolean;
+  total_posted: number;
+  created_at: string;
+}
+
+export type TikTokPostingLogInsert = Omit<TikTokPostingLog, 'id' | 'created_at'> & {
+  morning_posted?: boolean;
+  evening_posted?: boolean;
+  total_posted?: number;
+};
+
+export type TikTokPostingLogUpdate = Partial<
+  Omit<TikTokPostingLog, 'id' | 'user_id' | 'date' | 'created_at'>
+>;
+
+// ============================================================================
+// Story Time Slot Configuration
+// ============================================================================
+
+export const STORY_TIME_SLOTS: Record<StoryTimeSlot, { start: string; end: string; description: string }> = {
+  morning: { start: '08:00', end: '10:00', description: 'Quote of the day, inspiration' },
+  midday: { start: '11:00', end: '13:00', description: 'Educational, polls' },
+  afternoon: { start: '14:00', end: '16:00', description: 'Product highlights' },
+  evening: { start: '18:00', end: '21:00', description: 'Quiz CTAs, engagement, BTS' },
+};
+
+// ============================================================================
+// TikTok Hashtag Strategy (5-5-5 Method)
+// ============================================================================
+
+export const TIKTOK_HASHTAG_TARGET = 15; // 5 mega + 5 large + 5 niche
+
+export const TIKTOK_CONTENT_TYPE_TARGETS: Record<TikTokContentType, number> = {
+  quote_reveal: 0.4, // 40%
+  educational: 0.3, // 30%
+  transformation: 0.2, // 20%
+  story: 0.1, // 10%
+};
