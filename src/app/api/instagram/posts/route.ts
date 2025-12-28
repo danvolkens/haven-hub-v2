@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         )
       `)
       .eq('user_id', user.id)
-      .order('scheduled_for', { ascending: true })
+      .order('scheduled_at', { ascending: true })
       .range(offset, offset + limit - 1);
 
     if (status) {
@@ -49,10 +49,10 @@ export async function GET(request: NextRequest) {
 
     // Date range filtering for calendar view
     if (start) {
-      query = query.gte('scheduled_for', start);
+      query = query.gte('scheduled_at', start);
     }
     if (end) {
-      query = query.lte('scheduled_for', end);
+      query = query.lte('scheduled_at', end);
     }
 
     const { data: posts, error } = await query;
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       post_type: post.post_type || 'feed',
       content_pillar: post.content_pillar || 'product_showcase',
       status: post.status,
-      scheduled_at: post.scheduled_for,
+      scheduled_at: post.scheduled_at,
       caption: post.caption,
       caption_preview: post.caption?.substring(0, 100),
       hashtags: post.hashtags || [],
@@ -110,9 +110,13 @@ export async function POST(request: NextRequest) {
       caption,
       hashtags,
       media_urls,
-      scheduled_for,
+      scheduled_for,  // Accept from frontend
+      scheduled_at: scheduled_at_direct,  // Also accept scheduled_at directly
       requires_review,
     } = body;
+
+    // Use scheduled_at if provided directly, otherwise use scheduled_for
+    const scheduled_at = scheduled_at_direct || scheduled_for;
 
     // Get user settings to check operator mode
     const { data: settings } = await (supabase as any)
@@ -135,7 +139,7 @@ export async function POST(request: NextRequest) {
         caption,
         hashtags: hashtags || [],
         media_urls: media_urls || [],
-        scheduled_for,
+        scheduled_at,
         status: shouldRequireReview ? 'draft' : 'scheduled',
         requires_review: shouldRequireReview,
       })

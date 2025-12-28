@@ -19,7 +19,7 @@ export async function GET() {
       .from('instagram_scheduled_posts')
       .select(`
         id,
-        scheduled_for,
+        scheduled_at,
         post_type,
         content_pillar,
         caption,
@@ -27,27 +27,27 @@ export async function GET() {
       `)
       .eq('user_id', user.id)
       .eq('status', 'scheduled')
-      .gte('scheduled_for', now.toISOString())
-      .lte('scheduled_for', endOfWeek.toISOString())
-      .order('scheduled_for', { ascending: true })
+      .gte('scheduled_at', now.toISOString())
+      .lte('scheduled_at', endOfWeek.toISOString())
+      .order('scheduled_at', { ascending: true })
       .limit(10);
 
     if (error) {
       console.error('Error fetching upcoming posts:', error);
-      return NextResponse.json({ posts: [] });
+      return NextResponse.json([]);
     }
 
     // Transform to expected format
     const upcomingPosts = (posts || []).map((post: any) => ({
       id: post.id,
-      scheduled_at: post.scheduled_for,
+      scheduled_at: post.scheduled_at,
       post_type: post.post_type || 'feed',
       content_pillar: post.content_pillar || 'product_showcase',
       caption: post.caption || '',
       thumbnail_url: post.media_urls?.[0] || null,
     }));
 
-    return NextResponse.json({ posts: upcomingPosts });
+    return NextResponse.json(upcomingPosts);
   } catch (error) {
     console.error('Error fetching upcoming posts:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

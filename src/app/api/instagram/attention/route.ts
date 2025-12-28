@@ -45,7 +45,7 @@ export async function GET() {
       .select('content_pillar')
       .eq('user_id', user.id)
       .in('status', ['scheduled', 'published'])
-      .gte('scheduled_for', startOfWeek.toISOString());
+      .gte('scheduled_at', startOfWeek.toISOString());
 
     const counts: Record<string, number> = {};
     for (const post of posts || []) {
@@ -71,8 +71,8 @@ export async function GET() {
       .from('instagram_stories')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .gte('scheduled_for', `${today}T00:00:00`)
-      .lte('scheduled_for', `${today}T23:59:59`);
+      .gte('scheduled_at', `${today}T00:00:00`)
+      .lte('scheduled_at', `${today}T23:59:59`);
 
     if (!storyCount || storyCount < 2) {
       attentionItems.push({
@@ -98,7 +98,7 @@ export async function GET() {
       });
     }
 
-    return NextResponse.json({ items: attentionItems });
+    return NextResponse.json(attentionItems);
   } catch (error) {
     console.error('Error fetching attention items:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

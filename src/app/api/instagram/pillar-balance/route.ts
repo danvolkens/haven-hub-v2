@@ -28,7 +28,7 @@ export async function GET() {
       .select('content_pillar')
       .eq('user_id', user.id)
       .in('status', ['scheduled', 'published'])
-      .gte('scheduled_for', startOfWeek.toISOString());
+      .gte('scheduled_at', startOfWeek.toISOString());
 
     // Count posts by pillar
     const counts: Record<string, number> = {
@@ -76,7 +76,8 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ balance, total_posts: totalPosts });
+    const isHealthy = balance.every(p => p.status === 'ok');
+    return NextResponse.json({ balance, isHealthy, total_posts: totalPosts });
   } catch (error) {
     console.error('Error fetching pillar balance:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -2,21 +2,22 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 // Default optimal posting times based on general Instagram best practices
+// Format matches frontend OptimalTime interface: { time: string, day: string, engagement_rate: number }
 const DEFAULT_OPTIMAL_TIMES = [
-  { day: 0, hour: 10, label: 'Sunday 10 AM', score: 75 },
-  { day: 0, hour: 19, label: 'Sunday 7 PM', score: 80 },
-  { day: 1, hour: 11, label: 'Monday 11 AM', score: 85 },
-  { day: 1, hour: 20, label: 'Monday 8 PM', score: 90 },
-  { day: 2, hour: 9, label: 'Tuesday 9 AM', score: 82 },
-  { day: 2, hour: 21, label: 'Tuesday 9 PM', score: 88 },
-  { day: 3, hour: 11, label: 'Wednesday 11 AM', score: 86 },
-  { day: 3, hour: 20, label: 'Wednesday 8 PM', score: 92 },
-  { day: 4, hour: 10, label: 'Thursday 10 AM', score: 84 },
-  { day: 4, hour: 21, label: 'Thursday 9 PM', score: 91 },
-  { day: 5, hour: 11, label: 'Friday 11 AM', score: 80 },
-  { day: 5, hour: 19, label: 'Friday 7 PM', score: 85 },
-  { day: 6, hour: 10, label: 'Saturday 10 AM', score: 78 },
-  { day: 6, hour: 20, label: 'Saturday 8 PM', score: 83 },
+  { time: '11:00 AM', day: 'Monday', engagement_rate: 4.5 },
+  { time: '8:00 PM', day: 'Monday', engagement_rate: 4.8 },
+  { time: '9:00 AM', day: 'Tuesday', engagement_rate: 4.2 },
+  { time: '9:00 PM', day: 'Tuesday', engagement_rate: 4.6 },
+  { time: '11:00 AM', day: 'Wednesday', engagement_rate: 4.4 },
+  { time: '8:00 PM', day: 'Wednesday', engagement_rate: 5.1 },
+  { time: '10:00 AM', day: 'Thursday', engagement_rate: 4.3 },
+  { time: '9:00 PM', day: 'Thursday', engagement_rate: 4.9 },
+  { time: '11:00 AM', day: 'Friday', engagement_rate: 4.0 },
+  { time: '7:00 PM', day: 'Friday', engagement_rate: 4.5 },
+  { time: '10:00 AM', day: 'Saturday', engagement_rate: 3.8 },
+  { time: '8:00 PM', day: 'Saturday', engagement_rate: 4.3 },
+  { time: '10:00 AM', day: 'Sunday', engagement_rate: 3.9 },
+  { time: '7:00 PM', day: 'Sunday', engagement_rate: 4.2 },
 ];
 
 export async function GET() {
@@ -36,25 +37,23 @@ export async function GET() {
 
     if (error || !optimalTimes || optimalTimes.length === 0) {
       // Return default optimal times if no data
-      return NextResponse.json({
-        optimal_times: DEFAULT_OPTIMAL_TIMES,
-        is_default: true,
-      });
+      return NextResponse.json(DEFAULT_OPTIMAL_TIMES);
     }
 
-    // Format the optimal times
+    // Format the optimal times to match frontend OptimalTime interface
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const formattedTimes = optimalTimes.map((time: any) => ({
-      day: time.day_of_week,
-      hour: time.hour,
-      label: `${dayNames[time.day_of_week]} ${time.hour > 12 ? time.hour - 12 : time.hour} ${time.hour >= 12 ? 'PM' : 'AM'}`,
-      score: Math.round(time.engagement_score),
-    }));
-
-    return NextResponse.json({
-      optimal_times: formattedTimes,
-      is_default: false,
+    const formattedTimes = optimalTimes.map((time: any) => {
+      const hour = time.hour;
+      const hour12 = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour);
+      const ampm = hour >= 12 ? 'PM' : 'AM';
+      return {
+        time: `${hour12}:00 ${ampm}`,
+        day: dayNames[time.day_of_week],
+        engagement_rate: Math.round(time.engagement_score * 10) / 10,
+      };
     });
+
+    return NextResponse.json(formattedTimes);
   } catch (error) {
     console.error('Error fetching optimal times:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

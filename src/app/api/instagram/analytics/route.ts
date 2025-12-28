@@ -33,7 +33,7 @@ export async function GET(request: Request) {
           post_type,
           caption,
           media_urls,
-          scheduled_for,
+          scheduled_at,
           template_id
         )
       `)
@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       post_type: m.instagram_scheduled_posts?.post_type,
       caption: m.instagram_scheduled_posts?.caption?.substring(0, 100),
       thumbnail: m.instagram_scheduled_posts?.media_urls?.[0],
-      scheduled_for: m.instagram_scheduled_posts?.scheduled_for,
+      scheduled_at: m.instagram_scheduled_posts?.scheduled_at,
     }));
 
     // Format engagement over time

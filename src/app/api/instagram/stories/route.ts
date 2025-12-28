@@ -17,16 +17,16 @@ export async function GET(request: Request) {
       .from('instagram_stories')
       .select('*')
       .eq('user_id', user.id)
-      .gte('scheduled_for', `${date}T00:00:00`)
-      .lte('scheduled_for', `${date}T23:59:59`)
-      .order('scheduled_for', { ascending: true });
+      .gte('scheduled_at', `${date}T00:00:00`)
+      .lte('scheduled_at', `${date}T23:59:59`)
+      .order('scheduled_at', { ascending: true });
 
     if (error) {
       console.error('Error fetching stories:', error);
-      return NextResponse.json({ stories: [] });
+      return NextResponse.json([]);
     }
 
-    return NextResponse.json({ stories: stories || [] });
+    return NextResponse.json(stories || []);
   } catch (error) {
     console.error('Error fetching stories:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -44,19 +44,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       template_id,
-      scheduled_for,
+      scheduled_for,  // Accept from frontend
+      scheduled_at: scheduled_at_direct,  // Also accept scheduled_at directly
       media_url,
       overlay_text,
       link_url,
       is_auto_generated,
     } = body;
 
+    // Use scheduled_at if provided directly, otherwise use scheduled_for
+    const scheduled_at = scheduled_at_direct || scheduled_for;
+
     const { data: story, error } = await (supabase as any)
       .from('instagram_stories')
       .insert({
         user_id: user.id,
         template_id,
-        scheduled_for,
+        scheduled_at,
         media_url,
         overlay_text,
         link_url,
