@@ -10,9 +10,12 @@ import type { ContentPillar, Collection } from '@/types/instagram';
 // Types
 // ============================================================================
 
+export type ContentType = 'product' | 'educational' | 'inspirational' | 'community' | 'general';
+
 export interface HashtagGeneratorOptions {
   collection: Collection;
   contentPillar: ContentPillar;
+  contentType?: ContentType; // B.1: Content-type for specific hashtag selection
   excludeRecentPosts?: number; // Number of recent posts to exclude hashtags from
   userId?: string; // For user-specific banned hashtags
 }
@@ -23,6 +26,8 @@ export interface HashtagResult {
   rotationSetName: string | null;
   breakdown: {
     brand: string[];
+    contentType: string[]; // B.1: Content-type specific hashtags
+    collection: string[]; // B.1: Collection-specific hashtags
     mega: string[];
     large: string[];
     niche: string[];
@@ -57,8 +62,13 @@ const COLLECTION_TO_NICHE_GROUP: Record<Collection, string> = {
 // ============================================================================
 
 /**
- * Generate hashtags based on content pillar and collection
+ * Generate hashtags based on content pillar, collection, and content type
  * Returns 17-20 hashtags with proper tier distribution
+ *
+ * B.1 Enhancement: Layer composition
+ * - Brand (2 hashtags)
+ * - Content-Type specific (8-10 hashtags)
+ * - Collection-specific (5-7 hashtags)
  */
 export async function generateHashtags(
   options: HashtagGeneratorOptions
@@ -66,6 +76,7 @@ export async function generateHashtags(
   const {
     collection,
     contentPillar,
+    contentType,
     excludeRecentPosts = DEFAULT_EXCLUDE_RECENT,
     userId,
   } = options;
@@ -91,58 +102,94 @@ export async function generateHashtags(
     throw new Error(`Failed to fetch hashtag groups: ${groupsError?.message}`);
   }
 
-  // Type the groups array
+  // Type the groups array with new fields
   const typedGroups = groups as Array<{
     id: string;
     name: string;
     tier: string;
     hashtags: string[];
+    content_type: ContentType | null;
+    collection_affinity: 'grounding' | 'wholeness' | 'growth' | 'any' | null;
   }>;
 
-  // Build hashtag selection by tier
+  // Build hashtag selection by category
   const breakdown: HashtagResult['breakdown'] = {
     brand: [],
+    contentType: [],
+    collection: [],
     mega: [],
     large: [],
     niche: [],
   };
 
-  // 1. Always include Brand tier (all tags)
+  // 1. Brand tier (2 hashtags - always include)
   const brandGroup = typedGroups.find((g) => g.tier === 'brand');
   if (brandGroup) {
-    breakdown.brand = filterExclusions(brandGroup.hashtags, exclusions);
+    breakdown.brand = filterExclusions(brandGroup.hashtags, exclusions).slice(0, 2);
   }
 
-  // 2. Add Mega tier (4-5 random tags)
-  const megaGroup = typedGroups.find((g) => g.tier === 'mega');
-  if (megaGroup) {
-    const available = filterExclusions(megaGroup.hashtags, exclusions);
-    breakdown.mega = shuffleAndTake(available, randomBetween(4, 5));
+  // 2. Content-Type specific (8-10 hashtags) - B.1 Enhancement
+  if (contentType) {
+    const contentTypeGroup = typedGroups.find(
+      (g) => g.content_type === contentType && g.collection_affinity === 'any'
+    );
+    if (contentTypeGroup) {
+      const available = filterExclusions(contentTypeGroup.hashtags, exclusions);
+      breakdown.contentType = shuffleAndTake(available, randomBetween(8, 10));
+    }
   }
 
-  // 3. Add Large tier based on content_pillar
-  const preferredLargeGroup = PILLAR_TO_LARGE_GROUP[contentPillar];
-  const largeGroup = typedGroups.find((g) => g.name === preferredLargeGroup);
-  if (largeGroup) {
-    const available = filterExclusions(largeGroup.hashtags, exclusions);
-    breakdown.large = shuffleAndTake(available, randomBetween(4, 5));
+  // 3. Collection-specific (5-7 hashtags) - B.1 Enhancement
+  if (collection && collection !== 'general') {
+    const collectionGroup = typedGroups.find(
+      (g) => g.collection_affinity === collection
+    );
+    if (collectionGroup) {
+      const available = filterExclusions(collectionGroup.hashtags, exclusions);
+      breakdown.collection = shuffleAndTake(available, randomBetween(5, 7));
+    }
   }
 
-  // 4. Add Niche tier based on collection
-  const preferredNicheGroup = COLLECTION_TO_NICHE_GROUP[collection];
-  const nicheGroup = typedGroups.find((g) => g.name === preferredNicheGroup);
-  if (nicheGroup) {
-    const available = filterExclusions(nicheGroup.hashtags, exclusions);
-    breakdown.niche = shuffleAndTake(available, randomBetween(5, 7));
+  // Fallback: If no content-type hashtags, use legacy tier-based approach
+  if (breakdown.contentType.length === 0) {
+    // Add Mega tier (4-5 random tags)
+    const megaGroup = typedGroups.find((g) => g.tier === 'mega');
+    if (megaGroup) {
+      const available = filterExclusions(megaGroup.hashtags, exclusions);
+      breakdown.mega = shuffleAndTake(available, randomBetween(4, 5));
+    }
+
+    // Add Large tier based on content_pillar
+    const preferredLargeGroup = PILLAR_TO_LARGE_GROUP[contentPillar];
+    const largeGroup = typedGroups.find((g) => g.name === preferredLargeGroup);
+    if (largeGroup) {
+      const available = filterExclusions(largeGroup.hashtags, exclusions);
+      breakdown.large = shuffleAndTake(available, randomBetween(4, 5));
+    }
+  }
+
+  // Fallback: If no collection hashtags, use legacy niche approach
+  if (breakdown.collection.length === 0) {
+    const preferredNicheGroup = COLLECTION_TO_NICHE_GROUP[collection];
+    const nicheGroup = typedGroups.find((g) => g.name === preferredNicheGroup);
+    if (nicheGroup) {
+      const available = filterExclusions(nicheGroup.hashtags, exclusions);
+      breakdown.niche = shuffleAndTake(available, randomBetween(5, 7));
+    }
   }
 
   // Combine all hashtags
   let allHashtags = [
     ...breakdown.brand,
+    ...breakdown.contentType,
+    ...breakdown.collection,
     ...breakdown.mega,
     ...breakdown.large,
     ...breakdown.niche,
   ];
+
+  // Remove duplicates
+  allHashtags = [...new Set(allHashtags)];
 
   // Ensure we have 17-20 hashtags
   if (allHashtags.length < TARGET_HASHTAG_COUNT.min) {
@@ -154,15 +201,8 @@ export async function generateHashtags(
     const needed = TARGET_HASHTAG_COUNT.min - allHashtags.length;
     allHashtags = [...allHashtags, ...shuffleAndTake(allAvailable, needed)];
   } else if (allHashtags.length > TARGET_HASHTAG_COUNT.max) {
-    // Trim from niche first, then large
-    const excess = allHashtags.length - TARGET_HASHTAG_COUNT.max;
-    breakdown.niche = breakdown.niche.slice(0, Math.max(0, breakdown.niche.length - excess));
-    allHashtags = [
-      ...breakdown.brand,
-      ...breakdown.mega,
-      ...breakdown.large,
-      ...breakdown.niche,
-    ];
+    // Trim to max, keeping brand and content-type priority
+    allHashtags = allHashtags.slice(0, TARGET_HASHTAG_COUNT.max);
   }
 
   // Find matching rotation set

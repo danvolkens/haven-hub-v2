@@ -44,6 +44,8 @@ import {
   BookMarked,
   CheckCircle,
   Video,
+  Star,
+  Wand2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -115,9 +117,14 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Dashboard', href: '/dashboard/instagram', icon: Instagram },
       { name: 'Calendar', href: '/dashboard/instagram/calendar', icon: Calendar },
+      { name: 'Generate Week', href: '/dashboard/instagram/calendar/generate', icon: Wand2 },
+      { name: 'Monthly Planning', href: '/dashboard/instagram/planning', icon: Target },
+      { name: 'Engagement', href: '/dashboard/instagram/engagement', icon: Users },
       { name: 'Stories', href: '/dashboard/instagram/stories', icon: BookMarked },
+      { name: 'Highlights', href: '/dashboard/instagram/highlights', icon: Star },
       { name: 'Review Queue', href: '/dashboard/instagram/review', icon: CheckCircle },
       { name: 'Analytics', href: '/dashboard/instagram/analytics', icon: BarChart3 },
+      { name: 'Content Audit', href: '/dashboard/instagram/analytics/audit', icon: FileText },
       { name: 'Footage Library', href: '/dashboard/instagram/footage', icon: Film },
       { name: 'Music Library', href: '/dashboard/instagram/music', icon: Music },
       { name: 'Settings', href: '/dashboard/settings/instagram', icon: Settings },

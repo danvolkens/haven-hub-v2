@@ -11,6 +11,9 @@ export type HashtagTier = 'brand' | 'mega' | 'large' | 'niche';
 
 export type ContentPillar = 'product_showcase' | 'brand_story' | 'educational' | 'community';
 
+// B.1: Content type for hashtag generation
+export type HashtagContentType = 'product' | 'educational' | 'inspirational' | 'community' | 'general';
+
 export type TemplateType = 'feed' | 'reel' | 'story' | 'carousel';
 
 export type PostType = 'feed' | 'reel' | 'story' | 'carousel';
@@ -23,7 +26,59 @@ export type CaptionFormula =
   | 'collection_highlight'
   | 'behind_quote'
   | 'educational_value'
-  | 'ugc_feature';
+  | 'ugc_feature'
+  // A.1 formulas
+  | 'hook_story_cta'
+  | 'scene_meaning_connection'
+  | 'benefit_included_who'
+  | 'intro_theme_audience'
+  | 'appreciation_tag_special'
+  // A.2 reel formulas
+  | 'quote_reveal_script'
+  | 'transformation_script'
+  | 'howto_script';
+
+// Reel-specific types (Prompt A.2)
+export type ReelType =
+  | 'quote_reveal'
+  | 'room_transformation'
+  | 'educational_howto'
+  | 'behind_the_scenes'
+  | 'quiz_teaser'
+  | 'trending_audio';
+
+// Carousel-specific types (Prompt A.4)
+export type CarouselType =
+  | 'quotes_for_situation'
+  | 'educational_howto'
+  | 'quiz_result_deepdive'
+  | 'behind_the_brand'
+  | 'before_after';
+
+export type CarouselSlideType = 'hook' | 'content' | 'collection' | 'cta';
+
+export interface CarouselSlide {
+  slide_number: number;
+  slide_type: CarouselSlideType;
+  text_template: string;
+  visual_description: string;
+  has_product: boolean;
+}
+
+export type AudioMood =
+  | 'soft_emotional'
+  | 'upbeat_inspiring'
+  | 'calm_ambient'
+  | 'trending_pop'
+  | 'cozy_acoustic'
+  | 'motivational'
+  | 'nostalgic';
+
+export interface TextOverlay {
+  timestamp: number;
+  text: string;
+  duration: number;
+}
 
 export type Collection = 'grounding' | 'wholeness' | 'growth' | 'general';
 
@@ -160,6 +215,18 @@ export interface InstagramTemplate {
   avg_engagement_rate: number | null;
   created_at: string;
   updated_at: string;
+  // Reel-specific fields (Prompt A.2)
+  hook_text: string | null;
+  text_overlays: TextOverlay[];
+  suggested_duration_seconds: number | null;
+  audio_mood: AudioMood | null;
+  shot_list: string[];
+  reel_type: ReelType | null;
+  // Carousel-specific fields (Prompt A.4)
+  slide_count: number | null;
+  slides: CarouselSlide[];
+  carousel_type: CarouselType | null;
+  estimated_engagement_multiplier: number;
 }
 
 export type InstagramTemplateInsert = Omit<
@@ -172,12 +239,34 @@ export type InstagramTemplateInsert = Omit<
   | 'is_default'
   | 'is_system'
   | 'is_active'
+  | 'hook_text'
+  | 'text_overlays'
+  | 'suggested_duration_seconds'
+  | 'audio_mood'
+  | 'shot_list'
+  | 'reel_type'
+  | 'slide_count'
+  | 'slides'
+  | 'carousel_type'
+  | 'estimated_engagement_multiplier'
 > & {
   usage_count?: number;
   avg_engagement_rate?: number | null;
   is_default?: boolean;
   is_system?: boolean;
   is_active?: boolean;
+  // Optional reel fields
+  hook_text?: string | null;
+  text_overlays?: TextOverlay[];
+  suggested_duration_seconds?: number | null;
+  audio_mood?: AudioMood | null;
+  shot_list?: string[];
+  reel_type?: ReelType | null;
+  // Optional carousel fields
+  slide_count?: number | null;
+  slides?: CarouselSlide[];
+  carousel_type?: CarouselType | null;
+  estimated_engagement_multiplier?: number;
 };
 
 export type InstagramTemplateUpdate = Partial<
@@ -589,7 +678,17 @@ export const COLLECTION_MOOD_TAGS: Record<Collection, string[]> = {
 // Stories Types (Prompt 1.3)
 // ============================================================================
 
-export type StoryType = 'quote_daily' | 'product_highlight' | 'poll' | 'quiz_cta' | 'bts' | 'ugc';
+export type StoryType =
+  | 'quote_daily'
+  | 'product_highlight'
+  | 'poll'
+  | 'quiz_cta'
+  | 'bts'
+  | 'ugc'
+  // A.3 new types
+  | 'question_box'
+  | 'customer_feature'
+  | 'countdown';
 
 export type StoryScheduleType = 'auto' | 'manual_queue';
 
@@ -605,6 +704,27 @@ export type TextPosition = 'top' | 'center' | 'bottom';
 // Story Templates
 // ============================================================================
 
+// Story elements configuration (Prompt A.3)
+export interface StoryPollConfig {
+  question: string;
+  options: [string, string];
+}
+
+export interface StoryQuestionBoxConfig {
+  prompt: string;
+}
+
+export interface StoryCountdownConfig {
+  label: string;
+  end_time: string;
+}
+
+export interface StoryElements {
+  poll?: StoryPollConfig;
+  question_box?: StoryQuestionBoxConfig;
+  countdown?: StoryCountdownConfig;
+}
+
 export interface StoryTemplate {
   id: string;
   user_id: string | null;
@@ -618,11 +738,36 @@ export interface StoryTemplate {
   is_system: boolean;
   is_active: boolean;
   created_at: string;
+  // A.3 new fields
+  is_sequence: boolean;
+  sequence_count: number;
+  elements: StoryElements;
+  schedule_slot: StoryTimeSlot | null;
+  rotation_group: string | null;
+  rotation_position: number | null;
 }
 
-export type StoryTemplateInsert = Omit<StoryTemplate, 'id' | 'created_at' | 'is_system' | 'is_active'> & {
+export type StoryTemplateInsert = Omit<
+  StoryTemplate,
+  | 'id'
+  | 'created_at'
+  | 'is_system'
+  | 'is_active'
+  | 'is_sequence'
+  | 'sequence_count'
+  | 'elements'
+  | 'schedule_slot'
+  | 'rotation_group'
+  | 'rotation_position'
+> & {
   is_system?: boolean;
   is_active?: boolean;
+  is_sequence?: boolean;
+  sequence_count?: number;
+  elements?: StoryElements;
+  schedule_slot?: StoryTimeSlot | null;
+  rotation_group?: string | null;
+  rotation_position?: number | null;
 };
 
 export type StoryTemplateUpdate = Partial<Omit<StoryTemplate, 'id' | 'user_id' | 'created_at'>>;
