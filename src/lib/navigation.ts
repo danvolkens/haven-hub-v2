@@ -132,8 +132,12 @@ export const navigation: (NavItem | NavSection)[] = [
   },
   {
     name: 'TikTok',
-    href: '/dashboard/tiktok',
-    icon: Video,
+    items: [
+      { name: 'Dashboard', href: '/dashboard/tiktok', icon: Video },
+      { name: 'Batch Filming', href: '/dashboard/tiktok/filming', icon: Film },
+      { name: 'Analytics', href: '/dashboard/tiktok/analytics', icon: BarChart3 },
+      { name: 'Attribution', href: '/dashboard/tiktok/attribution', icon: TrendingUp },
+    ],
   },
   {
     name: 'Email',
