@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     const tokenExpiresAt = new Date(Date.now() + finalExpiresIn * 1000).toISOString();
 
     // Update platform_connections table
-    await (supabase as any)
+    const { error: platformError } = await (supabase as any)
       .from('platform_connections')
       .upsert(
         {
@@ -131,8 +131,15 @@ export async function GET(request: NextRequest) {
         { onConflict: 'user_id,platform' }
       );
 
+    if (platformError) {
+      console.error('Instagram OAuth - platform_connections error:', platformError);
+      // Continue anyway - this table may not exist
+    } else {
+      console.log('Instagram OAuth - platform_connections updated successfully');
+    }
+
     // Update integration record (with metadata fallback for local dev)
-    await (supabase as any)
+    const { data: updateData, error: updateError } = await (supabase as any)
       .from('integrations')
       .update({
         status: 'connected',
@@ -153,7 +160,15 @@ export async function GET(request: NextRequest) {
         last_error_at: null,
       })
       .eq('user_id', userId)
-      .eq('provider', 'instagram');
+      .eq('provider', 'instagram')
+      .select();
+
+    if (updateError) {
+      console.error('Instagram OAuth - integrations update error:', updateError);
+      throw new Error(`Failed to update integration: ${updateError.message}`);
+    }
+
+    console.log('Instagram OAuth - integrations updated:', updateData);
 
     // Log activity
     await (supabase as any).rpc('log_activity', {
