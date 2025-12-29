@@ -22,6 +22,13 @@ export async function POST() {
       success: true,
       synced: result.synced,
       updated: result.updated,
+      totalPins: result.totalPins,
+      pinsWithData: result.debugInfo?.pinsWithData || 0,
+      errors: result.errors,
+      // Include sample response in dev mode for debugging
+      ...(process.env.NODE_ENV === 'development' && result.debugInfo?.sampleResponse
+        ? { sampleResponse: result.debugInfo.sampleResponse }
+        : {}),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

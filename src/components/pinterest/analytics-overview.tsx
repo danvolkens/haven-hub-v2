@@ -22,6 +22,9 @@ interface SyncResult {
   success: boolean;
   synced: number;
   updated: number;
+  totalPins?: number;
+  pinsWithData?: number;
+  errors?: string[];
   error?: string;
 }
 
@@ -109,30 +112,51 @@ export function AnalyticsOverview() {
 
       {/* Sync result feedback */}
       {syncResult && (
-        <div className={`flex items-center gap-2 p-3 rounded-md ${
-          syncResult.success
+        <div className={`p-3 rounded-md ${
+          syncResult.success && (syncResult.pinsWithData || 0) > 0
             ? 'bg-success/10 text-success'
+            : syncResult.success
+            ? 'bg-warning/10 text-warning'
             : 'bg-error/10 text-error'
         }`}>
-          {syncResult.success ? (
-            <>
-              <CheckCircle className="h-4 w-4" />
-              <span className="text-body-sm">
-                Synced {syncResult.synced} pins, updated {syncResult.updated} with new metrics
-              </span>
-            </>
-          ) : (
-            <>
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-body-sm">{syncResult.error}</span>
-            </>
-          )}
-          <button
-            onClick={() => setSyncResult(null)}
-            className="ml-auto text-caption hover:opacity-70"
-          >
-            ✕
-          </button>
+          <div className="flex items-start gap-2">
+            {syncResult.success ? (
+              <>
+                {(syncResult.pinsWithData || 0) > 0 ? (
+                  <CheckCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <span className="text-body-sm">
+                    Synced {syncResult.synced}/{syncResult.totalPins || 0} pins.
+                    {' '}{syncResult.pinsWithData || 0} had analytics data.
+                  </span>
+                  {syncResult.errors && syncResult.errors.length > 0 && (
+                    <div className="mt-1 text-caption opacity-80">
+                      {syncResult.errors.length} error(s): {syncResult.errors[0]}
+                    </div>
+                  )}
+                  {syncResult.synced > 0 && (syncResult.pinsWithData || 0) === 0 && (
+                    <div className="mt-1 text-caption opacity-80">
+                      Pinterest may take 24-48 hours to report analytics for new pins.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span className="text-body-sm">{syncResult.error}</span>
+              </>
+            )}
+            <button
+              onClick={() => setSyncResult(null)}
+              className="ml-auto text-caption hover:opacity-70 flex-shrink-0"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 

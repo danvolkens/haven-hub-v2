@@ -488,6 +488,12 @@ export async function getPinterestStatus(userId: string): Promise<{
 export async function syncPinAnalytics(userId: string): Promise<{
   synced: number;
   updated: number;
+  totalPins: number;
+  errors: string[];
+  debugInfo?: {
+    sampleResponse?: string;
+    pinsWithData: number;
+  };
 }> {
   const client = await getPinterestClient(userId);
   if (!client) throw new Error('Pinterest not connected');
@@ -495,6 +501,9 @@ export async function syncPinAnalytics(userId: string): Promise<{
   const supabase = getAdminClient();
   let synced = 0;
   let updated = 0;
+  let pinsWithData = 0;
+  const errors: string[] = [];
+  let sampleResponse: string | undefined;
 
   // Get all published pins with Pinterest IDs
   const { data: pins, error } = await (supabase as any)
@@ -506,7 +515,7 @@ export async function syncPinAnalytics(userId: string): Promise<{
 
   if (error) throw error;
   if (!pins || pins.length === 0) {
-    return { synced: 0, updated: 0 };
+    return { synced: 0, updated: 0, totalPins: 0, errors: ['No published pins found with Pinterest IDs'] };
   }
 
   // Get analytics for each pin
@@ -522,6 +531,11 @@ export async function syncPinAnalytics(userId: string): Promise<{
       });
 
       synced++;
+
+      // Store first response for debugging
+      if (!sampleResponse) {
+        sampleResponse = JSON.stringify(analytics).slice(0, 800);
+      }
 
       // Pinterest API returns different structures - handle all cases
       // Try various formats: all.summary_metrics, lifetime_metrics, all_time
@@ -558,9 +572,8 @@ export async function syncPinAnalytics(userId: string): Promise<{
         }
       }
 
-      // Log for debugging if still no data
-      if (impressions === 0 && saves === 0 && clicks === 0) {
-        console.log(`Pin ${pin.id} analytics response:`, JSON.stringify(analytics).slice(0, 500));
+      if (impressions > 0 || saves > 0 || clicks > 0) {
+        pinsWithData++;
       }
 
       // Update pin with analytics
@@ -579,11 +592,22 @@ export async function syncPinAnalytics(userId: string): Promise<{
         updated++;
       }
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      errors.push(`Pin ${pin.pinterest_pin_id}: ${errMsg}`);
       console.error(`Failed to sync analytics for pin ${pin.id}:`, err);
     }
   }
 
-  return { synced, updated };
+  return {
+    synced,
+    updated,
+    totalPins: pins.length,
+    errors: errors.slice(0, 5), // Limit to 5 errors
+    debugInfo: {
+      sampleResponse,
+      pinsWithData,
+    },
+  };
 }
 
 export { getPinterestAuthUrl };
