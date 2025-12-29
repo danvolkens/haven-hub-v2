@@ -584,7 +584,7 @@ export async function syncPinAnalytics(userId: string): Promise<{
           saves,
           clicks,
           engagement_rate: impressions > 0 ? (saves + clicks) / impressions : 0,
-          analytics_updated_at: new Date().toISOString(),
+          last_metrics_sync: new Date().toISOString(),
         })
         .eq('id', pin.id);
 

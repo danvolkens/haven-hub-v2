@@ -10,7 +10,7 @@ export async function GET() {
     // Get all published pins with analytics
     const { data: pins, error } = await (supabase as any)
       .from('pins')
-      .select('impressions, saves, clicks, performance_tier, analytics_updated_at, last_metrics_sync')
+      .select('impressions, saves, clicks, performance_tier, last_metrics_sync')
       .eq('user_id', userId)
       .eq('status', 'published');
 
@@ -33,7 +33,7 @@ export async function GET() {
 
     // Find most recent sync time
     const lastSynced = pins?.reduce((latest: string | null, p: any) => {
-      const syncTime = p.analytics_updated_at || p.last_metrics_sync;
+      const syncTime = p.last_metrics_sync;
       if (!syncTime) return latest;
       if (!latest) return syncTime;
       return new Date(syncTime) > new Date(latest) ? syncTime : latest;
