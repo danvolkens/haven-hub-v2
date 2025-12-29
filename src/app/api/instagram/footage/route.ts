@@ -107,9 +107,12 @@ export async function POST(request: Request) {
         user_id: user.id,
         source: 'pexels',
         source_id: pexels_id,
-        url,
+        source_url: url, // Original Pexels URL
+        video_url: url,  // Direct video URL (same as source for Pexels)
+        url,             // Alias column
         thumbnail_url,
         duration,
+        duration_seconds: duration, // Original column name
         width,
         height,
         orientation,
