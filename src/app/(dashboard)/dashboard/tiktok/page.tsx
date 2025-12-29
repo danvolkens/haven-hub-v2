@@ -117,6 +117,19 @@ export default function TikTokQueuePage() {
     queryFn: () => fetcher<PostingStreak>('/api/tiktok/streak'),
   });
 
+  // Fetch pillar balance
+  const { data: pillarBalance } = useQuery({
+    queryKey: ['tiktok-pillar-balance'],
+    queryFn: () => fetcher<{
+      quote_reveals: { current: number; target: number; status: string };
+      transformations: { current: number; target: number; status: string };
+      educational: { current: number; target: number; status: string };
+      bts: { current: number; target: number; status: string };
+      trending: { current: number; target: number; status: string };
+      suggestions: string[];
+    }>('/api/tiktok/pillar-balance?action=balance'),
+  });
+
   // Mark as posted mutation
   const markPostedMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -237,6 +250,47 @@ export default function TikTokQueuePage() {
             </Button>
           </div>
         </div>
+
+        {/* Pillar Balance Widget */}
+        {pillarBalance && (
+          <Card className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold">Content Pillar Balance</h3>
+            </div>
+            <div className="grid grid-cols-5 gap-3">
+              {[
+                { key: 'quote_reveals', label: 'Quote Reveals', target: 30 },
+                { key: 'transformations', label: 'Transforms', target: 25 },
+                { key: 'educational', label: 'Educational', target: 20 },
+                { key: 'bts', label: 'BTS', target: 15 },
+                { key: 'trending', label: 'Trending', target: 10 },
+              ].map(({ key, label, target }) => {
+                const pillar = pillarBalance[key as keyof typeof pillarBalance] as {
+                  current: number;
+                  target: number;
+                  status: string;
+                };
+                if (!pillar || typeof pillar !== 'object') return null;
+                const statusColor = pillar.status === 'ahead' ? 'bg-green-500' :
+                  pillar.status === 'on_track' ? 'bg-blue-500' :
+                  pillar.status === 'behind' ? 'bg-yellow-500' : 'bg-red-500';
+                return (
+                  <div key={key} className="text-center">
+                    <div className="text-xs text-muted-foreground mb-1">{label}</div>
+                    <div className="text-lg font-bold">{pillar.current}/{pillar.target}</div>
+                    <div className={`h-1 rounded-full mt-1 ${statusColor}`} />
+                    <div className="text-[10px] text-muted-foreground mt-1">{target}%</div>
+                  </div>
+                );
+              })}
+            </div>
+            {pillarBalance.suggestions && pillarBalance.suggestions.length > 0 && (
+              <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
+                <span className="font-medium">Tip:</span> {pillarBalance.suggestions[0]}
+              </div>
+            )}
+          </Card>
+        )}
 
         {/* Week Navigation */}
         <Card className="p-4">
