@@ -29,7 +29,10 @@ import {
   Flame,
   ChevronRight,
   RefreshCw,
+  Target,
+  MessageCircle,
 } from 'lucide-react';
+import type { WeeklyBalance, BalanceStatus, ContentTypeBalance } from '@/lib/instagram/weekly-balance';
 
 // ============================================================================
 // Types
@@ -186,6 +189,19 @@ export default function InstagramDashboard() {
     },
   });
 
+  // Fetch weekly content type balance
+  const { data: weeklyBalance } = useQuery<WeeklyBalance>({
+    queryKey: ['instagram', 'weekly-balance', refreshKey],
+    queryFn: async () => {
+      const res = await fetch('/api/instagram/weekly-balance');
+      if (!res.ok) {
+        // Return mock data if API not ready
+        return null;
+      }
+      return res.json();
+    },
+  });
+
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
   };
@@ -220,6 +236,9 @@ export default function InstagramDashboard() {
         <div className="grid gap-4 md:grid-cols-5">
           <WeeklyStatsCard stats={weeklyStats} loading={loadingStats} />
         </div>
+
+        {/* Weekly Content Balance */}
+        {weeklyBalance && <WeeklyBalanceWidget balance={weeklyBalance} />}
 
         {/* Main Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
@@ -520,6 +539,144 @@ function AttentionCard({ items }: { items: AttentionItem[] }) {
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>
           ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeeklyBalanceWidget({ balance }: { balance: WeeklyBalance }) {
+  const contentTypes: Array<{
+    key: keyof WeeklyBalance['contentTypes'];
+    label: string;
+    icon: typeof Image;
+  }> = [
+    { key: 'feed', label: 'Feed Posts', icon: Image },
+    { key: 'reel', label: 'Reels', icon: Video },
+    { key: 'carousel', label: 'Carousels', icon: Layers },
+    { key: 'story', label: 'Stories', icon: MessageCircle },
+  ];
+
+  const getStatusColor = (status: BalanceStatus) => {
+    switch (status) {
+      case 'ahead':
+        return 'bg-green-500';
+      case 'on_track':
+        return 'bg-sage';
+      case 'behind':
+        return 'bg-yellow-500';
+      case 'critical':
+        return 'bg-red-500';
+    }
+  };
+
+  const getStatusBadge = (status: BalanceStatus) => {
+    switch (status) {
+      case 'ahead':
+        return { variant: 'success' as const, label: 'Ahead' };
+      case 'on_track':
+        return { variant: 'success' as const, label: 'On Track' };
+      case 'behind':
+        return { variant: 'warning' as const, label: 'Behind' };
+      case 'critical':
+        return { variant: 'error' as const, label: 'Critical' };
+    }
+  };
+
+  const weekDateRange = () => {
+    const start = new Date(balance.weekStart);
+    const end = new Date(balance.weekEnd);
+    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Target className="h-5 w-5 text-muted-foreground" />
+            <h3 className="font-semibold">Weekly Content Balance</h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{weekDateRange()}</span>
+            <Badge variant={balance.overallStatus === 'ahead' || balance.overallStatus === 'on_track' ? 'success' : balance.overallStatus === 'behind' ? 'warning' : 'error'}>
+              {getStatusBadge(balance.overallStatus).label}
+            </Badge>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Content Type Progress Bars */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {contentTypes.map(({ key, label, icon: Icon }) => {
+            const data = balance.contentTypes[key];
+            const statusBadge = getStatusBadge(data.status);
+            const progressWidth = Math.min(data.percentage, 100);
+
+            return (
+              <div key={key} className="space-y-2 p-3 rounded-lg border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{label}</span>
+                  </div>
+                  <Badge variant={statusBadge.variant} className="text-xs">
+                    {statusBadge.label}
+                  </Badge>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${getStatusColor(data.status)} transition-all duration-300`}
+                    style={{ width: `${progressWidth}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{data.current} / {data.target} target</span>
+                  <span className="text-xs">({data.min}-{data.max})</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Suggestions */}
+        {balance.suggestions.length > 0 && (
+          <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-600" />
+              <span className="text-sm font-medium text-yellow-800">Suggestions</span>
+            </div>
+            <ul className="space-y-1">
+              {balance.suggestions.map((suggestion, i) => (
+                <li key={i} className="text-sm text-yellow-700 flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-yellow-600" />
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Quick Add Buttons */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {balance.contentTypes.feed.status === 'critical' || balance.contentTypes.feed.status === 'behind' ? (
+            <Link href="/dashboard/instagram/new?type=feed" className={buttonVariants({ size: 'sm', variant: 'secondary' })}>
+              <Plus className="mr-1 h-3 w-3" />
+              Add Feed Post
+            </Link>
+          ) : null}
+          {balance.contentTypes.reel.status === 'critical' || balance.contentTypes.reel.status === 'behind' ? (
+            <Link href="/dashboard/instagram/new?type=reel" className={buttonVariants({ size: 'sm', variant: 'secondary' })}>
+              <Plus className="mr-1 h-3 w-3" />
+              Add Reel
+            </Link>
+          ) : null}
+          {balance.contentTypes.carousel.status === 'critical' || balance.contentTypes.carousel.status === 'behind' ? (
+            <Link href="/dashboard/instagram/new?type=carousel" className={buttonVariants({ size: 'sm', variant: 'secondary' })}>
+              <Plus className="mr-1 h-3 w-3" />
+              Add Carousel
+            </Link>
+          ) : null}
         </div>
       </CardContent>
     </Card>

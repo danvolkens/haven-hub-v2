@@ -27,7 +27,16 @@ import {
   Plus,
   Filter,
   Sparkles,
+  Lightbulb,
+  Target,
 } from 'lucide-react';
+import {
+  getDayStrategy,
+  getDayThemeSummary,
+  getStorySchedule,
+  type DayStrategy,
+  type StoryScheduleItem,
+} from '@/lib/instagram/day-strategy';
 
 // ============================================================================
 // Types
@@ -422,6 +431,92 @@ function UpcomingSidebar({
   );
 }
 
+// C.1: Day Strategy Card Component
+function DayStrategyCard({ date }: { date: Date }) {
+  const strategy = getDayStrategy(date);
+  const storySchedule = getStorySchedule(date);
+
+  const postTypeIconMap: Record<string, React.ElementType> = {
+    feed: Image,
+    reel: Video,
+    story: Film,
+    carousel: Layers,
+  };
+
+  return (
+    <Card className="border-sage/30 bg-sage/5">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-sage" />
+          <h3 className="font-semibold text-sm">Today&apos;s Strategy</h3>
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-2xl">{strategy.themeEmoji}</span>
+          <div>
+            <p className="font-medium">{strategy.dayName} — {strategy.theme}</p>
+            <p className="text-xs text-muted-foreground">{strategy.themeDescription}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Recommended Content */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2">RECOMMENDED CONTENT</p>
+          <div className="space-y-2">
+            {strategy.recommendedContent.map((content, idx) => {
+              const ContentIcon = postTypeIconMap[content.type] || Image;
+              return (
+                <div key={idx} className="flex items-center gap-2 text-sm">
+                  <ContentIcon className="h-4 w-4 text-sage" />
+                  <span className="capitalize">{content.type}</span>
+                  <Badge size="sm" variant="secondary" className="ml-auto">
+                    {content.pillar.replace('_', ' ')}
+                  </Badge>
+                  {content.priority === 1 && (
+                    <Badge size="sm" variant="success">Primary</Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Optimal Post Times */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2">OPTIMAL POST TIMES</p>
+          <div className="flex flex-wrap gap-2">
+            {strategy.postTimes.map((time, idx) => (
+              <Badge key={idx} variant="secondary">{time}</Badge>
+            ))}
+          </div>
+        </div>
+
+        {/* Story Schedule */}
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2">STORY SCHEDULE ({storySchedule.length} stories)</p>
+          <div className="space-y-1.5">
+            {storySchedule.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{item.time}</span>
+                <span className="capitalize">{item.type.replace('_', ' ')}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quick Add Button */}
+        <Link
+          href={`/dashboard/instagram/new?date=${date.toISOString()}&type=${strategy.recommendedContent[0]?.type || 'feed'}&pillar=${strategy.recommendedContent[0]?.pillar || 'product_showcase'}`}
+          className={buttonVariants({ size: 'sm', className: 'w-full' })}
+        >
+          <Lightbulb className="mr-2 h-4 w-4" />
+          Add {strategy.recommendedContent[0]?.type || 'post'} (recommended)
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ============================================================================
 // Main Page
 // ============================================================================
@@ -668,13 +763,21 @@ export default function InstagramCalendarPage() {
             <Card className="mt-4">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">
-                    {selectedDate.toLocaleDateString('en-US', {
-                      weekday: 'long',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{getDayThemeSummary(selectedDate).emoji}</span>
+                    <div>
+                      <h3 className="font-semibold">
+                        {selectedDate.toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </h3>
+                      <p className="text-sm text-sage font-medium">
+                        {getDayThemeSummary(selectedDate).theme} Day
+                      </p>
+                    </div>
+                  </div>
                   <Button variant="ghost" size="sm" onClick={() => setSelectedDate(null)}>
                     Close
                   </Button>
@@ -683,14 +786,17 @@ export default function InstagramCalendarPage() {
               <CardContent>
                 {getPostsForDay(selectedDate).length === 0 ? (
                   <div className="text-center py-6">
-                    <Clock className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-muted-foreground mb-3">No posts scheduled for this day</p>
+                    <Lightbulb className="h-8 w-8 mx-auto mb-2 text-sage" />
+                    <p className="text-muted-foreground mb-1">No posts scheduled for this day</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Recommended: {getDayStrategy(selectedDate).recommendedContent[0]?.type} ({getDayStrategy(selectedDate).recommendedContent[0]?.pillar.replace('_', ' ')})
+                    </p>
                     <Link
-                      href={`/dashboard/instagram/new?date=${selectedDate.toISOString()}`}
+                      href={`/dashboard/instagram/new?date=${selectedDate.toISOString()}&type=${getDayStrategy(selectedDate).recommendedContent[0]?.type || 'feed'}`}
                       className={buttonVariants({ size: 'sm' })}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Schedule Post
+                      Add Recommended Post
                     </Link>
                   </div>
                 ) : (
@@ -738,7 +844,10 @@ export default function InstagramCalendarPage() {
         </div>
 
         {/* Sidebar */}
-        <div className="w-full lg:w-80">
+        <div className="w-full lg:w-80 space-y-6">
+          {/* C.1: Day Strategy Card */}
+          <DayStrategyCard date={selectedDate || new Date()} />
+
           <UpcomingSidebar posts={filteredPosts} optimalTimes={optimalTimes} />
         </div>
       </div>
