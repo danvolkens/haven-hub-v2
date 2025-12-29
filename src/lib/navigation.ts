@@ -118,6 +118,7 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Instagram',
     items: [
       { name: 'Dashboard', href: '/dashboard/instagram', icon: Instagram },
+      { name: 'Account', href: '/dashboard/instagram/account', icon: Users },
       { name: 'Calendar', href: '/dashboard/instagram/calendar', icon: Calendar },
       { name: 'New Post', href: '/dashboard/instagram/new', icon: Plus },
       { name: 'Bulk Schedule', href: '/dashboard/instagram/bulk', icon: Layers },
