@@ -46,6 +46,8 @@ import {
   Video,
   Star,
   Wand2,
+  Plus,
+  Brain,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -117,6 +119,8 @@ export const navigation: (NavItem | NavSection)[] = [
     items: [
       { name: 'Dashboard', href: '/dashboard/instagram', icon: Instagram },
       { name: 'Calendar', href: '/dashboard/instagram/calendar', icon: Calendar },
+      { name: 'New Post', href: '/dashboard/instagram/new', icon: Plus },
+      { name: 'Bulk Schedule', href: '/dashboard/instagram/bulk', icon: Layers },
       { name: 'Generate Week', href: '/dashboard/instagram/calendar/generate', icon: Wand2 },
       { name: 'Monthly Planning', href: '/dashboard/instagram/planning', icon: Target },
       { name: 'Engagement', href: '/dashboard/instagram/engagement', icon: Users },
@@ -183,13 +187,14 @@ export const navigation: (NavItem | NavSection)[] = [
     name: 'Content',
     items: [
       { name: 'Link-in-Bio', href: '/dashboard/links', icon: LinkIcon },
-      { name: 'Cross-Platform', href: '/dashboard/analytics/cross-platform', icon: Share2 },
+      { name: 'Cross-Platform', href: '/dashboard/content/cross-platform', icon: Share2 },
     ],
   },
   {
     name: 'Analytics',
     items: [
       { name: 'Attribution', href: '/dashboard/analytics/attribution', icon: TrendingUp },
+      { name: 'Intelligence', href: '/dashboard/intelligence', icon: Brain },
       { name: 'Scaling Playbook', href: '/dashboard/analytics/scaling-playbook', icon: Target },
       { name: 'Alerts', href: '/dashboard/settings/alerts', icon: Bell },
     ],

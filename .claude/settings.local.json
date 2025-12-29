@@ -174,7 +174,21 @@
       "Bash(git -C /Users/dvolkens/haven-hub-v2 checkout main)",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 pull)",
       "Bash(git -C /Users/dvolkens/haven-hub-v2 diff --name-only)",
-      "Bash(npx trigger.dev@latest deploy:*)"
+      "Bash(npx trigger.dev@latest deploy:*)",
+      "Bash(git -C /Users/dvolkens/haven-hub-v2 push origin feature/instagram-content-strategy)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(__NEW_LINE__ echo \"=== CHECKING KEY MISSING ENDPOINTS ===\")",
+      "Bash(test:*)",
+      "Bash(__NEW_LINE__ echo \"\")",
+      "Bash(while read comp)",
+      "Bash(do [ -d \"/Users/dvolkens/haven-hub-v2/src/components/$comp\" ])",
+      "Bash(while read hook)",
+      "Bash(do:*)",
+      "Bash(head -5 echo \"\" echo \"3. Checking for incorrect method usage \\(e.g., /api/something?method=POST\\):\" grep -r \"fetch\\([''\"\"]\\\\/api\\\\/[^''\"\"]*\\\\?.*method\" /Users/dvolkens/haven-hub-v2/src --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(__NEW_LINE__ echo \"=== DETAILS ON MISSING ENDPOINTS ===\")",
+      "Bash(__NEW_LINE__ echo \"1. /api/instagram/generate-alt-text\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

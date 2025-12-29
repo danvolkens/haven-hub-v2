@@ -99,8 +99,9 @@ describe('PerformanceRulesPage', () => {
 
         // Wait for the PUT call to be made
         await waitFor(() => {
-            const putCalls = fetchMock.mock.calls.filter(
-                (call: [string, RequestInit?]) => call[1]?.method === 'PUT'
+            const calls = fetchMock.mock.calls as [string, RequestInit?][];
+            const putCalls = calls.filter(
+                (call) => call[1]?.method === 'PUT'
             );
             expect(putCalls.length).toBeGreaterThan(0);
         }, { timeout: 2000 });

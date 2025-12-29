@@ -75,7 +75,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit): NextRequest {
-  return new NextRequest(new URL(url, 'http://localhost:3000'), options);
+  return new NextRequest(new URL(url, 'http://localhost:3000'), options as any);
 }
 
 describe('Leads API', () => {

@@ -82,7 +82,7 @@ vi.mock('@/lib/pinterest/analytics-service', () => ({
 
 // Helper to create mock NextRequest
 function createMockRequest(url: string, options?: RequestInit): NextRequest {
-  return new NextRequest(new URL(url, 'http://localhost:3000'), options);
+  return new NextRequest(new URL(url, 'http://localhost:3000'), options as any);
 }
 
 describe('Pinterest Analytics API', () => {
@@ -93,9 +93,8 @@ describe('Pinterest Analytics API', () => {
   describe('GET /api/pinterest/analytics/overview', () => {
     it('returns analytics overview', async () => {
       const { GET } = await import('@/app/api/pinterest/analytics/overview/route');
-      const request = createMockRequest('http://localhost:3000/api/pinterest/analytics/overview');
 
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -140,9 +139,8 @@ describe('Pinterest Status API', () => {
   describe('GET /api/pinterest/status', () => {
     it('returns connection status', async () => {
       const { GET } = await import('@/app/api/pinterest/status/route');
-      const request = createMockRequest('http://localhost:3000/api/pinterest/status');
 
-      const response = await GET(request);
+      const response = await GET();
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -159,9 +157,8 @@ describe('Pinterest Boards API', () => {
   describe('GET /api/pinterest/boards', () => {
     it('handles boards request', async () => {
       const { GET } = await import('@/app/api/pinterest/boards/route');
-      const request = createMockRequest('http://localhost:3000/api/pinterest/boards');
 
-      const response = await GET(request);
+      const response = await GET();
 
       // Should return valid response (200) or handle error gracefully (not a 400 validation error)
       expect([200, 401, 500]).toContain(response.status);

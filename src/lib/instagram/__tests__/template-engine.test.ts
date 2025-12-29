@@ -399,6 +399,18 @@ describe('previewTemplate', () => {
       avg_engagement_rate: null,
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
+      // Reel-specific fields
+      hook_text: null,
+      text_overlays: [],
+      suggested_duration_seconds: null,
+      audio_mood: null,
+      shot_list: [],
+      reel_type: null,
+      // Carousel-specific fields
+      slide_count: null,
+      slides: [],
+      carousel_type: null,
+      estimated_engagement_multiplier: 1.0,
     };
 
     const preview = previewTemplate(template);
