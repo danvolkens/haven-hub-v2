@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       ...filteredMockups.map((item: any) => ({
         approvalItemId: item.id,
         referenceId: item.reference_id,
-        imageUrl: item.payload?.file_url || item.payload?.thumbnailUrl,
+        imageUrl: item.payload?.mockupUrl || item.payload?.file_url || item.payload?.thumbnailUrl,
         quoteId: item.payload?.quoteId || item.payload?.quote_id,
         quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
         collection: item.collection || item.payload?.collection || 'grounding',
@@ -584,7 +584,7 @@ export async function GET(request: NextRequest) {
 
       if (!quoteId) continue;
 
-      const imageUrl = payload.file_url || payload.thumbnailUrl;
+      const imageUrl = payload.mockupUrl || payload.file_url || payload.thumbnailUrl;
 
       if (quoteMap.has(quoteId)) {
         const existing = quoteMap.get(quoteId)!;
