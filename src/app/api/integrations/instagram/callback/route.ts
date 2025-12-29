@@ -114,8 +114,8 @@ export async function GET(request: NextRequest) {
     // Calculate token expiration
     const tokenExpiresAt = new Date(Date.now() + finalExpiresIn * 1000).toISOString();
 
-    // Update platform_connections table
-    const { error: platformError } = await (supabase as any)
+    // Update platform_connections table using admin client to bypass RLS
+    const { error: platformError } = await (adminClient as any)
       .from('platform_connections')
       .upsert(
         {
@@ -138,8 +138,9 @@ export async function GET(request: NextRequest) {
       console.log('Instagram OAuth - platform_connections updated successfully');
     }
 
-    // Update integration record (with metadata fallback for local dev)
-    const { data: updateData, error: updateError } = await (supabase as any)
+    // Update integration record using admin client to bypass RLS
+    // (RLS may block updates during OAuth redirect flow)
+    const { data: updateData, error: updateError } = await (adminClient as any)
       .from('integrations')
       .update({
         status: 'connected',
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
       throw new Error(`Failed to update integration: ${updateError.message}`);
     }
 
-    console.log('Instagram OAuth - integrations updated:', updateData);
+    console.log('Instagram OAuth - integrations updated:', JSON.stringify(updateData));
 
     // Log activity
     await (supabase as any).rpc('log_activity', {
