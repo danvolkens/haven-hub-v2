@@ -83,11 +83,16 @@ export async function GET(request: NextRequest) {
     const client = new InstagramClient({ accessToken: finalAccessToken });
     const pages = await client.getPages();
 
+    // Debug: Log what pages were returned
+    console.log('Instagram OAuth - Pages returned:', JSON.stringify(pages, null, 2));
+
     // Find page with Instagram business account
     const pageWithInstagram = pages.find(p => p.instagram_business_account);
 
+    console.log('Instagram OAuth - Page with Instagram:', pageWithInstagram ? pageWithInstagram.name : 'NONE FOUND');
+
     if (!pageWithInstagram?.instagram_business_account) {
-      throw new Error('No Instagram Business Account found. Please connect a Facebook Page with an Instagram Business Account.');
+      throw new Error(`No Instagram Business Account found. Pages returned: ${pages.length}. Page names: ${pages.map(p => p.name).join(', ') || 'none'}`);
     }
 
     const igAccount = pageWithInstagram.instagram_business_account;
