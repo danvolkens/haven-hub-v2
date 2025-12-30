@@ -68,8 +68,9 @@ interface KlaviyoFlowAction {
       preview_text?: string;
       template_id: string;
     };
-    // For time-delay: value in minutes at top level (max ~24855 = 17 days)
+    // For time-delay: value + unit
     value?: number;
+    unit?: 'days' | 'hours' | 'minutes';
     condition?: any;
   };
   links: {
@@ -1211,7 +1212,8 @@ export class KlaviyoClient {
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            value: delayHours * 60, // Convert hours to minutes
+            value: delayHours,
+            unit: 'hours',
           },
           links: {
             next: `email_${index}`,
@@ -1285,7 +1287,8 @@ export class KlaviyoClient {
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            value: delayHours * 60, // Convert hours to minutes
+            value: delayHours,
+            unit: 'hours',
           },
           links: {
             next: `email_${index}`,
