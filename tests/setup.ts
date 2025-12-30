@@ -108,9 +108,15 @@ const localStorageMock = {
   length: 0,
   key: vi.fn(),
 };
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-});
+try {
+  Object.defineProperty(window, 'localStorage', {
+    writable: true,
+    configurable: true,
+    value: localStorageMock,
+  });
+} catch {
+  // localStorage already exists
+}
 
 // Mock sessionStorage
 const sessionStorageMock = {
@@ -121,9 +127,15 @@ const sessionStorageMock = {
   length: 0,
   key: vi.fn(),
 };
-Object.defineProperty(window, 'sessionStorage', {
-  value: sessionStorageMock,
-});
+try {
+  Object.defineProperty(window, 'sessionStorage', {
+    writable: true,
+    configurable: true,
+    value: sessionStorageMock,
+  });
+} catch {
+  // sessionStorage already exists
+}
 
 // Setup and teardown
 beforeAll(async () => {
