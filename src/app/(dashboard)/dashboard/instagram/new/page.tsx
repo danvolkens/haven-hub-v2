@@ -273,11 +273,6 @@ export default function NewInstagramPostPage() {
     }
   }, [useBestTime, optimalSlots]);
 
-  // Debug: Log hashtag state changes
-  useEffect(() => {
-    console.log('[DEBUG] Hashtags state updated:', hashtags.length, 'tags:', hashtags.slice(0, 3));
-  }, [hashtags]);
-
   // Create post mutation
   const createMutation = useMutation({
     mutationFn: async (isDraft: boolean) => {
@@ -381,37 +376,20 @@ export default function NewInstagramPostPage() {
   };
 
   const handleApplyRotationSet = (setId: string) => {
-    console.log('[DEBUG] handleApplyRotationSet called, setId:', setId);
     const set = hashtagData?.rotation_sets.find(s => s.id === setId);
-    console.log('[DEBUG] Found set:', set?.name, 'with', set?.hashtags?.length, 'hashtags');
-
     if (set && set.hashtags && set.hashtags.length > 0) {
-      // Remove # prefix if present
       const cleanTags = set.hashtags
         .map(tag => tag.replace(/^#/, ''))
         .filter(tag => tag);
-      console.log('[DEBUG] Clean tags count:', cleanTags.length);
 
-      // Use functional update to get latest state (avoids stale closure)
       setHashtags(prevHashtags => {
-        console.log('[DEBUG] Inside setHashtags callback, prevHashtags:', prevHashtags.length);
         const newTags = cleanTags.filter(tag => !prevHashtags.includes(tag));
-        console.log('[DEBUG] New tags to add:', newTags.length);
+        if (newTags.length === 0) return prevHashtags;
 
-        if (newTags.length === 0) {
-          console.log('[DEBUG] No new tags, returning unchanged');
-          return prevHashtags;
-        }
-
-        const result = newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags
+        return newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags
           ? [...prevHashtags, ...newTags]
           : [...prevHashtags, ...newTags.slice(0, CHARACTER_LIMITS.hashtags - prevHashtags.length)];
-
-        console.log('[DEBUG] Returning new array with', result.length, 'tags');
-        return result;
       });
-    } else {
-      console.log('[DEBUG] No set found or empty hashtags');
     }
   };
 
@@ -899,12 +877,9 @@ export default function NewInstagramPostPage() {
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4 text-sage" />
                     <h3 className="font-semibold">Hashtags</h3>
-                    <Badge
-                      size="sm"
-                      variant={hashtags.length > CHARACTER_LIMITS.hashtags ? 'error' : 'secondary'}
-                    >
+                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-muted">
                       {hashtags.length}/{CHARACTER_LIMITS.hashtags}
-                    </Badge>
+                    </span>
                   </div>
                   {hashtags.length > 0 && (
                     <Button
@@ -991,14 +966,13 @@ export default function NewInstagramPostPage() {
                 {hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {hashtags.map(tag => (
-                      <Badge
+                      <span
                         key={tag}
-                        variant="secondary"
-                        className="cursor-pointer hover:bg-destructive/10"
                         onClick={() => handleRemoveHashtag(tag)}
+                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-muted cursor-pointer hover:bg-destructive/20"
                       >
                         #{tag} <X className="ml-1 h-3 w-3" />
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 )}
