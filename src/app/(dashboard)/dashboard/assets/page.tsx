@@ -191,39 +191,31 @@ export default function AssetsPage() {
     },
   });
 
-  // Fetch all mockups with pagination support
-  const [mockupsOffset, setMockupsOffset] = useState(0);
-  const MOCKUPS_PER_PAGE = 50;
+  // Pagination state for mockups (client-side pagination after filtering)
+  const MOCKUPS_PER_PAGE = 24;
+  const [mockupsPage, setMockupsPage] = useState(1);
 
+  // Build query string for mockups with filters (fetch all, paginate client-side after filtering)
+  const buildMockupsQuery = () => {
+    const params = new URLSearchParams({
+      limit: '500', // Fetch all mockups, filter and paginate client-side
+    });
+    if (filterCollection) params.append('collection', filterCollection);
+    if (filterQuoteId) params.append('quoteId', filterQuoteId);
+    return params.toString();
+  };
+
+  // Fetch mockups with filters
   const { data: mockupsData, isLoading: loadingMockups } = useQuery({
-    queryKey: ['mockups', mockupsOffset],
+    queryKey: ['mockups', filterCollection, filterQuoteId],
     queryFn: async () => {
-      const res = await fetch(`/api/mockups?limit=${MOCKUPS_PER_PAGE}&offset=${mockupsOffset}`);
+      const res = await fetch(`/api/mockups?${buildMockupsQuery()}`);
       if (!res.ok) throw new Error('Failed to fetch mockups');
       return res.json();
     },
   });
 
-  // Accumulate mockups across pages
-  const [allMockups, setAllMockups] = useState<Mockup[]>([]);
-
-  // Update accumulated mockups when data changes
-  useEffect(() => {
-    if (mockupsData?.mockups) {
-      if (mockupsOffset === 0) {
-        setAllMockups(mockupsData.mockups);
-      } else {
-        setAllMockups(prev => {
-          const existingIds = new Set(prev.map(m => m.id));
-          const newMockups = mockupsData.mockups.filter((m: Mockup) => !existingIds.has(m.id));
-          return [...prev, ...newMockups];
-        });
-      }
-    }
-  }, [mockupsData, mockupsOffset]);
-
-  const hasMoreMockups = mockupsData?.total > mockupsOffset + MOCKUPS_PER_PAGE;
-  const loadMoreMockups = () => setMockupsOffset(prev => prev + MOCKUPS_PER_PAGE);
+  const allMockups: Mockup[] = mockupsData?.mockups || [];
 
   // Fetch Pinterest status and boards
   const { data: pinterestData } = useQuery({
@@ -392,9 +384,19 @@ export default function AssetsPage() {
   const totalAssetsPages = Math.ceil(totalAssets / ITEMS_PER_PAGE);
 
   const approvedMockups: ApprovalItem[] = approvedMockupsData?.items || [];
+
+  // Filter mockups to only show approved ones
   const mockups: Mockup[] = allMockups;
   const approvedMockupIds = new Set(approvedMockups.map(m => m.reference_id));
-  const displayMockups = mockups.filter(m => approvedMockupIds.has(m.id));
+  const allApprovedMockups = mockups.filter(m => approvedMockupIds.has(m.id));
+
+  // Client-side pagination for mockups (after filtering to approved only)
+  const totalMockups = allApprovedMockups.length;
+  const totalMockupsPages = Math.ceil(totalMockups / MOCKUPS_PER_PAGE);
+  const displayMockups = allApprovedMockups.slice(
+    (mockupsPage - 1) * MOCKUPS_PER_PAGE,
+    mockupsPage * MOCKUPS_PER_PAGE
+  );
 
   const isLoading = loadingAssets || loadingMockups || loadingApprovedMockups;
 
@@ -404,6 +406,7 @@ export default function AssetsPage() {
     setFilterQuoteId('');
     setFilterFormat('');
     setAssetsPage(1);
+    setMockupsPage(1);
   };
 
   const hasActiveFilters = filterCollection || filterQuoteId || filterFormat;
@@ -604,7 +607,7 @@ export default function AssetsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <TabsList>
             <TabsTrigger value="mockups">
-              Mockups ({displayMockups.length})
+              Mockups ({totalMockups})
             </TabsTrigger>
             <TabsTrigger value="assets">
               Assets ({totalAssets})
@@ -706,7 +709,7 @@ export default function AssetsPage() {
         )}
 
         <TabsContent value="mockups">
-          {isLoading ? (
+          {loadingMockups ? (
             <Card>
               <CardContent className="flex items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-tertiary)]" />
@@ -716,101 +719,150 @@ export default function AssetsPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <Image className="h-12 w-12 text-[var(--color-text-tertiary)] mb-4" />
-                <h3 className="text-h3 mb-2">No Approved Mockups Yet</h3>
+                <h3 className="text-h3 mb-2">
+                  {hasActiveFilters ? 'No Mockups Match Your Filters' : 'No Approved Mockups Yet'}
+                </h3>
                 <p className="text-body text-[var(--color-text-secondary)] max-w-md">
-                  Generate mockups from your quotes and approve them to see them here.
+                  {hasActiveFilters
+                    ? 'Try adjusting your filters to see more results.'
+                    : 'Generate mockups from your quotes and approve them to see them here.'}
                 </p>
+                {hasActiveFilters && (
+                  <Button variant="secondary" size="sm" className="mt-4" onClick={resetFilters}>
+                    Clear Filters
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayMockups.map((mockup) => (
-                <Card
-                  key={mockup.id}
-                  className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-[var(--color-border-focus)] transition-all"
-                  onClick={() => openMockupPreview(mockup)}
-                >
-                  <div className="aspect-[4/3] relative bg-[var(--color-bg-secondary)]">
-                    <img
-                      src={mockup.file_url}
-                      alt={`Mockup ${mockup.scene}`}
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium truncate">
-                          {mockup.scene.replace('dm_', '').slice(0, 12)}...
-                        </p>
-                        <p className="text-xs text-[var(--color-text-tertiary)]">
-                          {new Date(mockup.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => window.open(mockup.file_url, '_blank')}
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleDownload(mockup.file_url, `mockup-${mockup.id}.png`)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => {
-                            const approvalItem = approvedMockups.find(m => m.reference_id === mockup.id);
-                            if (approvalItem) {
-                              handleDelete({
-                                id: approvalItem.id,
-                                type: 'mockup',
-                                imageUrl: mockup.file_url,
-                                title: mockup.assets?.quotes?.text || 'Mockup',
-                                date: mockup.created_at,
-                                referenceId: mockup.id,
-                              });
-                            }
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayMockups.map((mockup) => (
+                  <Card
+                    key={mockup.id}
+                    className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-[var(--color-border-focus)] transition-all"
+                    onClick={() => openMockupPreview(mockup)}
+                  >
+                    <div className="aspect-[4/3] relative bg-[var(--color-bg-secondary)]">
+                      <img
+                        src={mockup.file_url}
+                        alt={`Mockup ${mockup.scene}`}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">
+                            {mockup.scene.replace('dm_', '').slice(0, 12)}...
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
+                            {mockup.assets?.quotes?.collection && (
+                              <span className="capitalize">{mockup.assets.quotes.collection}</span>
+                            )}
+                            <span>•</span>
+                            <span>{new Date(mockup.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(mockup.file_url, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleDownload(mockup.file_url, `mockup-${mockup.id}.png`)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              const approvalItem = approvedMockups.find(m => m.reference_id === mockup.id);
+                              if (approvalItem) {
+                                handleDelete({
+                                  id: approvalItem.id,
+                                  type: 'mockup',
+                                  imageUrl: mockup.file_url,
+                                  title: mockup.assets?.quotes?.text || 'Mockup',
+                                  date: mockup.created_at,
+                                  referenceId: mockup.id,
+                                });
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
 
-          {/* Load More button for mockups */}
-          {hasMoreMockups && (
-            <div className="flex justify-center mt-6">
-              <Button
-                variant="secondary"
-                onClick={loadMoreMockups}
-                disabled={loadingMockups}
-              >
-                {loadingMockups ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                Load More Mockups ({mockupsData?.total - mockupsOffset - MOCKUPS_PER_PAGE} remaining)
-              </Button>
-            </div>
-          )}
+              {/* Pagination Controls for Mockups */}
+              {totalMockupsPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setMockupsPage((p) => Math.max(1, p - 1))}
+                    disabled={mockupsPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
 
-          {/* Total count info */}
-          {mockupsData?.total > 0 && (
-            <p className="text-center text-sm text-muted-foreground mt-4">
-              Showing {displayMockups.length} of {mockupsData.total} total mockups
-            </p>
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(7, totalMockupsPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalMockupsPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (mockupsPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (mockupsPage >= totalMockupsPages - 3) {
+                        pageNum = totalMockupsPages - 6 + i;
+                      } else {
+                        pageNum = mockupsPage - 3 + i;
+                      }
+
+                      if (pageNum < 1 || pageNum > totalMockupsPages) return null;
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={mockupsPage === pageNum ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => setMockupsPage(pageNum)}
+                          className="min-w-[36px]"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setMockupsPage((p) => Math.min(totalMockupsPages, p + 1))}
+                    disabled={mockupsPage === totalMockupsPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+
+                  <span className="text-sm text-[var(--color-text-tertiary)] ml-4">
+                    Page {mockupsPage} of {totalMockupsPages} ({totalMockups} total)
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 

@@ -8,6 +8,7 @@ const querySchema = z.object({
   status: z.string().optional(),
   assetId: z.string().uuid().optional(),
   quoteId: z.string().uuid().optional(),
+  collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
   limit: z.coerce.number().min(1).max(500).default(50),
   offset: z.coerce.number().min(0).default(0),
 });
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const { scene, status, assetId, quoteId, limit, offset } = querySchema.parse(searchParams);
+    const { scene, status, assetId, quoteId, collection, limit, offset } = querySchema.parse(searchParams);
 
     let query = (supabase as any)
       .from('mockups')
@@ -56,6 +57,11 @@ export async function GET(request: NextRequest) {
     // Filter by quoteId through the assets relation
     if (quoteId) {
       query = query.eq('assets.quote_id', quoteId);
+    }
+
+    // Filter by collection through assets -> quotes relation
+    if (collection) {
+      query = query.eq('assets.quotes.collection', collection);
     }
 
     const { data, error, count } = await query;
