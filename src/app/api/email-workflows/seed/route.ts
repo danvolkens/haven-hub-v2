@@ -319,7 +319,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>Use code <strong>SANCTUARY15</strong> for 15% off your collection.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'See Your Collection',
-      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
+      button_url: "{{ url|default:'https://havenandhold.com/collections/all' }}",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -393,7 +393,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>Your SANCTUARY15 code is still active.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Explore the Collection',
-      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
+      button_url: "{{ url|default:'https://havenandhold.com/collections/all' }}",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -457,7 +457,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>The {{ quiz_result|default:'Grounding'|title }} Collection prints work beautifully in any of these spaces.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Shop Your Collection',
-      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
+      button_url: "{{ url|default:'https://havenandhold.com/collections/all' }}",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -545,7 +545,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>No pressure. Just a gentle nudge if you're ready.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Use SANCTUARY15 Now',
-      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}?discount=SANCTUARY15',
+      button_url: "{{ url|default:'https://havenandhold.com/collections/all' }}?discount=SANCTUARY15",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -613,7 +613,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>Need help deciding? Reply to this email—we're happy to help you find the perfect print for your space.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Complete Your Order',
-      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}',
+      button_url: "{{ checkout_url|default:'https://havenandhold.com/cart' }}",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -666,7 +666,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>Your cart is saved and ready when you are.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Use COMEBACK10',
-      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}?discount=COMEBACK10',
+      button_url: "{{ checkout_url|default:'https://havenandhold.com/cart' }}?discount=COMEBACK10",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -722,7 +722,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>If now isn't the right time, that's okay too. Your sanctuary will be here when you're ready.</p>
 <p>Held,<br>Haven & Hold</p>`,
       button_text: 'Complete Order',
-      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}?discount=COMEBACK10',
+      button_url: "{{ checkout_url|default:'https://havenandhold.com/cart' }}?discount=COMEBACK10",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -788,7 +788,7 @@ For when you're ready to transform. Words that remind you: still becoming is eno
 <p>Need printing tips? We've got you covered in our next email.</p>
 <p>Held gently,<br>Haven & Hold</p>`,
       button_text: 'Download Your Prints',
-      button_url: '{{ download_url|default:"https://havenandhold.com/account" }}',
+      button_url: "{{ download_url|default:'https://havenandhold.com/account' }}",
       html_content: `<!DOCTYPE html>
 <html>
 <head>
