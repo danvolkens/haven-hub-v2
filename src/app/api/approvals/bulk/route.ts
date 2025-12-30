@@ -133,6 +133,11 @@ export async function POST(request: NextRequest) {
             }
           }
 
+          // Decrement quote asset counts before deleting
+          await (supabase as any).rpc('decrement_quote_asset_counts', {
+            p_asset_ids: assetIds,
+          });
+
           // Delete asset records
           await (supabase as any)
             .from('assets')

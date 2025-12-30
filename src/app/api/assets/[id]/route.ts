@@ -84,10 +84,10 @@ export async function DELETE(
         console.log(`Cleaned up ${relatedMockups.length} mockups for asset ${referenceId}`);
       }
 
-      // Now delete the asset file from R2
+      // Get the asset with quote_id before deleting
       const { data: asset } = await (supabase as any)
         .from('assets')
-        .select('file_key')
+        .select('file_key, quote_id')
         .eq('id', referenceId)
         .eq('user_id', userId)
         .single();
@@ -109,6 +109,13 @@ export async function DELETE(
 
       if (deleteError) {
         console.error('Failed to delete asset record:', deleteError);
+      }
+
+      // Decrement the quote's assets_generated count
+      if (asset?.quote_id) {
+        await (supabase as any).rpc('decrement_quote_asset_count', {
+          p_quote_id: asset.quote_id,
+        });
       }
     } else if (type === 'mockup') {
       const { data: mockup } = await (supabase as any)
