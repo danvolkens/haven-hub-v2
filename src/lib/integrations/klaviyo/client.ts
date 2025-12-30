@@ -83,10 +83,8 @@ interface KlaviyoFlowAction {
 interface KlaviyoFlowDefinition {
   triggers: Array<{
     type: 'list' | 'metric' | 'date';
-    // List trigger uses "id" field
+    // Both list and metric triggers use "id" field directly
     id?: string;
-    // Metric trigger uses "metric" relationship
-    metric?: { id: string };
     filter?: any;
   }>;
   profile_filter?: any;
@@ -1330,7 +1328,7 @@ export class KlaviyoClient {
     return {
       triggers: [{
         type: 'metric',
-        metric: { id: params.metricId },
+        id: params.metricId,
       }],
       entry_action_id: entryActionId,
       actions,
