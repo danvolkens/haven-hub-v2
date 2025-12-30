@@ -165,7 +165,7 @@ export function QuizForm({ quiz }: Props) {
               {result.title}
             </h1>
 
-            <p
+            <div
               style={{
                 fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
                 fontSize: '1rem',
@@ -175,8 +175,12 @@ export function QuizForm({ quiz }: Props) {
                 marginBottom: '1.5rem',
               }}
             >
-              {result.description}
-            </p>
+              {result.description.split('\n').filter(Boolean).map((paragraph, idx) => (
+                <p key={idx} style={{ marginBottom: '0.75rem' }}>
+                  {paragraph}
+                </p>
+              ))}
+            </div>
 
             {result.cta_url && (
               <a
