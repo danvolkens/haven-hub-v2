@@ -195,6 +195,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Batch insert all new hooks at once
+    // Note: avg_completion_rate is DECIMAL(5,4) so use 0.5 not 50 for 50%
     const hooksToInsert = newHooks.map(hook => ({
       user_id: user.id,
       hook_text: hook.hook_text,
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
       collections: hook.collections,
       platforms: hook.platforms,
       usage_count: 0,
-      avg_completion_rate: 50,
+      avg_completion_rate: 0.5,
       last_used_at: null,
       is_active: true,
       is_system: false,
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
               collections: hook.collections,
               platforms: hook.platforms,
               usage_count: 0,
-              avg_completion_rate: 50,
+              avg_completion_rate: 0.5,
               is_active: true,
               is_system: false,
             });
