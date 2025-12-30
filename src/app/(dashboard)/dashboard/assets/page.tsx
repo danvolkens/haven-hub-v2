@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
-import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X, Trash2, ShoppingBag, FileText, HelpCircle, Zap, Clock } from 'lucide-react';
+import { Image, Download, ExternalLink, Loader2, Pin, Calendar, Send, Sparkles, Hash, X, Trash2, ShoppingBag, FileText, HelpCircle, Zap, Clock, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Mockup {
   id: string;
@@ -78,8 +78,16 @@ interface CopyTemplate {
   avg_engagement_rate: number | null;
 }
 
+interface Quote {
+  id: string;
+  text: string;
+  collection: string;
+}
+
 type LinkType = 'product' | 'custom' | 'landing_page' | 'quiz';
 type ScheduleStrategy = 'draft' | 'now' | 'optimal' | 'custom';
+type AssetFormat = '' | 'pinterest' | 'instagram_post' | 'instagram_story';
+type Collection = '' | 'grounding' | 'wholeness' | 'growth';
 
 interface CreatePinData {
   boardId: string;
@@ -120,12 +128,65 @@ export default function AssetsPage() {
   const [deleteItem, setDeleteItem] = useState<PreviewItem | null>(null);
   const [productLink, setProductLink] = useState<string | null>(null);
 
-  // Fetch approved items from approval_items (higher limit to get all)
-  const { data: approvedData, isLoading: loadingApproved } = useQuery({
-    queryKey: ['approved-items'],
+  // Filter state
+  const [filterCollection, setFilterCollection] = useState<Collection>('');
+  const [filterQuoteId, setFilterQuoteId] = useState('');
+  const [filterFormat, setFilterFormat] = useState<AssetFormat>('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Pagination state for assets
+  const ITEMS_PER_PAGE = 24;
+  const [assetsPage, setAssetsPage] = useState(1);
+
+  // Fetch quotes for filter dropdown
+  const { data: quotesData } = useQuery({
+    queryKey: ['quotes-list-for-filter'],
     queryFn: async () => {
-      const res = await fetch('/api/approvals?status=approved&limit=500');
-      if (!res.ok) throw new Error('Failed to fetch approved items');
+      const res = await fetch('/api/quotes?limit=100');
+      if (!res.ok) throw new Error('Failed to fetch quotes');
+      return res.json();
+    },
+  });
+
+  const quotes: Quote[] = quotesData?.quotes || [];
+
+  // Build query string for approved assets
+  const buildAssetsQuery = () => {
+    const params = new URLSearchParams({
+      status: 'approved',
+      type: 'asset',
+      limit: ITEMS_PER_PAGE.toString(),
+      offset: ((assetsPage - 1) * ITEMS_PER_PAGE).toString(),
+    });
+    if (filterCollection) params.append('collection', filterCollection);
+    if (filterQuoteId) params.append('quoteId', filterQuoteId);
+    if (filterFormat) params.append('format', filterFormat);
+    return params.toString();
+  };
+
+  // Fetch approved assets with filters and pagination
+  const { data: approvedAssetsData, isLoading: loadingAssets } = useQuery({
+    queryKey: ['approved-assets', assetsPage, filterCollection, filterQuoteId, filterFormat],
+    queryFn: async () => {
+      const res = await fetch(`/api/approvals?${buildAssetsQuery()}`);
+      if (!res.ok) throw new Error('Failed to fetch approved assets');
+      return res.json();
+    },
+  });
+
+  // Fetch approved mockups (separate, without format filter)
+  const { data: approvedMockupsData, isLoading: loadingApprovedMockups } = useQuery({
+    queryKey: ['approved-mockups', filterCollection, filterQuoteId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        status: 'approved',
+        type: 'mockup',
+        limit: '500',
+      });
+      if (filterCollection) params.append('collection', filterCollection);
+      if (filterQuoteId) params.append('quoteId', filterQuoteId);
+      const res = await fetch(`/api/approvals?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch approved mockups');
       return res.json();
     },
   });
@@ -325,16 +386,27 @@ export default function AssetsPage() {
     }
   };
 
-  const approvedItems: ApprovalItem[] = approvedData?.items || [];
-  const approvedMockups = approvedItems.filter(item => item.type === 'mockup');
-  const approvedAssets = approvedItems.filter(item => item.type === 'asset');
+  // Get data from queries
+  const approvedAssets: ApprovalItem[] = approvedAssetsData?.items || [];
+  const totalAssets = approvedAssetsData?.total || 0;
+  const totalAssetsPages = Math.ceil(totalAssets / ITEMS_PER_PAGE);
 
-  // Get mockup details for approved mockups (use accumulated mockups for pagination)
+  const approvedMockups: ApprovalItem[] = approvedMockupsData?.items || [];
   const mockups: Mockup[] = allMockups;
   const approvedMockupIds = new Set(approvedMockups.map(m => m.reference_id));
   const displayMockups = mockups.filter(m => approvedMockupIds.has(m.id));
 
-  const isLoading = loadingApproved || loadingMockups;
+  const isLoading = loadingAssets || loadingMockups || loadingApprovedMockups;
+
+  // Reset page when filters change
+  const resetFilters = () => {
+    setFilterCollection('');
+    setFilterQuoteId('');
+    setFilterFormat('');
+    setAssetsPage(1);
+  };
+
+  const hasActiveFilters = filterCollection || filterQuoteId || filterFormat;
 
   const handleDownload = async (url: string, filename: string) => {
     try {
@@ -529,14 +601,109 @@ export default function AssetsPage() {
       description="Browse and manage your approved design assets and mockups"
     >
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-6">
-          <TabsTrigger value="mockups">
-            Mockups ({displayMockups.length})
-          </TabsTrigger>
-          <TabsTrigger value="assets">
-            Assets ({approvedAssets.length})
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <TabsList>
+            <TabsTrigger value="mockups">
+              Mockups ({displayMockups.length})
+            </TabsTrigger>
+            <TabsTrigger value="assets">
+              Assets ({totalAssets})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Filter Toggle Button */}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={hasActiveFilters ? 'border-sage ring-1 ring-sage' : ''}
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-2 px-1.5 py-0.5 text-xs bg-sage text-white rounded-full">
+                {[filterCollection, filterQuoteId, filterFormat].filter(Boolean).length}
+              </span>
+            )}
+          </Button>
+        </div>
+
+        {/* Filters Panel */}
+        {showFilters && (
+          <Card className="mb-6">
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Collection Filter */}
+                <div>
+                  <Label className="text-sm mb-1.5 block">Collection</Label>
+                  <select
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg text-sm"
+                    value={filterCollection}
+                    onChange={(e) => {
+                      setFilterCollection(e.target.value as Collection);
+                      setAssetsPage(1);
+                    }}
+                  >
+                    <option value="">All Collections</option>
+                    <option value="grounding">Grounding</option>
+                    <option value="wholeness">Wholeness</option>
+                    <option value="growth">Growth</option>
+                  </select>
+                </div>
+
+                {/* Quote Filter */}
+                <div>
+                  <Label className="text-sm mb-1.5 block">Quote</Label>
+                  <select
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg text-sm"
+                    value={filterQuoteId}
+                    onChange={(e) => {
+                      setFilterQuoteId(e.target.value);
+                      setAssetsPage(1);
+                    }}
+                  >
+                    <option value="">All Quotes</option>
+                    {quotes.map((quote) => (
+                      <option key={quote.id} value={quote.id}>
+                        {quote.text.slice(0, 50)}{quote.text.length > 50 ? '...' : ''} ({quote.collection})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Size/Format Filter (only for assets tab) */}
+                {activeTab === 'assets' && (
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Size</Label>
+                    <select
+                      className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg text-sm"
+                      value={filterFormat}
+                      onChange={(e) => {
+                        setFilterFormat(e.target.value as AssetFormat);
+                        setAssetsPage(1);
+                      }}
+                    >
+                      <option value="">All Sizes</option>
+                      <option value="pinterest">Pinterest (1000×1500)</option>
+                      <option value="instagram_post">Instagram Post (1080×1080)</option>
+                      <option value="instagram_story">Instagram Story (1080×1920)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Clear Filters */}
+              {hasActiveFilters && (
+                <div className="mt-4 pt-4 border-t border-[var(--color-border-primary)]">
+                  <Button variant="secondary" size="sm" onClick={resetFilters}>
+                    <X className="h-4 w-4 mr-1" />
+                    Clear All Filters
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <TabsContent value="mockups">
           {isLoading ? (
@@ -648,7 +815,7 @@ export default function AssetsPage() {
         </TabsContent>
 
         <TabsContent value="assets">
-          {isLoading ? (
+          {loadingAssets ? (
             <Card>
               <CardContent className="flex items-center justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-[var(--color-text-tertiary)]" />
@@ -658,82 +825,156 @@ export default function AssetsPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <Image className="h-12 w-12 text-[var(--color-text-tertiary)] mb-4" />
-                <h3 className="text-h3 mb-2">No Approved Assets Yet</h3>
+                <h3 className="text-h3 mb-2">
+                  {hasActiveFilters ? 'No Assets Match Your Filters' : 'No Approved Assets Yet'}
+                </h3>
                 <p className="text-body text-[var(--color-text-secondary)] max-w-md">
-                  Generate designs from your quotes and approve them to see them here.
+                  {hasActiveFilters
+                    ? 'Try adjusting your filters to see more results.'
+                    : 'Generate designs from your quotes and approve them to see them here.'}
                 </p>
+                {hasActiveFilters && (
+                  <Button variant="secondary" size="sm" className="mt-4" onClick={resetFilters}>
+                    Clear Filters
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {approvedAssets.map((asset) => {
-                const imageUrl = asset.payload.assetUrl || asset.payload.thumbnailUrl || asset.payload.file_url;
-                return (
-                  <Card
-                    key={asset.id}
-                    className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-[var(--color-border-focus)] transition-all"
-                    onClick={() => openAssetPreview(asset)}
-                  >
-                    <div className="aspect-[2/3] relative bg-[var(--color-bg-secondary)]">
-                      {imageUrl && (
-                        <img
-                          src={imageUrl}
-                          alt="Asset"
-                          className="absolute inset-0 w-full h-full object-contain"
-                        />
-                      )}
-                    </div>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium truncate max-w-[150px]">
-                            {asset.payload.quoteText?.slice(0, 20) || 'Asset'}...
-                          </p>
-                          <p className="text-xs text-[var(--color-text-tertiary)]">
-                            {asset.payload.collection || asset.collection || 'Unknown'}
-                          </p>
-                        </div>
-                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                          {imageUrl && (
-                            <>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => window.open(imageUrl, '_blank')}
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => handleDownload(imageUrl, `asset-${asset.id}.png`)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                                onClick={() => handleDelete({
-                                  id: asset.id,
-                                  type: 'asset',
-                                  imageUrl: imageUrl,
-                                  title: asset.payload.quoteText || 'Asset',
-                                  date: asset.created_at,
-                                  referenceId: asset.reference_id,
-                                })}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {approvedAssets.map((asset) => {
+                  const imageUrl = asset.payload.assetUrl || asset.payload.thumbnailUrl || asset.payload.file_url;
+                  return (
+                    <Card
+                      key={asset.id}
+                      className="overflow-hidden cursor-pointer hover:ring-2 hover:ring-[var(--color-border-focus)] transition-all"
+                      onClick={() => openAssetPreview(asset)}
+                    >
+                      <div className="aspect-[2/3] relative bg-[var(--color-bg-secondary)]">
+                        {imageUrl && (
+                          <img
+                            src={imageUrl}
+                            alt="Asset"
+                            className="absolute inset-0 w-full h-full object-contain"
+                          />
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">
+                              {asset.payload.quoteText?.slice(0, 20) || 'Asset'}...
+                            </p>
+                            <div className="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
+                              <span>{asset.payload.collection || asset.collection || 'Unknown'}</span>
+                              {asset.payload.format && (
+                                <>
+                                  <span>•</span>
+                                  <span className="capitalize">{asset.payload.format.replace('_', ' ')}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                            {imageUrl && (
+                              <>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => window.open(imageUrl, '_blank')}
+                                >
+                                  <ExternalLink className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => handleDownload(imageUrl, `asset-${asset.id}.png`)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                                  onClick={() => handleDelete({
+                                    id: asset.id,
+                                    type: 'asset',
+                                    imageUrl: imageUrl,
+                                    title: asset.payload.quoteText || 'Asset',
+                                    date: asset.created_at,
+                                    referenceId: asset.reference_id,
+                                  })}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalAssetsPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-8">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAssetsPage((p) => Math.max(1, p - 1))}
+                    disabled={assetsPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(7, totalAssetsPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalAssetsPages <= 7) {
+                        pageNum = i + 1;
+                      } else if (assetsPage <= 4) {
+                        pageNum = i + 1;
+                      } else if (assetsPage >= totalAssetsPages - 3) {
+                        pageNum = totalAssetsPages - 6 + i;
+                      } else {
+                        pageNum = assetsPage - 3 + i;
+                      }
+
+                      if (pageNum < 1 || pageNum > totalAssetsPages) return null;
+
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={assetsPage === pageNum ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => setAssetsPage(pageNum)}
+                          className="min-w-[36px]"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setAssetsPage((p) => Math.min(totalAssetsPages, p + 1))}
+                    disabled={assetsPage === totalAssetsPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+
+                  <span className="text-sm text-[var(--color-text-tertiary)] ml-4">
+                    Page {assetsPage} of {totalAssetsPages} ({totalAssets} total)
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>

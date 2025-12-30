@@ -7,6 +7,8 @@ const querySchema = z.object({
   type: z.enum(['asset', 'mockup', 'pin', 'ugc', 'product']).optional(),
   status: z.enum(['pending', 'approved', 'rejected', 'skipped', 'processing']).optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
+  format: z.enum(['pinterest', 'instagram_post', 'instagram_story']).optional(),
+  quoteId: z.string().uuid().optional(),
   flagged: z.coerce.boolean().optional(),
   limit: z.coerce.number().min(1).max(500).default(20),
   offset: z.coerce.number().min(0).default(0),
@@ -18,7 +20,7 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const { type, status, collection, flagged, limit, offset } = querySchema.parse(searchParams);
+    const { type, status, collection, format, quoteId, flagged, limit, offset } = querySchema.parse(searchParams);
 
     let query = (supabase as any)
       .from('approval_items')
@@ -35,6 +37,16 @@ export async function GET(request: NextRequest) {
 
     if (collection) {
       query = query.eq('collection', collection);
+    }
+
+    if (format) {
+      // Filter by format stored in payload.format
+      query = query.filter('payload->>format', 'eq', format);
+    }
+
+    if (quoteId) {
+      // Filter by quoteId stored in payload.quoteId or payload.quote_id
+      query = query.or(`payload->>quoteId.eq.${quoteId},payload->>quote_id.eq.${quoteId}`);
     }
 
     if (flagged) {
