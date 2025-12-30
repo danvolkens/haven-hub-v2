@@ -376,18 +376,23 @@ export default function NewInstagramPostPage() {
   };
 
   const handleApplyRotationSet = (setId: string) => {
+    console.log('handleApplyRotationSet called with setId:', setId);
     const set = hashtagData?.rotation_sets.find(s => s.id === setId);
-    if (set) {
+    console.log('Found set:', set?.name, 'hashtags count:', set?.hashtags?.length);
+    if (set && set.hashtags && set.hashtags.length > 0) {
       // Remove # prefix if present and deduplicate
       const newTags = set.hashtags
         .map(tag => tag.replace(/^#/, ''))
-        .filter(tag => !hashtags.includes(tag));
-      if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
-        setHashtags([...hashtags, ...newTags]);
-      } else {
-        // Add as many as we can fit
-        const available = CHARACTER_LIMITS.hashtags - hashtags.length;
-        setHashtags([...hashtags, ...newTags.slice(0, available)]);
+        .filter(tag => tag && !hashtags.includes(tag));
+      console.log('New tags to add:', newTags.length, newTags.slice(0, 5));
+      if (newTags.length > 0) {
+        if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
+          setHashtags([...hashtags, ...newTags]);
+        } else {
+          // Add as many as we can fit
+          const available = CHARACTER_LIMITS.hashtags - hashtags.length;
+          setHashtags([...hashtags, ...newTags.slice(0, available)]);
+        }
       }
     }
   };
@@ -896,9 +901,13 @@ export default function NewInstagramPostPage() {
                       {hashtagData.rotation_sets.map(set => (
                         <Button
                           key={set.id}
+                          type="button"
                           variant={hashtagData.recommended_set_id === set.id ? 'primary' : 'secondary'}
                           size="sm"
-                          onClick={() => handleApplyRotationSet(set.id)}
+                          onClick={() => {
+                            console.log('Button clicked for set:', set.name);
+                            handleApplyRotationSet(set.id);
+                          }}
                           title={set.description || `${set.hashtags.length} hashtags`}
                         >
                           {set.name}
