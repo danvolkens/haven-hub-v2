@@ -322,6 +322,7 @@ Link in bio to bring it home.
 ];
 
 // Haven & Hold Hashtag Groups
+// Note: 'collection' field doesn't exist in hashtag_groups table schema
 const HASHTAG_GROUPS = [
   // BRAND TIER
   {
@@ -329,28 +330,24 @@ const HASHTAG_GROUPS = [
     tier: 'brand',
     estimated_reach: 'brand',
     hashtags: ['havenandhold', 'quietanchors', 'sanctuaryspaces', 'wordsforwalls'],
-    collection: 'general',
   },
   {
     name: 'Brand Grounding',
     tier: 'brand',
     estimated_reach: 'brand',
     hashtags: ['groundingcollection', 'heldhere', 'safeharbor'],
-    collection: 'grounding',
   },
   {
     name: 'Brand Wholeness',
     tier: 'brand',
     estimated_reach: 'brand',
     hashtags: ['wholenesscollection', 'heldwholly', 'allyoubelongs'],
-    collection: 'wholeness',
   },
   {
     name: 'Brand Growth',
     tier: 'brand',
     estimated_reach: 'brand',
     hashtags: ['growthcollection', 'stillbecoming', 'bravespace'],
-    collection: 'growth',
   },
   // MEGA TIER (1B+ posts)
   {
@@ -358,14 +355,12 @@ const HASHTAG_GROUPS = [
     tier: 'mega',
     estimated_reach: '1B+',
     hashtags: ['homedecor', 'home', 'interiordesign', 'decor', 'homedesign'],
-    collection: 'general',
   },
   {
     name: 'Mega Lifestyle',
     tier: 'mega',
     estimated_reach: '1B+',
     hashtags: ['lifestyle', 'inspiration', 'love', 'instagood', 'beautiful'],
-    collection: 'general',
   },
   // LARGE TIER (10M-100M posts)
   {
@@ -373,28 +368,24 @@ const HASHTAG_GROUPS = [
     tier: 'large',
     estimated_reach: '10M-100M',
     hashtags: ['wallart', 'walldecor', 'homedecoration', 'homeinterior', 'interiorinspiration'],
-    collection: 'general',
   },
   {
     name: 'Large Quotes',
     tier: 'large',
     estimated_reach: '10M-100M',
     hashtags: ['quotes', 'quotestoliveby', 'quotesdaily', 'wordsofwisdom', 'quoteoftheday'],
-    collection: 'general',
   },
   {
     name: 'Large Minimalist',
     tier: 'large',
     estimated_reach: '10M-100M',
     hashtags: ['minimalist', 'minimalism', 'minimalistdesign', 'minimalstyle', 'simpleliving'],
-    collection: 'general',
   },
   {
     name: 'Large Mental Health',
     tier: 'large',
     estimated_reach: '10M-100M',
     hashtags: ['mentalhealth', 'mentalhealthawareness', 'selfcare', 'selflove', 'healing'],
-    collection: 'general',
   },
   // NICHE TIER (<10M posts)
   {
@@ -402,35 +393,30 @@ const HASHTAG_GROUPS = [
     tier: 'niche',
     estimated_reach: '<10M',
     hashtags: ['quoteart', 'quoteprints', 'printableart', 'digitaldownload', 'instantdownload'],
-    collection: 'general',
   },
   {
     name: 'Niche Therapy',
     tier: 'niche',
     estimated_reach: '<10M',
     hashtags: ['therapyoffice', 'therapistsofinstagram', 'mentalhealthprofessional', 'counselorlife', 'therapyroom'],
-    collection: 'general',
   },
   {
     name: 'Niche Sanctuary',
     tier: 'niche',
     estimated_reach: '<10M',
     hashtags: ['sanctuaryathome', 'peacefulhome', 'calmspace', 'intentionalliving', 'slowliving'],
-    collection: 'general',
   },
   {
     name: 'Niche Bedroom',
     tier: 'niche',
     estimated_reach: '<10M',
     hashtags: ['bedroomdecor', 'bedroominspo', 'cozybedroom', 'bedroommakeover', 'bedroomgoals'],
-    collection: 'general',
   },
   {
     name: 'Niche Office',
     tier: 'niche',
     estimated_reach: '<10M',
     hashtags: ['homeoffice', 'officedecor', 'workfromhome', 'desksetup', 'officeinspo'],
-    collection: 'general',
   },
 ];
 
