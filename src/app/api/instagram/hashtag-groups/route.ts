@@ -59,21 +59,65 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch rotation sets' }, { status: 500 });
     }
 
-    // Build group ID to hashtags lookup
+    // Build group lookup by ID
     const groupMap = new Map<string, string[]>();
     (groups || []).forEach((g: HashtagGroup) => {
       groupMap.set(g.id, g.hashtags || []);
     });
 
+    // Group by tier for fallback composition
+    const groupsByTier = new Map<string, HashtagGroup[]>();
+    (groups || []).forEach((g: HashtagGroup) => {
+      const tier = g.tier || 'niche';
+      if (!groupsByTier.has(tier)) {
+        groupsByTier.set(tier, []);
+      }
+      groupsByTier.get(tier)!.push(g);
+    });
+
+    // Define rotation set compositions by tier (fallback if group_ids don't resolve)
+    // Each set uses: 1 brand + 1 mega + 1-2 large + 1-2 niche (select randomly from available)
+    const rotationSetTierConfig: Record<string, { brand: number; mega: number; large: number; niche: number }> = {
+      'therapeutic focus': { brand: 1, mega: 1, large: 1, niche: 2 },
+      'home decor focus': { brand: 1, mega: 1, large: 2, niche: 1 },
+      'balanced mix': { brand: 1, mega: 1, large: 1, niche: 1 },
+    };
+
     // Expand rotation sets to include all hashtags
     const expandedSets = (sets || []).map((set: RotationSet) => {
-      const allHashtags: string[] = [];
+      let allHashtags: string[] = [];
+
+      // First try to resolve by stored group_ids
       (set.group_ids || []).forEach((groupId: string) => {
         const hashtags = groupMap.get(groupId);
         if (hashtags) {
           allHashtags.push(...hashtags);
         }
       });
+
+      // If no hashtags found via group_ids, compose from available groups by tier
+      if (allHashtags.length === 0) {
+        const config = rotationSetTierConfig[set.name.toLowerCase()];
+        if (config) {
+          // Get groups from each tier (sorted by name for consistency)
+          const getHashtagsFromTier = (tier: string, count: number): string[] => {
+            const tierGroups = groupsByTier.get(tier) || [];
+            const result: string[] = [];
+            tierGroups.slice(0, count).forEach(g => {
+              if (g.hashtags) {
+                result.push(...g.hashtags);
+              }
+            });
+            return result;
+          };
+
+          allHashtags.push(...getHashtagsFromTier('brand', config.brand));
+          allHashtags.push(...getHashtagsFromTier('mega', config.mega));
+          allHashtags.push(...getHashtagsFromTier('large', config.large));
+          allHashtags.push(...getHashtagsFromTier('niche', config.niche));
+        }
+      }
+
       return {
         ...set,
         hashtags: allHashtags,
