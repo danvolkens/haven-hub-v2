@@ -35,7 +35,11 @@ import {
   Copy,
   ExternalLink,
   Shield,
+  Zap,
+  CheckCircle,
+  FileText,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { useToast } from '@/components/providers/toast-provider';
 
@@ -159,6 +163,32 @@ export default function InstagramSettingsPage() {
     },
     onError: () => {
       toast('Pexels connection failed', 'error');
+    },
+  });
+
+  // Fetch seed status
+  const { data: seedStatus, isLoading: seedLoading, refetch: refetchSeed } = useQuery({
+    queryKey: ['instagram-seed-status'],
+    queryFn: () => fetcher<{
+      templates: { existing: number; expected: number };
+      hashtags: { existing: number; expected: number };
+      is_complete: boolean;
+    }>('/api/instagram/seed'),
+  });
+
+  // Seed content mutation
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/instagram/seed', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to seed content');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast(data.message || 'Instagram templates and hashtags seeded successfully', 'success');
+      refetchSeed();
+    },
+    onError: () => {
+      toast('Failed to seed Instagram content', 'error');
     },
   });
 
@@ -553,6 +583,110 @@ export default function InstagramSettingsPage() {
                 </label>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Caption Templates & Hashtags Seed */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'w-10 h-10 rounded-full flex items-center justify-center',
+                  seedStatus?.is_complete
+                    ? 'bg-green-100 text-green-600'
+                    : 'bg-yellow-100 text-yellow-600'
+                )}>
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Caption Templates & Hashtags</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Pre-built Haven & Hold content for Instagram
+                  </p>
+                </div>
+              </div>
+              {seedStatus?.is_complete && (
+                <Badge variant="success" size="sm">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Ready
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {seedLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Checking status...
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Caption Templates
+                    </span>
+                    <span className={cn(
+                      (seedStatus?.templates?.existing ?? 0) >= (seedStatus?.templates?.expected ?? 0)
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                    )}>
+                      {seedStatus?.templates?.existing || 0} / {seedStatus?.templates?.expected || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2">
+                      <Hash className="h-4 w-4" />
+                      Hashtag Groups
+                    </span>
+                    <span className={cn(
+                      (seedStatus?.hashtags?.existing ?? 0) >= (seedStatus?.hashtags?.expected ?? 0)
+                        ? 'text-green-600'
+                        : 'text-yellow-600'
+                    )}>
+                      {seedStatus?.hashtags?.existing || 0} / {seedStatus?.hashtags?.expected || 0}
+                    </span>
+                  </div>
+                </div>
+
+                {!seedStatus?.is_complete && (
+                  <Button
+                    onClick={() => seedMutation.mutate()}
+                    disabled={seedMutation.isPending}
+                    className="w-full"
+                  >
+                    {seedMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Seeding Content...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Seed Templates & Hashtags
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {seedStatus?.is_complete && (
+                  <p className="text-sm text-green-600 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    All Instagram content templates are ready
+                  </p>
+                )}
+
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Includes:</strong> 17 caption templates (feed, reels, stories, carousels)
+                    organized by content pillar, plus 15 hashtag groups with tiered reach
+                    (brand → mega → large → niche).
+                  </p>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
