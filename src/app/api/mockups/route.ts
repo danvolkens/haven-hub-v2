@@ -9,6 +9,7 @@ const querySchema = z.object({
   assetId: z.string().uuid().optional(),
   quoteId: z.string().uuid().optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
+  format: z.enum(['pinterest', 'instagram_post', 'instagram_story']).optional(),
   limit: z.coerce.number().min(1).max(500).default(50),
   offset: z.coerce.number().min(0).default(0),
 });
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const { scene, status, assetId, quoteId, collection, limit, offset } = querySchema.parse(searchParams);
+    const { scene, status, assetId, quoteId, collection, format, limit, offset } = querySchema.parse(searchParams);
 
     let query = (supabase as any)
       .from('mockups')
@@ -62,6 +63,11 @@ export async function GET(request: NextRequest) {
     // Filter by collection through assets -> quotes relation
     if (collection) {
       query = query.eq('assets.quotes.collection', collection);
+    }
+
+    // Filter by format through assets relation
+    if (format) {
+      query = query.eq('assets.format', format);
     }
 
     const { data, error, count } = await query;

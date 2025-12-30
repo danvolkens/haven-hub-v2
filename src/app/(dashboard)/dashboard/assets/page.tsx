@@ -202,12 +202,13 @@ export default function AssetsPage() {
     });
     if (filterCollection) params.append('collection', filterCollection);
     if (filterQuoteId) params.append('quoteId', filterQuoteId);
+    if (filterFormat) params.append('format', filterFormat);
     return params.toString();
   };
 
   // Fetch mockups with filters
   const { data: mockupsData, isLoading: loadingMockups } = useQuery({
-    queryKey: ['mockups', filterCollection, filterQuoteId],
+    queryKey: ['mockups', filterCollection, filterQuoteId, filterFormat],
     queryFn: async () => {
       const res = await fetch(`/api/mockups?${buildMockupsQuery()}`);
       if (!res.ok) throw new Error('Failed to fetch mockups');
@@ -676,25 +677,24 @@ export default function AssetsPage() {
                   </select>
                 </div>
 
-                {/* Size/Format Filter (only for assets tab) */}
-                {activeTab === 'assets' && (
-                  <div>
-                    <Label className="text-sm mb-1.5 block">Size</Label>
-                    <select
-                      className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg text-sm"
-                      value={filterFormat}
-                      onChange={(e) => {
-                        setFilterFormat(e.target.value as AssetFormat);
-                        setAssetsPage(1);
-                      }}
-                    >
-                      <option value="">All Sizes</option>
-                      <option value="pinterest">Pinterest (1000×1500)</option>
-                      <option value="instagram_post">Instagram Post (1080×1080)</option>
-                      <option value="instagram_story">Instagram Story (1080×1920)</option>
-                    </select>
-                  </div>
-                )}
+                {/* Size/Format Filter */}
+                <div>
+                  <Label className="text-sm mb-1.5 block">Size</Label>
+                  <select
+                    className="w-full px-3 py-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg text-sm"
+                    value={filterFormat}
+                    onChange={(e) => {
+                      setFilterFormat(e.target.value as AssetFormat);
+                      setAssetsPage(1);
+                      setMockupsPage(1);
+                    }}
+                  >
+                    <option value="">All Sizes</option>
+                    <option value="pinterest">Pinterest (1000×1500)</option>
+                    <option value="instagram_post">Instagram Post (1080×1080)</option>
+                    <option value="instagram_story">Instagram Story (1080×1920)</option>
+                  </select>
+                </div>
               </div>
 
               {/* Clear Filters */}
