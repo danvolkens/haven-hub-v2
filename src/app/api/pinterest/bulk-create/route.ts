@@ -137,26 +137,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get approved assets from approval_items table
+    // Helper to check if format is Pinterest-compatible
+    const isPinterestFormat = (format: string | undefined) => {
+      if (!format) return false; // Must have format to be included
+      const lowerFormat = format.toLowerCase();
+      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
+    };
+
+    // Query approved assets directly from assets table (includes auto-approved)
     const { data: approvedAssets, error: assetsError } = await (supabase as any)
-      .from('approval_items')
-      .select('id, reference_id, payload, collection')
+      .from('assets')
+      .select('id, quote_id, format, file_url, thumbnail_url, quotes(text, collection, mood, product_link)')
       .eq('user_id', userId)
-      .eq('type', 'asset')
-      .eq('status', 'approved');
+      .eq('status', 'approved')
+      .in('quote_id', quote_ids);
 
     if (assetsError) {
       console.error('Error fetching approved assets:', assetsError);
     }
 
-    // Get approved mockups from approval_items table
+    // Query approved mockups directly from mockups table (includes auto-approved)
     let approvedMockups: any[] = [];
     if (include_mockups) {
       const { data: mockupData, error: mockupsError } = await (supabase as any)
-        .from('approval_items')
-        .select('id, reference_id, payload, collection')
+        .from('mockups')
+        .select('id, asset_id, file_url, thumbnail_url, assets!inner(id, quote_id, format, quotes(text, collection, mood, product_link))')
         .eq('user_id', userId)
-        .eq('type', 'mockup')
         .eq('status', 'approved');
 
       if (mockupsError) {
@@ -165,57 +171,20 @@ export async function POST(request: NextRequest) {
       approvedMockups = mockupData || [];
     }
 
-    // Filter to only items from selected quotes and Pinterest formats
-    const isPinterestFormat = (format: string | undefined) => {
-      if (!format) return true; // Include if no format specified
-      const lowerFormat = format.toLowerCase();
-      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
-    };
-
-    const filteredAssets = (approvedAssets || []).filter((item: any) => {
-      const payload = item.payload || {};
-      const quoteId = payload.quoteId || payload.quote_id;
-      return quote_ids.includes(quoteId) && isPinterestFormat(payload.format);
+    // Filter assets to Pinterest format only
+    const filteredAssets = (approvedAssets || []).filter((asset: any) => {
+      return asset.quote_id && isPinterestFormat(asset.format);
     });
 
-    // Filter mockups by their source asset's format (must be Pinterest-format)
-    // First get the mockup reference_ids to look up their source assets
-    const mockupReferenceIds = approvedMockups
-      .filter((item: any) => {
-        const payload = item.payload || {};
-        const quoteId = payload.quoteId || payload.quote_id;
-        return quote_ids.includes(quoteId);
-      })
-      .map((item: any) => item.reference_id)
-      .filter(Boolean);
-
-    // Query mockups with their source asset format
-    let pinterestMockupIds = new Set<string>();
-    if (mockupReferenceIds.length > 0) {
-      const { data: mockupsWithAssets } = await (supabase as any)
-        .from('mockups')
-        .select('id, asset_id, assets!inner(id, format)')
-        .in('id', mockupReferenceIds)
-        .eq('user_id', userId);
-
-      // Only include mockups with pinterest-format source assets
-      for (const mockup of mockupsWithAssets || []) {
-        const assetFormat = mockup.assets?.format;
-        if (isPinterestFormat(assetFormat)) {
-          pinterestMockupIds.add(mockup.id);
-        }
-      }
-    }
-
-    const filteredMockups = approvedMockups.filter((item: any) => {
-      const payload = item.payload || {};
-      const quoteId = payload.quoteId || payload.quote_id;
-      return quote_ids.includes(quoteId) && pinterestMockupIds.has(item.reference_id);
+    // Filter mockups to those from Pinterest-format source assets and selected quotes
+    const filteredMockups = approvedMockups.filter((mockup: any) => {
+      const sourceAsset = mockup.assets;
+      const quoteId = sourceAsset?.quote_id;
+      return quoteId && quote_ids.includes(quoteId) && isPinterestFormat(sourceAsset?.format);
     });
 
     // Combine into single list
     interface ImageItem {
-      approvalItemId: string;
       referenceId: string;
       imageUrl: string;
       quoteId: string;
@@ -227,26 +196,24 @@ export async function POST(request: NextRequest) {
     }
 
     const allImages: ImageItem[] = [
-      ...filteredAssets.map((item: any) => ({
-        approvalItemId: item.id,
-        referenceId: item.reference_id,
-        imageUrl: item.payload?.assetUrl || item.payload?.file_url || item.payload?.thumbnailUrl,
-        quoteId: item.payload?.quoteId || item.payload?.quote_id,
-        quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
-        collection: item.collection || item.payload?.collection || 'grounding',
-        mood: item.payload?.mood,
-        productLink: item.payload?.productLink || item.payload?.product_link,
+      ...filteredAssets.map((asset: any) => ({
+        referenceId: asset.id,
+        imageUrl: asset.file_url || asset.thumbnail_url,
+        quoteId: asset.quote_id,
+        quoteText: asset.quotes?.text || '',
+        collection: asset.quotes?.collection || 'grounding',
+        mood: asset.quotes?.mood,
+        productLink: asset.quotes?.product_link,
         type: 'asset' as const,
       })),
-      ...filteredMockups.map((item: any) => ({
-        approvalItemId: item.id,
-        referenceId: item.reference_id,
-        imageUrl: item.payload?.mockupUrl || item.payload?.file_url || item.payload?.thumbnailUrl,
-        quoteId: item.payload?.quoteId || item.payload?.quote_id,
-        quoteText: item.payload?.quoteText || item.payload?.quote_text || '',
-        collection: item.collection || item.payload?.collection || 'grounding',
-        mood: item.payload?.mood,
-        productLink: item.payload?.productLink || item.payload?.product_link,
+      ...filteredMockups.map((mockup: any) => ({
+        referenceId: mockup.id,
+        imageUrl: mockup.file_url || mockup.thumbnail_url,
+        quoteId: mockup.assets?.quote_id,
+        quoteText: mockup.assets?.quotes?.text || '',
+        collection: mockup.assets?.quotes?.collection || 'grounding',
+        mood: mockup.assets?.quotes?.mood,
+        productLink: mockup.assets?.quotes?.product_link,
         type: 'mockup' as const,
       })),
     ].filter(item => item.imageUrl); // Only include items with valid image URLs
@@ -530,12 +497,18 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
     const supabase = await createServerSupabaseClient();
 
-    // Get approved assets from approval_items
+    // Helper to check if format is Pinterest-compatible
+    const isPinterestFormat = (format: string | undefined) => {
+      if (!format) return false; // Must have format to be included
+      const lowerFormat = format.toLowerCase();
+      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
+    };
+
+    // Query approved assets directly from assets table (includes auto-approved)
     const { data: approvedAssets, error: assetsError } = await (supabase as any)
-      .from('approval_items')
-      .select('id, reference_id, payload, collection')
+      .from('assets')
+      .select('id, quote_id, format, file_url, thumbnail_url, quotes(text, collection, mood)')
       .eq('user_id', userId)
-      .eq('type', 'asset')
       .eq('status', 'approved');
 
     if (assetsError) {
@@ -546,12 +519,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get approved mockups from approval_items
+    // Query approved mockups directly from mockups table (includes auto-approved)
+    // Join with assets to get the source asset format and quote info
     const { data: approvedMockups, error: mockupsError } = await (supabase as any)
-      .from('approval_items')
-      .select('id, reference_id, payload, collection')
+      .from('mockups')
+      .select('id, asset_id, file_url, thumbnail_url, assets!inner(id, quote_id, format, quotes(text, collection, mood))')
       .eq('user_id', userId)
-      .eq('type', 'mockup')
       .eq('status', 'approved');
 
     if (mockupsError) {
@@ -569,36 +542,26 @@ export async function GET(request: NextRequest) {
       previewUrl?: string;
     }>();
 
-    // Helper to check if format is Pinterest-compatible
-    const isPinterestFormat = (format: string | undefined) => {
-      if (!format) return true; // Include if no format specified
-      const lowerFormat = format.toLowerCase();
-      return lowerFormat.includes('pinterest') || lowerFormat === 'pin';
-    };
-
-    // Process approved assets
-    for (const item of approvedAssets || []) {
-      const payload = item.payload || {};
-      const quoteId = payload.quoteId || payload.quote_id;
-      const format = payload.format;
-
+    // Process approved assets - filter to Pinterest format only
+    for (const asset of approvedAssets || []) {
       // Only include Pinterest-format assets
-      if (!quoteId || !isPinterestFormat(format)) continue;
+      if (!asset.quote_id || !isPinterestFormat(asset.format)) continue;
 
-      const imageUrl = payload.assetUrl || payload.file_url || payload.thumbnailUrl;
+      const imageUrl = asset.file_url || asset.thumbnail_url;
+      const quote = asset.quotes;
 
-      if (quoteMap.has(quoteId)) {
-        const existing = quoteMap.get(quoteId)!;
+      if (quoteMap.has(asset.quote_id)) {
+        const existing = quoteMap.get(asset.quote_id)!;
         existing.assetCount++;
         if (!existing.previewUrl && imageUrl) {
           existing.previewUrl = imageUrl;
         }
       } else {
-        quoteMap.set(quoteId, {
-          id: quoteId,
-          text: payload.quoteText || payload.quote_text || 'Quote',
-          collection: item.collection || payload.collection || 'grounding',
-          mood: payload.mood,
+        quoteMap.set(asset.quote_id, {
+          id: asset.quote_id,
+          text: quote?.text || 'Quote',
+          collection: quote?.collection || 'grounding',
+          mood: quote?.mood,
           assetCount: 1,
           mockupCount: 0,
           previewUrl: imageUrl,
@@ -606,38 +569,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process approved mockups - only include those with Pinterest-format source assets
-    // Get mockup reference_ids to check their source asset format
-    const mockupReferenceIds = (approvedMockups || [])
-      .map((item: any) => item.reference_id)
-      .filter(Boolean);
+    // Process approved mockups - filter to those from Pinterest-format source assets
+    for (const mockup of approvedMockups || []) {
+      const sourceAsset = mockup.assets;
+      const quoteId = sourceAsset?.quote_id;
 
-    // Query mockups with their source asset format
-    let pinterestMockupIds = new Set<string>();
-    if (mockupReferenceIds.length > 0) {
-      const { data: mockupsWithAssets } = await (supabase as any)
-        .from('mockups')
-        .select('id, asset_id, assets!inner(id, format)')
-        .in('id', mockupReferenceIds)
-        .eq('user_id', userId);
+      // Only include mockups from Pinterest-format source assets
+      if (!quoteId || !isPinterestFormat(sourceAsset?.format)) continue;
 
-      // Filter to only mockups with pinterest-format source assets
-      for (const mockup of mockupsWithAssets || []) {
-        const assetFormat = mockup.assets?.format;
-        if (isPinterestFormat(assetFormat)) {
-          pinterestMockupIds.add(mockup.id);
-        }
-      }
-    }
-
-    for (const item of approvedMockups || []) {
-      const payload = item.payload || {};
-      const quoteId = payload.quoteId || payload.quote_id;
-
-      // Only include mockups with Pinterest-format source assets
-      if (!quoteId || !pinterestMockupIds.has(item.reference_id)) continue;
-
-      const imageUrl = payload.mockupUrl || payload.file_url || payload.thumbnailUrl;
+      const imageUrl = mockup.file_url || mockup.thumbnail_url;
+      const quote = sourceAsset?.quotes;
 
       if (quoteMap.has(quoteId)) {
         const existing = quoteMap.get(quoteId)!;
@@ -648,9 +589,9 @@ export async function GET(request: NextRequest) {
       } else {
         quoteMap.set(quoteId, {
           id: quoteId,
-          text: payload.quoteText || payload.quote_text || 'Quote',
-          collection: item.collection || payload.collection || 'grounding',
-          mood: payload.mood,
+          text: quote?.text || 'Quote',
+          collection: quote?.collection || 'grounding',
+          mood: quote?.mood,
           assetCount: 0,
           mockupCount: 1,
           previewUrl: imageUrl,

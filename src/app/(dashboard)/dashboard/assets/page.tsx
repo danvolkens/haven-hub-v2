@@ -1071,7 +1071,7 @@ export default function AssetsPage() {
               </div>
 
               <div className="flex gap-2">
-                {pinterestConnected && previewItem?.format === 'pinterest' && (
+                {pinterestConnected && (
                   <Button
                     variant="secondary"
                     onClick={() => {
