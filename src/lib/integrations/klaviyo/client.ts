@@ -62,29 +62,30 @@ interface KlaviyoFlowAction {
       from_email: string;
       from_label: string;
       reply_to_email: string;
-      cc_email: string;
-      bcc_email: string;
+      cc_email: string | null;
+      bcc_email: string | null;
       subject_line: string;
       preview_text?: string;
       template_id: string;
     };
-    // For time-delay: value in seconds at top level
+    // For time-delay: value in minutes at top level (max ~24855 = 17 days)
     value?: number;
     condition?: any;
   };
   links: {
-    next?: string;
-    next_if_true?: string;
-    next_if_false?: string;
+    next: string | null;
+    next_if_true?: string | null;
+    next_if_false?: string | null;
   };
 }
 
 interface KlaviyoFlowDefinition {
   triggers: Array<{
     type: 'list' | 'metric' | 'date';
-    list_id?: string;
-    metric_id?: string;
-    date_property?: string;
+    // List trigger uses "id" field
+    id?: string;
+    // Metric trigger uses "metric" relationship
+    metric?: { id: string };
     filter?: any;
   }>;
   profile_filter?: any;
@@ -1210,7 +1211,7 @@ export class KlaviyoClient {
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            value: delayHours * 3600, // Convert hours to seconds
+            value: delayHours * 60, // Convert hours to minutes
           },
           links: {
             next: `email_${index}`,
@@ -1229,14 +1230,16 @@ export class KlaviyoClient {
             from_email: params.fromEmail,
             from_label: params.fromLabel,
             reply_to_email: params.fromEmail,
-            cc_email: '',
-            bcc_email: '',
+            cc_email: null,
+            bcc_email: null,
             subject_line: params.subjects[index],
             preview_text: params.previewTexts[index],
             template_id: templateId,
           },
         },
-        links: hasNext ? { next: `delay_${index + 1}` } : {},
+        links: {
+          next: hasNext ? `delay_${index + 1}` : null,
+        },
       });
     });
 
@@ -1248,7 +1251,7 @@ export class KlaviyoClient {
     return {
       triggers: [{
         type: 'list',
-        list_id: params.listId,
+        id: params.listId,
       }],
       entry_action_id: 'email_0',
       actions,
@@ -1282,7 +1285,7 @@ export class KlaviyoClient {
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            value: delayHours * 3600, // Convert hours to seconds
+            value: delayHours * 60, // Convert hours to minutes
           },
           links: {
             next: `email_${index}`,
@@ -1303,16 +1306,18 @@ export class KlaviyoClient {
             from_email: params.fromEmail,
             from_label: params.fromLabel,
             reply_to_email: params.fromEmail,
-            cc_email: '',
-            bcc_email: '',
+            cc_email: null,
+            bcc_email: null,
             subject_line: params.subjects[index],
             preview_text: params.previewTexts[index],
             template_id: templateId,
           },
         },
-        links: hasNextEmail
-          ? { next: nextDelayExists ? `delay_${index + 1}` : `email_${index + 1}` }
-          : {},
+        links: {
+          next: hasNextEmail
+            ? (nextDelayExists ? `delay_${index + 1}` : `email_${index + 1}`)
+            : null,
+        },
       });
     });
 
@@ -1322,7 +1327,7 @@ export class KlaviyoClient {
     return {
       triggers: [{
         type: 'metric',
-        metric_id: params.metricId,
+        metric: { id: params.metricId },
       }],
       entry_action_id: entryActionId,
       actions,
