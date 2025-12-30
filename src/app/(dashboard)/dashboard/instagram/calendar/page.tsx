@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { PageContainer } from '@/components/layout/page-container';
@@ -103,48 +103,52 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 // Mock Data Fallback
 // ============================================================================
 
-const mockPosts: ScheduledPost[] = [
-  {
-    id: '1',
-    quote_id: 'q1',
-    quote_text: 'The only way to do great work is to love what you do.',
-    post_type: 'feed',
-    status: 'scheduled',
-    content_pillar: 'inspiration',
-    scheduled_at: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(),
-    caption_preview: 'Start your week with purpose...',
-  },
-  {
-    id: '2',
-    quote_id: 'q2',
-    quote_text: 'In the middle of difficulty lies opportunity.',
-    post_type: 'reel',
-    status: 'scheduled',
-    content_pillar: 'education',
-    scheduled_at: new Date(Date.now() + 1000 * 60 * 60 * 27).toISOString(),
-    caption_preview: 'When life gets hard...',
-  },
-  {
-    id: '3',
-    quote_id: 'q3',
-    quote_text: 'You are braver than you believe.',
-    post_type: 'carousel',
-    status: 'draft',
-    content_pillar: 'engagement',
-    scheduled_at: new Date(Date.now() + 1000 * 60 * 60 * 51).toISOString(),
-    caption_preview: 'Reminder for today...',
-  },
-  {
-    id: '4',
-    quote_id: 'q4',
-    quote_text: 'Every moment is a fresh beginning.',
-    post_type: 'story',
-    status: 'scheduled',
-    content_pillar: 'promotion',
-    scheduled_at: new Date(Date.now() + 1000 * 60 * 60 * 75).toISOString(),
-    caption_preview: 'Shop our new collection...',
-  },
-];
+// Mock posts are generated client-side to avoid hydration mismatch
+function getMockPosts(): ScheduledPost[] {
+  const now = Date.now();
+  return [
+    {
+      id: '1',
+      quote_id: 'q1',
+      quote_text: 'The only way to do great work is to love what you do.',
+      post_type: 'feed',
+      status: 'scheduled',
+      content_pillar: 'inspiration',
+      scheduled_at: new Date(now + 1000 * 60 * 60 * 3).toISOString(),
+      caption_preview: 'Start your week with purpose...',
+    },
+    {
+      id: '2',
+      quote_id: 'q2',
+      quote_text: 'In the middle of difficulty lies opportunity.',
+      post_type: 'reel',
+      status: 'scheduled',
+      content_pillar: 'education',
+      scheduled_at: new Date(now + 1000 * 60 * 60 * 27).toISOString(),
+      caption_preview: 'When life gets hard...',
+    },
+    {
+      id: '3',
+      quote_id: 'q3',
+      quote_text: 'You are braver than you believe.',
+      post_type: 'carousel',
+      status: 'draft',
+      content_pillar: 'engagement',
+      scheduled_at: new Date(now + 1000 * 60 * 60 * 51).toISOString(),
+      caption_preview: 'Reminder for today...',
+    },
+    {
+      id: '4',
+      quote_id: 'q4',
+      quote_text: 'Every moment is a fresh beginning.',
+      post_type: 'story',
+      status: 'scheduled',
+      content_pillar: 'promotion',
+      scheduled_at: new Date(now + 1000 * 60 * 60 * 75).toISOString(),
+      caption_preview: 'Shop our new collection...',
+    },
+  ];
+}
 
 const mockOptimalTimes: OptimalTime[] = [
   { time: '9:00 AM', day: 'Monday', engagement_rate: 4.2 },
@@ -523,18 +527,26 @@ function DayStrategyCard({ date }: { date: Date }) {
 
 export default function InstagramCalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('month');
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [filters, setFilters] = useState({
     postType: 'all',
     status: 'all',
     pillar: 'all',
   });
+  const [mockPosts, setMockPosts] = useState<ScheduledPost[]>([]);
+
+  // Initialize date on client-side only to avoid hydration mismatch
+  useEffect(() => {
+    setCurrentDate(new Date());
+    setMockPosts(getMockPosts());
+  }, []);
 
   // Fetch posts
   const { data: posts = mockPosts, isLoading } = useQuery({
-    queryKey: ['instagram-calendar-posts', currentDate.getMonth(), currentDate.getFullYear()],
+    queryKey: ['instagram-calendar-posts', currentDate?.getMonth(), currentDate?.getFullYear()],
     queryFn: async () => {
+      if (!currentDate) return [];
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
       const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
@@ -544,6 +556,7 @@ export default function InstagramCalendarPage() {
       if (!res.ok) throw new Error('Failed to fetch posts');
       return res.json();
     },
+    enabled: !!currentDate,
   });
 
   // Fetch optimal times
@@ -575,6 +588,7 @@ export default function InstagramCalendarPage() {
 
   // Calendar days
   const calendarDays = useMemo(() => {
+    if (!currentDate) return [];
     if (viewMode === 'month') {
       return getMonthDays(currentDate.getFullYear(), currentDate.getMonth());
     } else {
@@ -582,10 +596,12 @@ export default function InstagramCalendarPage() {
     }
   }, [currentDate, viewMode]);
 
-  const today = new Date();
+  // Use currentDate for today comparison to ensure consistency
+  const today = currentDate || new Date();
 
   // Navigation
   const goToPrevious = () => {
+    if (!currentDate) return;
     if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
     } else {
@@ -596,6 +612,7 @@ export default function InstagramCalendarPage() {
   };
 
   const goToNext = () => {
+    if (!currentDate) return;
     if (viewMode === 'month') {
       setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
     } else {
@@ -612,6 +629,17 @@ export default function InstagramCalendarPage() {
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
   };
+
+  // Show loading state until client-side hydration is complete
+  if (!currentDate) {
+    return (
+      <PageContainer title="Calendar">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-muted-foreground">Loading calendar...</div>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer title="Calendar">
