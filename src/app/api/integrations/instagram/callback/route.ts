@@ -7,14 +7,24 @@ import { InstagramClient } from '@/lib/integrations/instagram/client';
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getApiUserId();
     const searchParams = request.nextUrl.searchParams;
 
+    // Check for OAuth errors from Facebook first
+    const fbError = searchParams.get('error');
+    const fbErrorReason = searchParams.get('error_reason');
+    const fbErrorDescription = searchParams.get('error_description');
+
+    if (fbError) {
+      console.error('Facebook OAuth error:', { fbError, fbErrorReason, fbErrorDescription });
+      throw new Error(`Facebook error: ${fbErrorDescription || fbErrorReason || fbError}`);
+    }
+
+    const userId = await getApiUserId();
     const code = searchParams.get('code');
     const state = searchParams.get('state');
 
     if (!code || !state) {
-      throw new Error('Missing required parameters');
+      throw new Error('Missing required parameters (code or state)');
     }
 
     // Verify state
