@@ -36,6 +36,7 @@ import {
   AlertCircle,
   Upload,
   Clock,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { AssetSelector } from '@/components/instagram/asset-selector';
@@ -76,6 +77,17 @@ interface Product {
 interface Campaign {
   id: string;
   name: string;
+}
+
+interface CaptionTemplate {
+  id: string;
+  name: string;
+  template_type: string;
+  content_pillar: string;
+  collection: string | null;
+  caption_template: string;
+  caption_formula: string | null;
+  preferred_days: number[] | null;
 }
 
 interface OptimalSlot {
@@ -134,6 +146,7 @@ export default function NewInstagramPostPage() {
   // Form state
   const [postType, setPostType] = useState<PostType>('feed');
   const [contentPillar, setContentPillar] = useState<ContentPillar>('product_showcase');
+  const [templateId, setTemplateId] = useState<string>('');
   const [quoteId, setQuoteId] = useState<string>('');
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
@@ -187,6 +200,16 @@ export default function NewInstagramPostPage() {
       if (!res.ok) return [];
       const data = await res.json();
       return data.campaigns || data || [];
+    },
+  });
+
+  // Fetch caption templates (filtered by post type and content pillar)
+  const { data: templates = [] } = useQuery<CaptionTemplate[]>({
+    queryKey: ['instagram-templates', postType, contentPillar],
+    queryFn: async () => {
+      const res = await fetch(`/api/instagram/templates?template_type=${postType}&content_pillar=${contentPillar}`);
+      if (!res.ok) return [];
+      return res.json();
     },
   });
 
@@ -315,6 +338,39 @@ export default function NewInstagramPostPage() {
         newCaption += `\n\n- ${quote.attribution}`;
       }
       setCaption(newCaption);
+    }
+  };
+
+  const handleTemplateSelect = (value: string | string[]) => {
+    const id = Array.isArray(value) ? value[0] : value;
+    setTemplateId(id);
+
+    if (!id) return;
+
+    const template = templates.find(t => t.id === id);
+    if (template) {
+      // Get selected quote for variable substitution
+      const quote = quotes.find(q => q.id === quoteId);
+
+      let processedCaption = template.caption_template;
+
+      // Substitute variables if quote is selected
+      if (quote) {
+        processedCaption = processedCaption
+          .replace(/\{\{quote_text\}\}/g, quote.text)
+          .replace(/\{\{quote\}\}/g, quote.text)
+          .replace(/\{\{attribution\}\}/g, quote.attribution || '')
+          .replace(/\{\{author\}\}/g, quote.attribution || '')
+          .replace(/\{\{collection_name\}\}/g, quote.collection ? quote.collection.charAt(0).toUpperCase() + quote.collection.slice(1) : 'General')
+          .replace(/\{\{collection_tag\}\}/g, quote.collection || 'general');
+      }
+
+      // Clear any remaining unfilled variables (mark them for user to fill)
+      processedCaption = processedCaption
+        .replace(/\{\{product_link\}\}/g, '[Link in bio]')
+        .replace(/\{\{[^}]+\}\}/g, '[...]');
+
+      setCaption(processedCaption);
     }
   };
 
@@ -533,6 +589,27 @@ export default function NewInstagramPostPage() {
                       })),
                     ]}
                   />
+                </div>
+
+                {/* Caption Template */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Caption Template (optional)</label>
+                  <Select
+                    value={templateId}
+                    onChange={handleTemplateSelect}
+                    options={[
+                      { value: '', label: 'Select a template...' },
+                      ...templates.map(t => ({
+                        value: t.id,
+                        label: t.name + (t.collection && t.collection !== 'general' ? ` (${t.collection})` : ''),
+                      })),
+                    ]}
+                  />
+                  {templates.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No templates for this post type. <Link href="/dashboard/settings/instagram" className="text-sage hover:underline">Seed templates</Link>
+                    </p>
+                  )}
                 </div>
 
                 {/* Caption */}
