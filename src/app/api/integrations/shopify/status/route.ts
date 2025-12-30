@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { getApiUserId } from '@/lib/auth/session';
+import { ShopifyClient } from '@/lib/integrations/shopify/client';
+import { getCredential } from '@/lib/integrations/credentials';
 
 export async function GET() {
   try {
@@ -24,6 +26,36 @@ export async function GET() {
         connected: false,
         status: integration?.status || 'disconnected',
       });
+    }
+
+    // Auto-fetch primary domain if missing (one-time fix for existing integrations)
+    if (!integration.metadata?.primary_domain && integration.metadata?.shop_domain) {
+      try {
+        const accessToken = await getCredential(userId, 'shopify', 'access_token');
+        if (accessToken) {
+          const client = new ShopifyClient({
+            shop: integration.metadata.shop_domain,
+            accessToken
+          });
+          const { shop: shopInfo } = await client.getShop();
+          if (shopInfo.domain) {
+            // Update metadata with primary domain
+            await (supabase as any)
+              .from('integrations')
+              .update({
+                metadata: {
+                  ...integration.metadata,
+                  primary_domain: shopInfo.domain,
+                },
+              })
+              .eq('user_id', userId)
+              .eq('provider', 'shopify');
+            integration.metadata.primary_domain = shopInfo.domain;
+          }
+        }
+      } catch (error) {
+        console.error('Failed to auto-fetch primary domain:', error);
+      }
     }
 
     // Get webhook status
@@ -71,7 +103,8 @@ export async function GET() {
       connected: true,
       status: integration.status,
       shop: {
-        domain: integration.metadata?.shop_domain,
+        domain: integration.metadata?.primary_domain || integration.metadata?.shop_domain, // Prefer custom domain
+        myshopifyDomain: integration.metadata?.shop_domain,
         name: integration.metadata?.shop_name,
       },
       connectedAt: integration.connected_at,

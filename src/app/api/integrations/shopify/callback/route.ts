@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
         metadata: {
           shop_domain: shop,
           shop_name: shopInfo.name,
+          primary_domain: shopInfo.domain, // Store custom domain (e.g., havenandhold.com)
           access_scopes: scope.split(','),
         },
         connected_at: new Date().toISOString(),

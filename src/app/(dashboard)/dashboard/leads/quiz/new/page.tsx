@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, Loader2 } from 'lucide-react';
@@ -29,11 +29,14 @@ interface QuizResult {
   ctaUrl: string;
 }
 
-const DEFAULT_RESULTS: QuizResult[] = [
-  { collection: 'grounding', title: "You're a Grounding Soul", description: 'You find peace in stability and connection to the earth.', ctaText: 'Shop Grounding Collection', ctaUrl: '/collections/grounding' },
-  { collection: 'wholeness', title: "You're a Wholeness Seeker", description: 'You value balance and harmony in all aspects of life.', ctaText: 'Shop Wholeness Collection', ctaUrl: '/collections/wholeness' },
-  { collection: 'growth', title: "You're a Growth Mindset", description: 'You embrace change and continuous self-improvement.', ctaText: 'Shop Growth Collection', ctaUrl: '/collections/growth' },
-];
+const getDefaultResults = (storeDomain?: string): QuizResult[] => {
+  const baseUrl = storeDomain ? `https://${storeDomain}` : '';
+  return [
+    { collection: 'grounding', title: "You're a Grounding Soul", description: 'You find peace in stability and connection to the earth.', ctaText: 'Shop Grounding Collection', ctaUrl: `${baseUrl}/collections/grounding` },
+    { collection: 'wholeness', title: "You're a Wholeness Seeker", description: 'You value balance and harmony in all aspects of life.', ctaText: 'Shop Wholeness Collection', ctaUrl: `${baseUrl}/collections/wholeness` },
+    { collection: 'growth', title: "You're a Growth Mindset", description: 'You embrace change and continuous self-improvement.', ctaText: 'Shop Growth Collection', ctaUrl: `${baseUrl}/collections/growth` },
+  ];
+};
 
 export default function NewQuizPage() {
   const router = useRouter();
@@ -56,7 +59,30 @@ export default function NewQuizPage() {
       ],
     },
   ]);
-  const [results, setResults] = useState<QuizResult[]>(DEFAULT_RESULTS);
+  const [results, setResults] = useState<QuizResult[]>(getDefaultResults());
+  const [storeDomain, setStoreDomain] = useState<string>('');
+
+  // Fetch store domain from Shopify integration
+  useEffect(() => {
+    async function fetchStoreDomain() {
+      try {
+        const res = await fetch('/api/integrations/shopify/status');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected && data.shop?.domain) {
+            // Remove .myshopify.com if present and use custom domain
+            const domain = data.shop.domain;
+            setStoreDomain(domain);
+            // Update default results with full URLs
+            setResults(getDefaultResults(domain));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch store domain:', error);
+      }
+    }
+    fetchStoreDomain();
+  }, []);
 
   const generateSlug = (text: string) => {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
