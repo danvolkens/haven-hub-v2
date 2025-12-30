@@ -1,4 +1,4 @@
-import { schedules, logger } from '@trigger.dev/sdk/v3';
+import { schedules, task, logger } from '@trigger.dev/sdk/v3';
 import { createClient } from '@supabase/supabase-js';
 
 // Note: We can't use @/lib imports in trigger tasks that use schedules
@@ -21,6 +21,7 @@ interface Pin {
   link: string | null;
   alt_text: string | null;
   scheduled_for: string;
+  retry_count?: number;
 }
 
 async function publishPinToPinterest(
@@ -138,7 +139,8 @@ async function publishPin(
       .from('pins' as any)
       .update({
         status: 'failed',
-        error_message: errorMessage,
+        last_error: errorMessage,
+        retry_count: ((pin as any).retry_count || 0) + 1,
       })
       .eq('id', pin.id);
 
@@ -203,7 +205,7 @@ export const pinPublisherTask = schedules.task({
   },
 });
 
-// Optional: A task to retry failed pins
+// Optional: A task to retry failed pins (max 3 retries)
 export const pinRetryTask = schedules.task({
   id: 'pin-retry',
   cron: '0 */6 * * *', // Run every 6 hours
@@ -215,33 +217,34 @@ export const pinRetryTask = schedules.task({
 
     logger.info('Starting pin retry task');
 
-    // Get failed pins that haven't been retried recently
+    // Get failed pins that haven't been retried recently AND haven't exceeded max retries
     const { data: failedPins, error } = await supabase
       .from('pins' as any)
-      .select('id, user_id, board_id, image_url, title, description, link, alt_text, scheduled_for')
+      .select('id, user_id, board_id, image_url, title, description, link, alt_text, scheduled_for, retry_count')
       .eq('status', 'failed')
+      .lt('retry_count', 3) // Max 3 retries
       .lt('updated_at', sixHoursAgo.toISOString())
       .limit(10);
 
     if (error) {
       logger.error('Failed to fetch failed pins for retry', { error });
-      return { retried: 0, succeeded: 0 };
+      return { retried: 0, succeeded: 0, skippedMaxRetries: 0 };
     }
 
     if (!failedPins || failedPins.length === 0) {
       logger.info('No failed pins to retry');
-      return { retried: 0, succeeded: 0 };
+      return { retried: 0, succeeded: 0, skippedMaxRetries: 0 };
     }
 
     let succeeded = 0;
 
     for (const pin of failedPins) {
-      // Reset status to scheduled before retry
+      // Reset status to scheduled before retry (keep retry_count for tracking)
       await supabase
         .from('pins' as any)
         .update({
           status: 'scheduled',
-          error_message: null,
+          last_error: null,
         })
         .eq('id', pin.id);
 
@@ -254,5 +257,52 @@ export const pinRetryTask = schedules.task({
     logger.info('Pin retry task complete', { retried: failedPins.length, succeeded });
 
     return { retried: failedPins.length, succeeded };
+  },
+});
+
+// ==========================================
+// Exact-Time Scheduled Pin Publishing
+// ==========================================
+
+/**
+ * Task to publish a single pin at its exact scheduled time.
+ * This is triggered when a pin is scheduled, with a delay until the scheduled time.
+ */
+export const scheduledPinPublishTask = task({
+  id: 'scheduled-pin-publish',
+  retry: {
+    maxAttempts: 3,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10000,
+  },
+
+  run: async (payload: { pinId: string }) => {
+    const supabase = getSupabaseClient();
+    const { pinId } = payload;
+
+    logger.info(`Publishing scheduled pin ${pinId}`, { pinId });
+
+    // Fetch the pin
+    const { data: pin, error } = await supabase
+      .from('pins' as any)
+      .select('id, user_id, board_id, image_url, title, description, link, alt_text, scheduled_for, retry_count, status')
+      .eq('id', pinId)
+      .single();
+
+    if (error || !pin) {
+      logger.error(`Pin ${pinId} not found`, { pinId, error });
+      return { success: false, error: 'Pin not found' };
+    }
+
+    // Only publish if still in scheduled status (not already published/cancelled)
+    if (pin.status !== 'scheduled') {
+      logger.info(`Pin ${pinId} is no longer scheduled (status: ${pin.status})`, { pinId, status: pin.status });
+      return { success: false, error: `Pin status is ${pin.status}, not scheduled` };
+    }
+
+    // Publish the pin
+    const success = await publishPin(supabase, pin as Pin);
+
+    return { success, pinId };
   },
 });

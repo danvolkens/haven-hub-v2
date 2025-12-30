@@ -56,14 +56,20 @@ export async function GET(request: NextRequest) {
     const times = await getOptimalPostingTimes(userId, count);
 
     return NextResponse.json({
-      optimalTimes: times.map((t) => ({
-        hour: t.getHours(),
-        formatted: t.toLocaleTimeString('en-US', {
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }),
-      })),
+      optimalTimes: times.map((t) => {
+        // Create a date object to format the time
+        const date = new Date();
+        date.setHours(t.hour, t.minute, 0, 0);
+        return {
+          hour: t.hour,
+          minute: t.minute,
+          formatted: date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          }),
+        };
+      }),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'Unauthorized') {

@@ -113,3 +113,64 @@ export async function cancelTaskRun(runId: string) {
 export async function triggerAutoMockupQueue(payload: AutoMockupQueuePayload) {
   return tasks.trigger('auto-mockup-queue', payload);
 }
+
+// ==========================================
+// Scheduled Pin Publishing
+// ==========================================
+
+export interface ScheduledPinPayload {
+  pinId: string;
+}
+
+/**
+ * Schedule a pin to be published at a specific time.
+ * Uses Trigger.dev's delay feature to run at the exact scheduled time.
+ *
+ * @param pinId - The ID of the pin to publish
+ * @param scheduledFor - The exact date/time when the pin should be published
+ * @returns The task handle (can be used to cancel if needed)
+ */
+export async function schedulePin(pinId: string, scheduledFor: Date) {
+  const now = new Date();
+  const delay = scheduledFor.getTime() - now.getTime();
+
+  // If scheduled time is in the past or very soon, trigger immediately
+  if (delay <= 1000) {
+    return tasks.trigger('scheduled-pin-publish', { pinId });
+  }
+
+  // Schedule for the future using delay
+  return tasks.trigger('scheduled-pin-publish', { pinId }, {
+    delay: scheduledFor,
+  });
+}
+
+/**
+ * Schedule multiple pins for publishing at their scheduled times.
+ *
+ * @param pins - Array of pin IDs and their scheduled times
+ * @returns Array of task handles
+ */
+export async function schedulePinsBatch(
+  pins: Array<{ pinId: string; scheduledFor: Date }>
+) {
+  const results = await Promise.allSettled(
+    pins.map(({ pinId, scheduledFor }) => schedulePin(pinId, scheduledFor))
+  );
+
+  return results.map((result, index) => ({
+    pinId: pins[index].pinId,
+    success: result.status === 'fulfilled',
+    handle: result.status === 'fulfilled' ? result.value : null,
+    error: result.status === 'rejected' ? result.reason : null,
+  }));
+}
+
+/**
+ * Cancel a scheduled pin publish task.
+ *
+ * @param runId - The run ID returned when the pin was scheduled
+ */
+export async function cancelScheduledPin(runId: string) {
+  return runs.cancel(runId);
+}
