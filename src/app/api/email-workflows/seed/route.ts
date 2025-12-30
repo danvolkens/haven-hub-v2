@@ -10,6 +10,15 @@ const EMAIL_TEMPLATES = {
       name: 'Welcome + Lead Magnet Delivery',
       subject: 'Welcome to Haven & Hold 🌿',
       preview_text: 'Your space for quiet holding',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Welcome to the haven.</p>
+<p>You've joined a community that believes spaces should hold us gently—that the words on our walls can do some of the work when we can't.</p>
+<p>As a thank you for joining us, here's 15% off your first order:</p>
+<p><strong>Code: WELCOME15</strong></p>
+<p>Every print includes 16 sizes, instant download, and a guide to printing at home or at any local shop.</p>
+<p>Held gently,<br>Haven & Hold</p>`,
+      button_text: 'Browse the Collection',
+      button_url: 'https://havenandhold.com/collections/all',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -57,6 +66,23 @@ const EMAIL_TEMPLATES = {
       name: 'Brand Story',
       subject: 'Why Haven & Hold exists',
       preview_text: 'It started with a blank wall...',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>A few years ago, I sat in my therapist's office staring at a quote on her wall:</p>
+<blockquote>"You are allowed to be both a masterpiece and a work in progress."</blockquote>
+<p>Something about those words in that space—a space that had witnessed so many hard moments—changed how I thought about what we put on our walls.</p>
+<p>When I went looking for something similar for my own home, everything I found was either:</p>
+<ul>
+<li>Too clinical (felt like a doctor's office)</li>
+<li>Too cliché (Live, Laugh, Love... no thank you)</li>
+<li>Too aggressive (Rise and Grind! Be Unstoppable!)</li>
+</ul>
+<p>Where were the words for when you just needed permission to be held?</p>
+<p>So I created Haven & Hold.</p>
+<p><strong>Not motivation. Not inspiration. Just holding.</strong></p>
+<p>For the spaces that witness your becoming.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Explore Our Story',
+      button_url: 'https://havenandhold.com/pages/our-story',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -118,6 +144,20 @@ const EMAIL_TEMPLATES = {
       name: 'Best Sellers by Collection',
       subject: 'Three ways to hold yourself',
       preview_text: 'Grounding, Wholeness, or Growth?',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Everyone needs something different from their space.</p>
+<p>That's why we organize our prints into three therapeutic collections:</p>
+<p><strong>🔺 THE GROUNDING COLLECTION</strong><br>
+For when you need stability, safety, an anchor. Words that remind you: you are held exactly where you are.</p>
+<p><strong>⭕ THE WHOLENESS COLLECTION</strong><br>
+For when you need self-compassion. Words that remind you: all of you belongs here.</p>
+<p><strong>🌱 THE GROWTH COLLECTION</strong><br>
+For when you're ready to transform. Words that remind you: still becoming is enough.</p>
+<p>Not sure which speaks to you? Take our 2-minute quiz to find your perfect match.</p>
+<p>Your 15% off code (WELCOME15) is still waiting.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Find Your Collection',
+      button_url: 'https://havenandhold.com/pages/quiz',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -190,6 +230,16 @@ const EMAIL_TEMPLATES = {
       name: 'Social Proof + First Purchase Offer',
       subject: 'What customers are saying',
       preview_text: 'Real walls, real words',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>We wanted to share what others are saying about their Haven & Hold prints:</p>
+<blockquote>"I hang 'You are held here' above my bed. On hard mornings, I look up before I look down." — Sarah M.</blockquote>
+<blockquote>"My therapist actually asked where I got my print. Now it's in her office too." — Jennifer R.</blockquote>
+<blockquote>"These aren't just decorations. They're daily reminders that I'm allowed to take up space." — Michelle K.</blockquote>
+<p>Your WELCOME15 code expires in 48 hours.</p>
+<p>Your sanctuary is waiting.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Use My Code',
+      button_url: 'https://havenandhold.com/collections/all?discount=WELCOME15',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -253,6 +303,23 @@ const EMAIL_TEMPLATES = {
       name: 'Your Quiz Results + Collection Recommendations',
       subject: 'Your Sanctuary Quiz results are in 🌿',
       preview_text: 'We found your perfect collection',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>You took our Sanctuary Quiz, and here's what we learned:</p>
+<p><strong>Your result: THE {{ quiz_result|default:'GROUNDING'|upper }} COLLECTION</strong></p>
+{% if quiz_result == 'grounding' %}
+<p>Right now, you need stability. Safety. An anchor when everything feels uncertain.</p>
+<p>The Grounding Collection speaks to the part of you that needs permission to stand still, to find solid ground, to simply be held exactly where you are.</p>
+{% elif quiz_result == 'wholeness' %}
+<p>Right now, you need self-compassion. Acceptance. Permission to embrace all of who you are.</p>
+<p>The Wholeness Collection speaks to the part of you that's learning to hold space for every version of yourself—the messy, the beautiful, the becoming.</p>
+{% else %}
+<p>Right now, you're ready to transform. To become. To step into what's next.</p>
+<p>The Growth Collection speaks to the part of you that's unfolding—honoring where you've been while reaching toward who you're becoming.</p>
+{% endif %}
+<p>Use code <strong>SANCTUARY15</strong> for 15% off your collection.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'See Your Collection',
+      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -310,6 +377,23 @@ const EMAIL_TEMPLATES = {
       name: 'Deep Dive into Your Collection',
       subject: 'The story behind {{ quiz_result|default:"your collection" }}',
       preview_text: 'Why these words matter',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Yesterday we shared your Sanctuary Quiz results: <strong>The {{ quiz_result|default:'Grounding'|title }} Collection</strong>.</p>
+<p>Today, let's go deeper into why these words might resonate.</p>
+{% if quiz_result == 'grounding' %}
+<p>The Grounding Collection was created for the moments when the world feels too fast, too loud, too much. When you need permission to simply stand still.</p>
+<p>Each quote is a quiet anchor—words that remind you: you don't have to do anything to be worthy of rest.</p>
+{% elif quiz_result == 'wholeness' %}
+<p>The Wholeness Collection was created for those learning to make peace with all of who they are. The parts you show the world, and the parts you're still learning to accept.</p>
+<p>Each quote is an invitation—words that remind you: you don't have to hide any part of yourself here.</p>
+{% else %}
+<p>The Growth Collection was created for those in transition. Between who you were and who you're becoming. In the beautiful, messy middle.</p>
+<p>Each quote is an encouragement—words that remind you: transformation isn't linear, and you're exactly where you need to be.</p>
+{% endif %}
+<p>Your SANCTUARY15 code is still active.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Explore the Collection',
+      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -364,6 +448,16 @@ const EMAIL_TEMPLATES = {
       name: 'Styled Room Inspiration',
       subject: 'Where to hang your {{ quiz_result|default:"" }} print',
       preview_text: 'Styling ideas for your space',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Wondering where to place your prints? Here's some inspiration from our community:</p>
+<p><strong>Above the bed</strong> — The first words you see each morning, the last before sleep.</p>
+<p><strong>Home office</strong> — A gentle reminder during the workday.</p>
+<p><strong>Therapy waiting room</strong> — Yes, we have therapists who display our prints for their clients.</p>
+<p><strong>Bathroom mirror</strong> — Small but powerful placement for daily affirmation.</p>
+<p>The {{ quiz_result|default:'Grounding'|title }} Collection prints work beautifully in any of these spaces.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Shop Your Collection',
+      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -438,6 +532,20 @@ const EMAIL_TEMPLATES = {
       name: 'Limited Time Offer for Your Collection',
       subject: '20% off {{ quiz_result|default:"your collection" }} — just for you',
       preview_text: 'Expires in 48 hours',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Your SANCTUARY15 code expires tonight at midnight.</p>
+<p>If you've been thinking about bringing The {{ quiz_result|default:'Grounding'|title }} Collection into your space, now's the time.</p>
+<p><strong>What you get:</strong></p>
+<ul>
+<li>Instant digital download</li>
+<li>16 print sizes included (from 4×6" to 24×36")</li>
+<li>Print guide with paper and frame recommendations</li>
+<li>Lifetime access to your files</li>
+</ul>
+<p>No pressure. Just a gentle nudge if you're ready.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Use SANCTUARY15 Now',
+      button_url: '{{ url|default:"https://havenandhold.com/collections/all" }}?discount=SANCTUARY15',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -498,6 +606,14 @@ const EMAIL_TEMPLATES = {
       name: 'You left something behind',
       subject: 'You left something behind',
       preview_text: 'Your cart is still waiting',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Your sanctuary is waiting.</p>
+<p>You left something in your cart, and we wanted to make sure you didn't forget.</p>
+<p>{{ items|default:'Your selected prints are' }} still there whenever you're ready.</p>
+<p>Need help deciding? Reply to this email—we're happy to help you find the perfect print for your space.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Complete Your Order',
+      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -542,6 +658,15 @@ const EMAIL_TEMPLATES = {
       name: 'Still thinking about it?',
       subject: 'Still thinking about it?',
       preview_text: 'No pressure, just checking in',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Still thinking about those prints?</p>
+<p>Here's a little something to help you decide:</p>
+<p><strong>Code: COMEBACK10</strong> for 10% off your order.</p>
+<p>One of our customers recently told us: "I kept putting off buying the print. When I finally did, I wondered why I waited so long. It's the first thing I see every morning."</p>
+<p>Your cart is saved and ready when you are.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Use COMEBACK10',
+      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}?discount=COMEBACK10',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -591,6 +716,13 @@ const EMAIL_TEMPLATES = {
       name: 'Last chance + small discount',
       subject: 'A little something to help you decide',
       preview_text: '10% off, just for you',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Last chance—your cart will expire soon.</p>
+<p>Your COMEBACK10 code is still active, but not for long.</p>
+<p>If now isn't the right time, that's okay too. Your sanctuary will be here when you're ready.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Complete Order',
+      button_url: '{{ checkout_url|default:"https://havenandhold.com/cart" }}?discount=COMEBACK10',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -642,6 +774,21 @@ const EMAIL_TEMPLATES = {
       name: 'Order Confirmation + What to Expect',
       subject: 'Your sanctuary is on its way 🌿',
       preview_text: 'Order confirmed',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Thank you for bringing Haven & Hold into your space. 💚</p>
+<p><strong>Your order is confirmed.</strong></p>
+<p>Your digital downloads are ready now—check your email for the download link, or access them anytime from your account.</p>
+<p><strong>What's next:</strong></p>
+<ol>
+<li>Download your files (16 sizes included)</li>
+<li>Choose your favorite size for your space</li>
+<li>Print at home or any local print shop (we recommend Staples or FedEx)</li>
+<li>Frame and hang in your sanctuary</li>
+</ol>
+<p>Need printing tips? We've got you covered in our next email.</p>
+<p>Held gently,<br>Haven & Hold</p>`,
+      button_text: 'Download Your Prints',
+      button_url: '{{ download_url|default:"https://havenandhold.com/account" }}',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -693,6 +840,20 @@ const EMAIL_TEMPLATES = {
       name: 'Care Instructions',
       subject: 'Getting the perfect print (quick guide)',
       preview_text: 'Printing tips',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Ready to print? Here's how to get gallery-quality results:</p>
+<p><strong>Step 1: Choose your size</strong><br>
+Your download includes 16 sizes. Pick the one that matches your frame or desired wall space.</p>
+<p><strong>Step 2: Skip your home printer</strong><br>
+For best results, take your file to Staples, FedEx Office, or a local print shop. Cost: $3-8.</p>
+<p><strong>Step 3: Request matte cardstock</strong><br>
+Say: "Please print this on matte cardstock, no cropping, no scaling." This gives you that premium gallery look.</p>
+<p><strong>Step 4: Frame it</strong><br>
+IKEA RIBBA frames are beautiful and affordable. Target and Amazon also have great options.</p>
+<p>Questions? Just reply to this email.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'View Printing Guide',
+      button_url: 'https://havenandhold.com/pages/how-it-works',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -758,6 +919,15 @@ const EMAIL_TEMPLATES = {
       name: 'Request Review',
       subject: "How's your print looking?",
       preview_text: 'Share your space',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>How's your print looking on the wall?</p>
+<p>We'd love to see it—and hear what you think.</p>
+<p>If you have a moment, would you leave us a quick review? It helps other people find Haven & Hold, and we genuinely read every single one.</p>
+<p>Bonus: Tag us on Instagram (@havenandhold) and you might be featured in our customer gallery.</p>
+<p>Thank you for being part of this community.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Leave a Review',
+      button_url: 'https://havenandhold.com/pages/reviews',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -805,6 +975,15 @@ const EMAIL_TEMPLATES = {
       name: 'Complementary Products',
       subject: 'Complete your sanctuary',
       preview_text: 'More for your walls',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Enjoying your prints?</p>
+<p>Here are some pieces that pair beautifully with what you already have:</p>
+<p>Whether you're building a gallery wall or finding prints for other rooms, we thought these might speak to you.</p>
+<p>As a thank you for being a customer, here's <strong>10% off your next order</strong>:</p>
+<p><strong>Code: THANKYOU10</strong></p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Shop More Prints',
+      button_url: 'https://havenandhold.com/collections/all?discount=THANKYOU10',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -858,6 +1037,15 @@ const EMAIL_TEMPLATES = {
       name: 'We miss you + Special offer',
       subject: "It's been a while 💙",
       preview_text: 'Special offer inside',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>It's been a while. 💚</p>
+<p>We've been adding new quotes to the collection, and we thought of you.</p>
+<p>Your sanctuary might be ready for new words.</p>
+<p>Come see what's new—and if anything speaks to you, use <strong>MISSYOU20</strong> for 20% off.</p>
+<p>No pressure. Just an open door.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'See What\'s New',
+      button_url: 'https://havenandhold.com/collections/all?discount=MISSYOU20',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -909,6 +1097,18 @@ const EMAIL_TEMPLATES = {
       name: "What's new since you left",
       subject: 'What you might have missed',
       preview_text: 'New arrivals',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Here's what's happened at Haven & Hold since we last saw you:</p>
+<ul>
+<li>New quotes added to all three collections</li>
+<li>Customer favorites are now marked as bestsellers</li>
+<li>We've been featured by therapists and wellness spaces</li>
+</ul>
+<p>Your MISSYOU20 code is still active—20% off anything in the shop.</p>
+<p>We'd love to welcome you back.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Use MISSYOU20',
+      button_url: 'https://havenandhold.com/collections/all?discount=MISSYOU20',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -966,6 +1166,13 @@ const EMAIL_TEMPLATES = {
       name: 'Final reminder',
       subject: 'Last chance for 20% off',
       preview_text: 'Expires soon',
+      content_html: `<p>{{ first_name|default:'Friend' }},</p>
+<p>Your MISSYOU20 code expires tonight at midnight.</p>
+<p>If you've been thinking about adding new words to your walls, now's the time.</p>
+<p>If not, no worries. We'll be here whenever you're ready.</p>
+<p>Held,<br>Haven & Hold</p>`,
+      button_text: 'Last Chance: 20% Off',
+      button_url: 'https://havenandhold.com/collections/all?discount=MISSYOU20',
       html_content: `<!DOCTYPE html>
 <html>
 <head>
@@ -1023,7 +1230,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const { flow_type, overwrite } = body;
+    const { flow_type, overwrite, update_content } = body;
 
     const flowTypes = flow_type
       ? [flow_type]
@@ -1032,6 +1239,7 @@ export async function POST(request: NextRequest) {
     const results: Array<{
       flow_type: string;
       created: number;
+      updated: number;
       skipped: number;
       errors: string[];
     }> = [];
@@ -1039,11 +1247,12 @@ export async function POST(request: NextRequest) {
     for (const flowType of flowTypes) {
       const templates = EMAIL_TEMPLATES[flowType as keyof typeof EMAIL_TEMPLATES];
       if (!templates) {
-        results.push({ flow_type: flowType, created: 0, skipped: 0, errors: [`Unknown flow type: ${flowType}`] });
+        results.push({ flow_type: flowType, created: 0, updated: 0, skipped: 0, errors: [`Unknown flow type: ${flowType}`] });
         continue;
       }
 
       let created = 0;
+      let updated = 0;
       let skipped = 0;
       const errors: string[] = [];
 
@@ -1056,6 +1265,25 @@ export async function POST(request: NextRequest) {
           .eq('flow_type', flowType)
           .eq('position', template.position)
           .single();
+
+        if (existing && update_content) {
+          // Only update content fields (for re-seeding existing templates)
+          const { error } = await (supabase as any)
+            .from('email_templates')
+            .update({
+              content_html: template.content_html,
+              button_text: template.button_text,
+              button_url: template.button_url,
+            })
+            .eq('id', existing.id);
+
+          if (error) {
+            errors.push(`Position ${template.position}: ${error.message}`);
+          } else {
+            updated++;
+          }
+          continue;
+        }
 
         if (existing && !overwrite) {
           skipped++;
@@ -1093,15 +1321,16 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      results.push({ flow_type: flowType, created, skipped, errors });
+      results.push({ flow_type: flowType, created, updated, skipped, errors });
     }
 
     const totalCreated = results.reduce((sum, r) => sum + r.created, 0);
+    const totalUpdated = results.reduce((sum, r) => sum + r.updated, 0);
     const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
     const totalErrors = results.reduce((sum, r) => sum + r.errors.length, 0);
 
     return NextResponse.json({
-      message: `Seeded ${totalCreated} templates, skipped ${totalSkipped}, ${totalErrors} errors`,
+      message: `Seeded ${totalCreated} templates, updated ${totalUpdated}, skipped ${totalSkipped}, ${totalErrors} errors`,
       results,
     });
   } catch (error) {
