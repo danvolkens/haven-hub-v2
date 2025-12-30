@@ -16,6 +16,7 @@ interface Mockup {
   assets?: {
     id: string;
     file_url: string;
+    format?: string;
     quote_id?: string;
     quotes?: {
       id: string;
@@ -53,6 +54,7 @@ interface PreviewItem {
   title: string;
   subtitle?: string;
   collection?: string;
+  format?: string;
   date: string;
   referenceId?: string;
   quoteId?: string;
@@ -439,6 +441,7 @@ export default function AssetsPage() {
       title: mockup.assets?.quotes?.text || 'Mockup',
       subtitle: mockup.scene.replace('dm_', '').slice(0, 20),
       collection: mockup.assets?.quotes?.collection,
+      format: mockup.assets?.format,
       date: mockup.created_at,
       referenceId: mockup.id,
       quoteId: mockup.assets?.quotes?.id || mockup.assets?.quote_id,
@@ -454,6 +457,7 @@ export default function AssetsPage() {
       title: asset.payload.quoteText || 'Asset',
       subtitle: asset.payload.format || asset.payload.size,
       collection: asset.payload.collection || asset.collection,
+      format: asset.payload.format,
       date: asset.created_at,
       referenceId: asset.reference_id,
       quoteId: asset.payload.quoteId || asset.payload.quote_id,
@@ -1067,7 +1071,7 @@ export default function AssetsPage() {
               </div>
 
               <div className="flex gap-2">
-                {pinterestConnected && (
+                {pinterestConnected && previewItem?.format === 'pinterest' && (
                   <Button
                     variant="secondary"
                     onClick={() => {

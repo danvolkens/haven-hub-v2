@@ -37,7 +37,7 @@ function getFormatFilter(postType: string): string | null {
     case 'feed':
       return 'instagram_post';
     case 'reel':
-      return 'instagram_reel';
+      return 'instagram_story'; // Reels use same 9:16 vertical format as stories
     case 'story':
       return 'instagram_story';
     case 'carousel':

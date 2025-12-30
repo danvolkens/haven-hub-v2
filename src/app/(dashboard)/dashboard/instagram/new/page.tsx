@@ -722,6 +722,7 @@ export default function NewInstagramPostPage() {
                     <label className="text-sm font-medium mb-2 block">Add Mockups</label>
                     <MockupSelector
                       quoteId={quoteId}
+                      postType={postType}
                       selectedMockupIds={selectedMockupIds}
                       onSelect={handleMockupSelect}
                       maxMockups={maxAssets - selectedAssetIds.length - uploadedImages.length}

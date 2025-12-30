@@ -28,10 +28,30 @@ interface Mockup {
 
 interface MockupSelectorProps {
   quoteId?: string;
+  postType?: 'feed' | 'reel' | 'story' | 'carousel';
   selectedMockupIds: string[];
   onSelect: (mockupIds: string[], mockups: Mockup[]) => void;
   maxMockups?: number;
   className?: string;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function getFormatFilter(postType: string | undefined): string | null {
+  switch (postType) {
+    case 'feed':
+      return 'instagram_post';
+    case 'reel':
+      return 'instagram_story'; // Reels use same 9:16 vertical format as stories
+    case 'story':
+      return 'instagram_story';
+    case 'carousel':
+      return 'instagram_post';
+    default:
+      return null;
+  }
 }
 
 // ============================================================================
@@ -40,6 +60,7 @@ interface MockupSelectorProps {
 
 export function MockupSelector({
   quoteId,
+  postType,
   selectedMockupIds,
   onSelect,
   maxMockups = 1,
@@ -52,9 +73,10 @@ export function MockupSelector({
     setLocalSelected(selectedMockupIds);
   }, [selectedMockupIds]);
 
-  // Fetch approved mockups filtered by quoteId on server
+  // Fetch approved mockups filtered by quoteId and format on server
+  const format = getFormatFilter(postType);
   const { data, isLoading, error } = useQuery<{ mockups: Mockup[] }>({
-    queryKey: ['mockups', 'approved', quoteId],
+    queryKey: ['mockups', 'approved', quoteId, format],
     queryFn: async () => {
       const params = new URLSearchParams({
         status: 'approved',
@@ -62,6 +84,9 @@ export function MockupSelector({
       });
       if (quoteId) {
         params.set('quoteId', quoteId);
+      }
+      if (format) {
+        params.set('format', format);
       }
       const res = await fetch(`/api/mockups?${params}`);
       if (!res.ok) {
