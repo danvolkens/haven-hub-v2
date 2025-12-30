@@ -56,7 +56,7 @@ interface KlaviyoTemplate {
 
 interface KlaviyoFlowAction {
   temporary_id: string;
-  type: 'SEND_EMAIL' | 'TIME_DELAY' | 'CONDITIONAL_SPLIT';
+  type: 'send-email' | 'time-delay' | 'conditional-split';
   data: {
     message?: {
       from_email: string;
@@ -67,7 +67,7 @@ interface KlaviyoFlowAction {
       template_id: string;
     };
     delay?: {
-      unit: 'hours' | 'days' | 'weeks';
+      unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks';
       value: number;
     };
     condition?: any;
@@ -81,7 +81,7 @@ interface KlaviyoFlowAction {
 
 interface KlaviyoFlowDefinition {
   triggers: Array<{
-    type: 'LIST' | 'METRIC' | 'DATE';
+    type: 'list' | 'metric' | 'date';
     data: {
       list_id?: string;
       metric_name?: string;
@@ -125,6 +125,8 @@ export class KlaviyoClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: response.statusText }));
+      // Log full error for debugging
+      console.error('Klaviyo API Error:', JSON.stringify(error, null, 2));
       throw new Error(error.errors?.[0]?.detail || error.message || `Klaviyo API error: ${response.status}`);
     }
 
@@ -1136,18 +1138,23 @@ export class KlaviyoClient {
     name: string;
     status: string;
   }> {
+    const requestBody = {
+      data: {
+        type: 'flow',
+        attributes: {
+          name: params.name,
+          status: params.status || 'draft',
+          definition: params.definition,
+        },
+      },
+    };
+
+    // Log request body for debugging
+    console.log('Creating flow with body:', JSON.stringify(requestBody, null, 2));
+
     const response = await this.request<{ data: { id: string; attributes: any } }>('/flows/', {
       method: 'POST',
-      body: JSON.stringify({
-        data: {
-          type: 'flow',
-          attributes: {
-            name: params.name,
-            status: params.status || 'draft',
-            definition: params.definition,
-          },
-        },
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     return {
@@ -1202,7 +1209,7 @@ export class KlaviyoClient {
         const delayId = `delay_${index}`;
         actions.push({
           temporary_id: delayId,
-          type: 'TIME_DELAY',
+          type: 'time-delay',
           data: {
             delay: {
               unit: 'hours',
@@ -1219,7 +1226,7 @@ export class KlaviyoClient {
       const emailId = `email_${index}`;
       actions.push({
         temporary_id: emailId,
-        type: 'SEND_EMAIL',
+        type: 'send-email',
         data: {
           message: {
             from_email: params.fromEmail,
@@ -1242,7 +1249,7 @@ export class KlaviyoClient {
 
     return {
       triggers: [{
-        type: 'LIST',
+        type: 'list',
         data: { list_id: params.listId },
       }],
       entry_action_id: 'email_0',
@@ -1272,7 +1279,7 @@ export class KlaviyoClient {
         const previousDelay = index > 0 ? params.delayHours[index - 1] : 0;
         actions.push({
           temporary_id: delayId,
-          type: 'TIME_DELAY',
+          type: 'time-delay',
           data: {
             delay: {
               unit: 'hours',
@@ -1292,7 +1299,7 @@ export class KlaviyoClient {
 
       actions.push({
         temporary_id: emailId,
-        type: 'SEND_EMAIL',
+        type: 'send-email',
         data: {
           message: {
             from_email: params.fromEmail,
@@ -1313,7 +1320,7 @@ export class KlaviyoClient {
 
     return {
       triggers: [{
-        type: 'METRIC',
+        type: 'metric',
         data: { metric_name: params.metricName },
       }],
       entry_action_id: entryActionId,
