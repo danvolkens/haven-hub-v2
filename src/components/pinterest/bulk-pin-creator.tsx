@@ -230,6 +230,33 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
     setSelectedTemplateIds(copyTemplates.map((t) => t.id));
   };
 
+  // Get unique collections from selected quotes
+  const selectedCollections = [...new Set(
+    selectedQuotes
+      .map(qId => quotes.find(q => q.id === qId)?.collection)
+      .filter(Boolean)
+  )] as string[];
+
+  // Select templates matching selected quotes' collections
+  const selectMatchingTemplates = () => {
+    if (selectedCollections.length === 0) return;
+    const matching = copyTemplates.filter(
+      t => t.collection && selectedCollections.includes(t.collection)
+    );
+    setSelectedTemplateIds(matching.map(t => t.id));
+  };
+
+  // Select templates by specific collection
+  const selectTemplatesByCollection = (collection: string) => {
+    const matching = copyTemplates.filter(t => t.collection === collection);
+    setSelectedTemplateIds(matching.map(t => t.id));
+  };
+
+  // Get available collections from templates
+  const templateCollections = [...new Set(
+    copyTemplates.map(t => t.collection).filter(Boolean)
+  )] as string[];
+
   const landingPages = landingPagesData?.pages || [];
   const quizzes = quizzesData?.quizzes || [];
 
@@ -578,8 +605,19 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                   onClick={() => {
                     if (copyTemplates.length > 0) {
                       setCopyMode('random');
-                      // Auto-select all templates when switching to random mode
-                      setSelectedTemplateIds(copyTemplates.map((t) => t.id));
+                      // Auto-select templates matching selected quotes' collections, or all if none selected
+                      if (selectedCollections.length > 0) {
+                        const matching = copyTemplates.filter(
+                          t => t.collection && selectedCollections.includes(t.collection)
+                        );
+                        if (matching.length > 0) {
+                          setSelectedTemplateIds(matching.map(t => t.id));
+                        } else {
+                          setSelectedTemplateIds(copyTemplates.map((t) => t.id));
+                        }
+                      } else {
+                        setSelectedTemplateIds(copyTemplates.map((t) => t.id));
+                      }
                     }
                   }}
                   disabled={copyTemplates.length === 0}
@@ -601,14 +639,38 @@ export function BulkPinCreator({ boards }: BulkPinCreatorProps) {
                     <span className="text-xs text-[var(--color-text-secondary)]">
                       Select templates to randomize ({selectedTemplateIds.length} selected)
                     </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={selectAllTemplates}
-                      disabled={selectedTemplateIds.length === copyTemplates.length}
-                    >
-                      Select All
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      {selectedCollections.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={selectMatchingTemplates}
+                          className="text-xs"
+                          title={`Select templates matching: ${selectedCollections.join(', ')}`}
+                        >
+                          Match Quotes
+                        </Button>
+                      )}
+                      {templateCollections.map((collection) => (
+                        <button
+                          key={collection}
+                          onClick={() => selectTemplatesByCollection(collection)}
+                          className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${getCollectionColor(collection)} hover:opacity-80`}
+                          title={`Select all ${collection} templates`}
+                        >
+                          {collection}
+                        </button>
+                      ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={selectAllTemplates}
+                        disabled={selectedTemplateIds.length === copyTemplates.length}
+                        className="text-xs"
+                      >
+                        All
+                      </Button>
+                    </div>
                   </div>
                   <div className="max-h-32 overflow-y-auto border rounded-lg divide-y">
                     {copyTemplates.map((template) => (
