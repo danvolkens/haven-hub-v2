@@ -376,39 +376,47 @@ export default function NewInstagramPostPage() {
   };
 
   const handleApplyRotationSet = (setId: string) => {
-    console.log('handleApplyRotationSet called with setId:', setId);
     const set = hashtagData?.rotation_sets.find(s => s.id === setId);
-    console.log('Found set:', set?.name, 'hashtags count:', set?.hashtags?.length);
     if (set && set.hashtags && set.hashtags.length > 0) {
-      // Remove # prefix if present and deduplicate
-      const newTags = set.hashtags
+      // Remove # prefix if present
+      const cleanTags = set.hashtags
         .map(tag => tag.replace(/^#/, ''))
-        .filter(tag => tag && !hashtags.includes(tag));
-      console.log('New tags to add:', newTags.length, newTags.slice(0, 5));
-      if (newTags.length > 0) {
-        if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
-          setHashtags([...hashtags, ...newTags]);
+        .filter(tag => tag);
+
+      // Use functional update to get latest state (avoids stale closure)
+      setHashtags(prevHashtags => {
+        const newTags = cleanTags.filter(tag => !prevHashtags.includes(tag));
+        if (newTags.length === 0) return prevHashtags;
+
+        if (newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags) {
+          return [...prevHashtags, ...newTags];
         } else {
-          // Add as many as we can fit
-          const available = CHARACTER_LIMITS.hashtags - hashtags.length;
-          setHashtags([...hashtags, ...newTags.slice(0, available)]);
+          const available = CHARACTER_LIMITS.hashtags - prevHashtags.length;
+          return [...prevHashtags, ...newTags.slice(0, available)];
         }
-      }
+      });
     }
   };
 
   const handleApplyHashtagGroup = (groupId: string) => {
     const group = hashtagData?.groups.find(g => g.id === groupId);
-    if (group) {
-      const newTags = group.hashtags
+    if (group && group.hashtags && group.hashtags.length > 0) {
+      const cleanTags = group.hashtags
         .map(tag => tag.replace(/^#/, ''))
-        .filter(tag => !hashtags.includes(tag));
-      if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
-        setHashtags([...hashtags, ...newTags]);
-      } else {
-        const available = CHARACTER_LIMITS.hashtags - hashtags.length;
-        setHashtags([...hashtags, ...newTags.slice(0, available)]);
-      }
+        .filter(tag => tag);
+
+      // Use functional update to get latest state (avoids stale closure)
+      setHashtags(prevHashtags => {
+        const newTags = cleanTags.filter(tag => !prevHashtags.includes(tag));
+        if (newTags.length === 0) return prevHashtags;
+
+        if (newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags) {
+          return [...prevHashtags, ...newTags];
+        } else {
+          const available = CHARACTER_LIMITS.hashtags - prevHashtags.length;
+          return [...prevHashtags, ...newTags.slice(0, available)];
+        }
+      });
     }
   };
 
