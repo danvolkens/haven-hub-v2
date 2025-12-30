@@ -8,7 +8,7 @@ const querySchema = z.object({
   status: z.enum(['pending', 'approved', 'rejected', 'skipped', 'processing']).optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
   flagged: z.coerce.boolean().optional(),
-  limit: z.coerce.number().min(1).max(100).default(20),
+  limit: z.coerce.number().min(1).max(500).default(20),
   offset: z.coerce.number().min(0).default(0),
 });
 
