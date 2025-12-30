@@ -273,6 +273,11 @@ export default function NewInstagramPostPage() {
     }
   }, [useBestTime, optimalSlots]);
 
+  // Debug: Log hashtag state changes
+  useEffect(() => {
+    console.log('[DEBUG] Hashtags state updated:', hashtags.length, 'tags:', hashtags.slice(0, 3));
+  }, [hashtags]);
+
   // Create post mutation
   const createMutation = useMutation({
     mutationFn: async (isDraft: boolean) => {
@@ -376,25 +381,37 @@ export default function NewInstagramPostPage() {
   };
 
   const handleApplyRotationSet = (setId: string) => {
+    console.log('[DEBUG] handleApplyRotationSet called, setId:', setId);
     const set = hashtagData?.rotation_sets.find(s => s.id === setId);
+    console.log('[DEBUG] Found set:', set?.name, 'with', set?.hashtags?.length, 'hashtags');
+
     if (set && set.hashtags && set.hashtags.length > 0) {
       // Remove # prefix if present
       const cleanTags = set.hashtags
         .map(tag => tag.replace(/^#/, ''))
         .filter(tag => tag);
+      console.log('[DEBUG] Clean tags count:', cleanTags.length);
 
       // Use functional update to get latest state (avoids stale closure)
       setHashtags(prevHashtags => {
+        console.log('[DEBUG] Inside setHashtags callback, prevHashtags:', prevHashtags.length);
         const newTags = cleanTags.filter(tag => !prevHashtags.includes(tag));
-        if (newTags.length === 0) return prevHashtags;
+        console.log('[DEBUG] New tags to add:', newTags.length);
 
-        if (newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags) {
-          return [...prevHashtags, ...newTags];
-        } else {
-          const available = CHARACTER_LIMITS.hashtags - prevHashtags.length;
-          return [...prevHashtags, ...newTags.slice(0, available)];
+        if (newTags.length === 0) {
+          console.log('[DEBUG] No new tags, returning unchanged');
+          return prevHashtags;
         }
+
+        const result = newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags
+          ? [...prevHashtags, ...newTags]
+          : [...prevHashtags, ...newTags.slice(0, CHARACTER_LIMITS.hashtags - prevHashtags.length)];
+
+        console.log('[DEBUG] Returning new array with', result.length, 'tags');
+        return result;
       });
+    } else {
+      console.log('[DEBUG] No set found or empty hashtags');
     }
   };
 
@@ -912,10 +929,7 @@ export default function NewInstagramPostPage() {
                           type="button"
                           variant={hashtagData.recommended_set_id === set.id ? 'primary' : 'secondary'}
                           size="sm"
-                          onClick={() => {
-                            console.log('Button clicked for set:', set.name);
-                            handleApplyRotationSet(set.id);
-                          }}
+                          onClick={() => handleApplyRotationSet(set.id)}
                           title={set.description || `${set.hashtags.length} hashtags`}
                         >
                           {set.name}
