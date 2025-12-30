@@ -33,7 +33,7 @@ export async function syncLeadToKlaviyo(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Klaviyo-API-Key ${apiKey.data}`,
-        'revision': '2024-02-15',
+        'revision': '2025-01-15',
       },
       body: JSON.stringify({
         data: {
@@ -70,7 +70,7 @@ export async function syncLeadToKlaviyo(
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Klaviyo-API-Key ${apiKey.data}`,
-        'revision': '2024-02-15',
+        'revision': '2025-01-15',
       },
       body: JSON.stringify({
         data: {
@@ -117,7 +117,7 @@ async function addTagToProfile(apiKey: string, profileId: string, tag: string) {
   const tagResponse = await fetch(`https://a.klaviyo.com/api/tags/?filter=equals(name,"${tag}")`, {
     headers: {
       'Authorization': `Klaviyo-API-Key ${apiKey}`,
-      'revision': '2024-02-15',
+      'revision': '2025-01-15',
     },
   });
 
@@ -134,7 +134,7 @@ async function addTagToProfile(apiKey: string, profileId: string, tag: string) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Klaviyo-API-Key ${apiKey}`,
-          'revision': '2024-02-15',
+          'revision': '2025-01-15',
         },
         body: JSON.stringify({
           data: {
@@ -153,7 +153,7 @@ async function addTagToProfile(apiKey: string, profileId: string, tag: string) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Klaviyo-API-Key ${apiKey}`,
-        'revision': '2024-02-15',
+        'revision': '2025-01-15',
       },
       body: JSON.stringify({
         data: [{ type: 'profile', id: profileId }],

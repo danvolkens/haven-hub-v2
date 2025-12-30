@@ -4,7 +4,7 @@
  */
 
 const KLAVIYO_API_BASE = 'https://a.klaviyo.com/api';
-const KLAVIYO_REVISION = '2024-10-15'; // Updated for flows/templates API support
+const KLAVIYO_REVISION = '2025-01-15'; // Updated for flows creation API support
 
 interface KlaviyoClientOptions {
   apiKey: string;
