@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import { Card, CardContent, Button, Tabs, TabsList, TabsTrigger, TabsContent, Modal, Input, Label } from '@/components/ui';
@@ -120,25 +120,49 @@ export default function AssetsPage() {
   const [deleteItem, setDeleteItem] = useState<PreviewItem | null>(null);
   const [productLink, setProductLink] = useState<string | null>(null);
 
-  // Fetch approved items from approval_items
+  // Fetch approved items from approval_items (higher limit to get all)
   const { data: approvedData, isLoading: loadingApproved } = useQuery({
     queryKey: ['approved-items'],
     queryFn: async () => {
-      const res = await fetch('/api/approvals?status=approved&limit=100');
+      const res = await fetch('/api/approvals?status=approved&limit=500');
       if (!res.ok) throw new Error('Failed to fetch approved items');
       return res.json();
     },
   });
 
-  // Fetch all mockups
+  // Fetch all mockups with pagination support
+  const [mockupsOffset, setMockupsOffset] = useState(0);
+  const MOCKUPS_PER_PAGE = 50;
+
   const { data: mockupsData, isLoading: loadingMockups } = useQuery({
-    queryKey: ['mockups'],
+    queryKey: ['mockups', mockupsOffset],
     queryFn: async () => {
-      const res = await fetch('/api/mockups?limit=100');
+      const res = await fetch(`/api/mockups?limit=${MOCKUPS_PER_PAGE}&offset=${mockupsOffset}`);
       if (!res.ok) throw new Error('Failed to fetch mockups');
       return res.json();
     },
   });
+
+  // Accumulate mockups across pages
+  const [allMockups, setAllMockups] = useState<Mockup[]>([]);
+
+  // Update accumulated mockups when data changes
+  useEffect(() => {
+    if (mockupsData?.mockups) {
+      if (mockupsOffset === 0) {
+        setAllMockups(mockupsData.mockups);
+      } else {
+        setAllMockups(prev => {
+          const existingIds = new Set(prev.map(m => m.id));
+          const newMockups = mockupsData.mockups.filter((m: Mockup) => !existingIds.has(m.id));
+          return [...prev, ...newMockups];
+        });
+      }
+    }
+  }, [mockupsData, mockupsOffset]);
+
+  const hasMoreMockups = mockupsData?.total > mockupsOffset + MOCKUPS_PER_PAGE;
+  const loadMoreMockups = () => setMockupsOffset(prev => prev + MOCKUPS_PER_PAGE);
 
   // Fetch Pinterest status and boards
   const { data: pinterestData } = useQuery({
@@ -305,8 +329,8 @@ export default function AssetsPage() {
   const approvedMockups = approvedItems.filter(item => item.type === 'mockup');
   const approvedAssets = approvedItems.filter(item => item.type === 'asset');
 
-  // Get mockup details for approved mockups
-  const mockups: Mockup[] = mockupsData?.mockups || [];
+  // Get mockup details for approved mockups (use accumulated mockups for pagination)
+  const mockups: Mockup[] = allMockups;
   const approvedMockupIds = new Set(approvedMockups.map(m => m.reference_id));
   const displayMockups = mockups.filter(m => approvedMockupIds.has(m.id));
 
@@ -597,6 +621,29 @@ export default function AssetsPage() {
                 </Card>
               ))}
             </div>
+          )}
+
+          {/* Load More button for mockups */}
+          {hasMoreMockups && (
+            <div className="flex justify-center mt-6">
+              <Button
+                variant="secondary"
+                onClick={loadMoreMockups}
+                disabled={loadingMockups}
+              >
+                {loadingMockups ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Load More Mockups ({mockupsData?.total - mockupsOffset - MOCKUPS_PER_PAGE} remaining)
+              </Button>
+            </div>
+          )}
+
+          {/* Total count info */}
+          {mockupsData?.total > 0 && (
+            <p className="text-center text-sm text-muted-foreground mt-4">
+              Showing {displayMockups.length} of {mockupsData.total} total mockups
+            </p>
           )}
         </TabsContent>
 
