@@ -5,12 +5,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import {
   Card,
+  CardHeader,
+  CardContent,
   Button,
   buttonVariants,
   Badge,
   Input,
   Label,
 } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import {
   Play,
   Download,
@@ -30,6 +33,9 @@ import {
   Share2,
   Loader2,
   Sparkles,
+  Zap,
+  CheckCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay, isToday, isPast, isFuture } from 'date-fns';
 import { useToast } from '@/components/providers/toast-provider';
@@ -188,6 +194,47 @@ export default function TikTokQueuePage() {
     },
   });
 
+  // Video hooks seed status query
+  const { data: hookStatus, isLoading: hookLoading, refetch: refetchHooks } = useQuery({
+    queryKey: ['video-hooks-seed-status'],
+    queryFn: async () => {
+      const res = await fetch('/api/tiktok/hooks/seed');
+      if (!res.ok) throw new Error('Failed to fetch hook status');
+      return res.json() as Promise<{
+        hooks: {
+          user: number;
+          system: number;
+          total: number;
+          expected: number;
+          by_type: Record<string, number>;
+          system_by_type: Record<string, number>;
+        };
+        is_complete: boolean;
+        has_user_hooks: boolean;
+        has_system_hooks: boolean;
+      }>;
+    },
+  });
+
+  // Seed hooks mutation
+  const seedHooksMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/tiktok/hooks/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error('Failed to seed hooks');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast(data.message || 'Video hooks library seeded successfully.', 'success');
+      refetchHooks();
+    },
+    onError: (error: Error) => {
+      toast(error.message || 'Failed to seed video hooks.', 'error');
+    },
+  });
+
   // Copy to clipboard helper
   const copyToClipboard = async (text: string, label: string) => {
     await navigator.clipboard.writeText(text);
@@ -291,6 +338,116 @@ export default function TikTokQueuePage() {
             )}
           </Card>
         )}
+
+        {/* Video Hooks Library Status */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'w-10 h-10 rounded-full flex items-center justify-center',
+                  hookStatus?.is_complete
+                    ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
+                    : 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-400'
+                )}>
+                  <Video className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Video Hooks Library</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Hooks for TikTok and Reels automation
+                  </p>
+                </div>
+              </div>
+              {hookStatus?.is_complete && (
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-400">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Ready
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {hookLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Checking status...
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>System Hooks</span>
+                    <span className={hookStatus?.has_system_hooks ? 'text-green-600' : 'text-yellow-600'}>
+                      {hookStatus?.hooks?.system || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Your Custom Hooks</span>
+                    <span className={hookStatus?.has_user_hooks ? 'text-green-600' : 'text-muted-foreground'}>
+                      {hookStatus?.hooks?.user || 0}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-medium">
+                    <span>Total Available</span>
+                    <span className={cn(
+                      hookStatus?.is_complete ? 'text-green-600' : 'text-yellow-600'
+                    )}>
+                      {hookStatus?.hooks?.total || 0}
+                    </span>
+                  </div>
+
+                  {hookStatus?.hooks?.by_type && Object.keys(hookStatus.hooks.by_type).length > 0 && (
+                    <div className="pt-2 border-t mt-2">
+                      <p className="text-xs text-muted-foreground mb-1">Your hooks by content type:</p>
+                      {Object.entries(hookStatus.hooks.by_type).map(([type, count]) => (
+                        <div key={type} className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="capitalize">{type.replace('_', ' ')}</span>
+                          <span>{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {!hookStatus?.has_user_hooks && (
+                  <Button
+                    onClick={() => seedHooksMutation.mutate()}
+                    disabled={seedHooksMutation.isPending}
+                    className="w-full"
+                  >
+                    {seedHooksMutation.isPending ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Seeding Hooks...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Add Haven & Hold Hooks
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {hookStatus?.is_complete && (
+                  <p className="text-sm text-green-600 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4" />
+                    Video hooks are ready for automation
+                  </p>
+                )}
+
+                <div className="mt-4 p-3 bg-muted rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>System hooks:</strong> Pre-loaded emotional, curiosity, POV, and story hooks.
+                    <br />
+                    <strong>Your hooks:</strong> Haven & Hold specific hooks (transformation, educational, BTS, trending).
+                  </p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Week Navigation */}
         <Card className="p-4">
