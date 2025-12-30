@@ -48,6 +48,43 @@ export async function DELETE(
 
     // Delete the file from R2 storage and the database record
     if (type === 'asset') {
+      // First, find and clean up all mockups created from this asset
+      const { data: relatedMockups } = await (supabase as any)
+        .from('mockups')
+        .select('id, file_key')
+        .eq('asset_id', referenceId)
+        .eq('user_id', userId);
+
+      if (relatedMockups && relatedMockups.length > 0) {
+        const mockupIds = relatedMockups.map((m: { id: string }) => m.id);
+
+        // Delete mockup files from R2
+        for (const mockup of relatedMockups) {
+          if (mockup.file_key) {
+            try {
+              await deleteFile(mockup.file_key);
+            } catch (err) {
+              console.error('Failed to delete mockup file from storage:', err);
+            }
+          }
+        }
+
+        // Delete approval_items for these mockups
+        const { error: approvalDeleteError } = await (supabase as any)
+          .from('approval_items')
+          .delete()
+          .in('reference_id', mockupIds)
+          .eq('user_id', userId)
+          .eq('type', 'mockup');
+
+        if (approvalDeleteError) {
+          console.error('Failed to delete mockup approval items:', approvalDeleteError);
+        }
+
+        console.log(`Cleaned up ${relatedMockups.length} mockups for asset ${referenceId}`);
+      }
+
+      // Now delete the asset file from R2
       const { data: asset } = await (supabase as any)
         .from('assets')
         .select('file_key')
@@ -63,7 +100,7 @@ export async function DELETE(
         }
       }
 
-      // Delete the asset record
+      // Delete the asset record (mockup records cascade automatically)
       const { error: deleteError } = await (supabase as any)
         .from('assets')
         .delete()
