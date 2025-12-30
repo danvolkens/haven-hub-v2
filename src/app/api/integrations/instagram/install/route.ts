@@ -53,6 +53,10 @@ export async function GET(request: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/instagram/callback`;
     const authUrl = getInstagramAuthUrl(state, redirectUri);
 
+    // Debug logging
+    console.log('Instagram OAuth URL:', authUrl);
+    console.log('Instagram Config ID:', INSTAGRAM_CONFIG.configId || 'NOT SET');
+
     return NextResponse.redirect(authUrl);
   } catch (error) {
     console.error('Instagram install error:', error);
