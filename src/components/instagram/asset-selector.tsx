@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, Image, Video, AlertCircle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
@@ -60,6 +60,11 @@ export function AssetSelector({
   className = '',
 }: AssetSelectorProps) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedAssetIds);
+
+  // Sync local state with parent prop (for when parent clears or updates selection)
+  useEffect(() => {
+    setLocalSelected(selectedAssetIds);
+  }, [selectedAssetIds]);
 
   // Fetch assets for the quote
   const { data: assets = [], isLoading, error } = useQuery<Asset[]>({
