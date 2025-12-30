@@ -41,6 +41,7 @@ import {
 import Link from 'next/link';
 import { AssetSelector } from '@/components/instagram/asset-selector';
 import { ImageUpload } from '@/components/instagram/image-upload';
+import { MockupSelector } from '@/components/instagram/mockup-selector';
 
 // ============================================================================
 // Types
@@ -66,6 +67,12 @@ interface Asset {
 interface UploadedImage {
   url: string;
   key: string;
+}
+
+interface Mockup {
+  id: string;
+  file_url: string;
+  scene: string;
 }
 
 interface Product {
@@ -183,8 +190,10 @@ export default function NewInstagramPostPage() {
   // Asset state
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [selectedAssets, setSelectedAssets] = useState<Asset[]>([]);
+  const [selectedMockupIds, setSelectedMockupIds] = useState<string[]>([]);
+  const [selectedMockups, setSelectedMockups] = useState<Mockup[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [mediaSource, setMediaSource] = useState<'assets' | 'upload'>('assets');
+  const [mediaSource, setMediaSource] = useState<'assets' | 'upload' | 'mixed'>('assets');
 
   // Fetch quotes for selection
   const { data: quotes = [] } = useQuery<Quote[]>({
@@ -267,17 +276,26 @@ export default function NewInstagramPostPage() {
   // Create post mutation
   const createMutation = useMutation({
     mutationFn: async (isDraft: boolean) => {
-      // Determine media URLs
+      // Determine media URLs - combine assets, mockups, and uploads for carousels
       let mediaUrls: string[] = [];
       let primaryAssetId: string | null = null;
       let additionalAssets: string[] = [];
 
-      if (mediaSource === 'assets' && selectedAssetIds.length > 0) {
+      // Get asset URLs
+      if (selectedAssetIds.length > 0) {
         primaryAssetId = selectedAssetIds[0];
         additionalAssets = selectedAssetIds.slice(1);
-        mediaUrls = selectedAssets.map(a => a.url);
-      } else if (mediaSource === 'upload' && uploadedImages.length > 0) {
-        mediaUrls = uploadedImages.map(img => img.url);
+        mediaUrls = [...selectedAssets.map(a => a.url)];
+      }
+
+      // Add mockup URLs
+      if (selectedMockups.length > 0) {
+        mediaUrls = [...mediaUrls, ...selectedMockups.map(m => m.file_url)];
+      }
+
+      // Add uploaded image URLs
+      if (uploadedImages.length > 0) {
+        mediaUrls = [...mediaUrls, ...uploadedImages.map(img => img.url)];
       }
 
       const res = await fetch('/api/instagram/posts', {
@@ -393,9 +411,11 @@ export default function NewInstagramPostPage() {
     const id = Array.isArray(value) ? value[0] : value;
     setQuoteId(id);
 
-    // Reset asset selection when quote changes
+    // Reset asset and mockup selection when quote changes
     setSelectedAssetIds([]);
     setSelectedAssets([]);
+    setSelectedMockupIds([]);
+    setSelectedMockups([]);
 
     const quote = quotes.find(q => q.id === id);
     if (quote) {
@@ -444,14 +464,22 @@ export default function NewInstagramPostPage() {
     setSelectedAssetIds(assetIds);
     setSelectedAssets(assets);
     if (assetIds.length > 0) {
-      setMediaSource('assets');
+      setMediaSource(postType === 'carousel' ? 'mixed' : 'assets');
+    }
+  };
+
+  const handleMockupSelect = (mockupIds: string[], mockups: Mockup[]) => {
+    setSelectedMockupIds(mockupIds);
+    setSelectedMockups(mockups);
+    if (mockupIds.length > 0) {
+      setMediaSource('mixed');
     }
   };
 
   const handleImageUpload = (images: UploadedImage[]) => {
     setUploadedImages(images);
     if (images.length > 0) {
-      setMediaSource('upload');
+      setMediaSource(postType === 'carousel' ? 'mixed' : 'upload');
     }
   };
 
@@ -459,15 +487,17 @@ export default function NewInstagramPostPage() {
     createMutation.mutate(isDraft);
   };
 
-  const hasMedia = selectedAssetIds.length > 0 || uploadedImages.length > 0;
+  const totalMediaCount = selectedAssetIds.length + selectedMockupIds.length + uploadedImages.length;
+  const hasMedia = totalMediaCount > 0;
   const maxAssets = postType === 'carousel' ? 10 : 1;
-  const currentMediaCount = mediaSource === 'assets' ? selectedAssetIds.length : uploadedImages.length;
-  const canAddMore = postType === 'carousel' && currentMediaCount < maxAssets;
+  const canAddMore = postType === 'carousel' && totalMediaCount < maxAssets;
 
-  // Get the primary media URL for preview
-  const previewUrl = mediaSource === 'assets' && selectedAssets[0]
+  // Get the primary media URL for preview (assets first, then mockups, then uploads)
+  const previewUrl = selectedAssets[0]
     ? (selectedAssets[0].thumbnail_url || selectedAssets[0].url)
-    : uploadedImages[0]?.url;
+    : selectedMockups[0]
+      ? selectedMockups[0].file_url
+      : uploadedImages[0]?.url;
 
   return (
     <PageContainer title="New Post">
@@ -532,12 +562,12 @@ export default function NewInstagramPostPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Carousel Preview - Show all selected images */}
-                {postType === 'carousel' && currentMediaCount > 0 && (
+                {/* Carousel Preview - Show all selected images (assets, mockups, uploads) */}
+                {postType === 'carousel' && totalMediaCount > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
-                        {currentMediaCount}/{maxAssets} images selected
+                        {totalMediaCount}/{maxAssets} images selected
                       </span>
                       <Button
                         variant="ghost"
@@ -545,6 +575,8 @@ export default function NewInstagramPostPage() {
                         onClick={() => {
                           setSelectedAssetIds([]);
                           setSelectedAssets([]);
+                          setSelectedMockupIds([]);
+                          setSelectedMockups([]);
                           setUploadedImages([]);
                         }}
                       >
@@ -552,54 +584,87 @@ export default function NewInstagramPostPage() {
                       </Button>
                     </div>
                     <div className="grid grid-cols-5 gap-2">
-                      {mediaSource === 'assets' ? (
-                        selectedAssets.map((asset, idx) => (
-                          <div key={asset.id} className="relative aspect-square rounded-lg overflow-hidden border">
-                            <img
-                              src={asset.thumbnail_url || asset.url}
-                              alt={`Selected ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                              {idx + 1}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newIds = selectedAssetIds.filter(id => id !== asset.id);
-                                const newAssets = selectedAssets.filter(a => a.id !== asset.id);
-                                setSelectedAssetIds(newIds);
-                                setSelectedAssets(newAssets);
-                              }}
-                              className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
-                            >
-                              <X className="h-3 w-3 text-white" />
-                            </button>
+                      {/* Assets */}
+                      {selectedAssets.map((asset, idx) => (
+                        <div key={`asset-${asset.id}`} className="relative aspect-square rounded-lg overflow-hidden border">
+                          <img
+                            src={asset.thumbnail_url || asset.url}
+                            alt={`Asset ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {idx + 1}
                           </div>
-                        ))
-                      ) : (
-                        uploadedImages.map((img, idx) => (
-                          <div key={img.key} className="relative aspect-square rounded-lg overflow-hidden border">
-                            <img
-                              src={img.url}
-                              alt={`Uploaded ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                              {idx + 1}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setUploadedImages(uploadedImages.filter(i => i.key !== img.key));
-                              }}
-                              className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
-                            >
-                              <X className="h-3 w-3 text-white" />
-                            </button>
+                          <div className="absolute bottom-1 left-1 bg-blue-500/80 text-white text-[8px] px-1 rounded">
+                            Asset
                           </div>
-                        ))
-                      )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newIds = selectedAssetIds.filter(id => id !== asset.id);
+                              const newAssets = selectedAssets.filter(a => a.id !== asset.id);
+                              setSelectedAssetIds(newIds);
+                              setSelectedAssets(newAssets);
+                            }}
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                      {/* Mockups */}
+                      {selectedMockups.map((mockup, idx) => (
+                        <div key={`mockup-${mockup.id}`} className="relative aspect-square rounded-lg overflow-hidden border">
+                          <img
+                            src={mockup.file_url}
+                            alt={`Mockup ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {selectedAssets.length + idx + 1}
+                          </div>
+                          <div className="absolute bottom-1 left-1 bg-purple-500/80 text-white text-[8px] px-1 rounded">
+                            Mockup
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newIds = selectedMockupIds.filter(id => id !== mockup.id);
+                              const newMockups = selectedMockups.filter(m => m.id !== mockup.id);
+                              setSelectedMockupIds(newIds);
+                              setSelectedMockups(newMockups);
+                            }}
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                      {/* Uploaded Images */}
+                      {uploadedImages.map((img, idx) => (
+                        <div key={img.key} className="relative aspect-square rounded-lg overflow-hidden border">
+                          <img
+                            src={img.url}
+                            alt={`Uploaded ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                            {selectedAssets.length + selectedMockups.length + idx + 1}
+                          </div>
+                          <div className="absolute bottom-1 left-1 bg-gray-500/80 text-white text-[8px] px-1 rounded">
+                            Upload
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadedImages(uploadedImages.filter(i => i.key !== img.key));
+                            }}
+                            className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
+                          >
+                            <X className="h-3 w-3 text-white" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -621,6 +686,8 @@ export default function NewInstagramPostPage() {
                       onClick={() => {
                         setSelectedAssetIds([]);
                         setSelectedAssets([]);
+                        setSelectedMockupIds([]);
+                        setSelectedMockups([]);
                         setUploadedImages([]);
                       }}
                       className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 rounded-full p-1.5 transition-colors"
@@ -639,7 +706,20 @@ export default function NewInstagramPostPage() {
                       postType={postType}
                       selectedAssetIds={selectedAssetIds}
                       onSelect={handleAssetSelect}
-                      maxAssets={maxAssets}
+                      maxAssets={postType === 'carousel' ? maxAssets - selectedMockupIds.length - uploadedImages.length : 1}
+                    />
+                  </div>
+                )}
+
+                {/* Mockup Selector from Quote - show for carousel */}
+                {quoteId && postType === 'carousel' && canAddMore && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Add Mockups</label>
+                    <MockupSelector
+                      quoteId={quoteId}
+                      selectedMockupIds={selectedMockupIds}
+                      onSelect={handleMockupSelect}
+                      maxMockups={maxAssets - selectedAssetIds.length - uploadedImages.length}
                     />
                   </div>
                 )}
@@ -668,6 +748,8 @@ export default function NewInstagramPostPage() {
                     onClick={() => {
                       setSelectedAssetIds([]);
                       setSelectedAssets([]);
+                      setSelectedMockupIds([]);
+                      setSelectedMockups([]);
                       setUploadedImages([]);
                     }}
                   >
