@@ -79,6 +79,22 @@ interface Campaign {
   name: string;
 }
 
+interface HashtagGroup {
+  id: string;
+  name: string;
+  tier: string;
+  hashtags: string[];
+  estimated_reach: string | null;
+}
+
+interface RotationSet {
+  id: string;
+  name: string;
+  description: string | null;
+  hashtags: string[];
+  is_system: boolean;
+}
+
 interface CaptionTemplate {
   id: string;
   name: string;
@@ -203,6 +219,24 @@ export default function NewInstagramPostPage() {
     },
   });
 
+  // Fetch hashtag groups and rotation sets
+  const selectedQuote = quotes.find(q => q.id === quoteId);
+  const { data: hashtagData } = useQuery<{
+    groups: HashtagGroup[];
+    rotation_sets: RotationSet[];
+    recommended_set_id: string | null;
+  }>({
+    queryKey: ['hashtag-groups', contentPillar, selectedQuote?.collection],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (contentPillar) params.set('content_pillar', contentPillar);
+      if (selectedQuote?.collection) params.set('collection', selectedQuote.collection);
+      const res = await fetch(`/api/instagram/hashtag-groups?${params}`);
+      if (!res.ok) return { groups: [], rotation_sets: [], recommended_set_id: null };
+      return res.json();
+    },
+  });
+
   // Fetch caption templates (filtered by post type and content pillar)
   const { data: templates = [] } = useQuery<CaptionTemplate[]>({
     queryKey: ['instagram-templates', postType, contentPillar],
@@ -323,6 +357,38 @@ export default function NewInstagramPostPage() {
     setHashtags(hashtags.filter(h => h !== tag));
   };
 
+  const handleApplyRotationSet = (setId: string) => {
+    const set = hashtagData?.rotation_sets.find(s => s.id === setId);
+    if (set) {
+      // Remove # prefix if present and deduplicate
+      const newTags = set.hashtags
+        .map(tag => tag.replace(/^#/, ''))
+        .filter(tag => !hashtags.includes(tag));
+      if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
+        setHashtags([...hashtags, ...newTags]);
+      } else {
+        // Add as many as we can fit
+        const available = CHARACTER_LIMITS.hashtags - hashtags.length;
+        setHashtags([...hashtags, ...newTags.slice(0, available)]);
+      }
+    }
+  };
+
+  const handleApplyHashtagGroup = (groupId: string) => {
+    const group = hashtagData?.groups.find(g => g.id === groupId);
+    if (group) {
+      const newTags = group.hashtags
+        .map(tag => tag.replace(/^#/, ''))
+        .filter(tag => !hashtags.includes(tag));
+      if (newTags.length + hashtags.length <= CHARACTER_LIMITS.hashtags) {
+        setHashtags([...hashtags, ...newTags]);
+      } else {
+        const available = CHARACTER_LIMITS.hashtags - hashtags.length;
+        setHashtags([...hashtags, ...newTags.slice(0, available)]);
+      }
+    }
+  };
+
   const handleQuoteSelect = (value: string | string[]) => {
     const id = Array.isArray(value) ? value[0] : value;
     setQuoteId(id);
@@ -395,6 +461,8 @@ export default function NewInstagramPostPage() {
 
   const hasMedia = selectedAssetIds.length > 0 || uploadedImages.length > 0;
   const maxAssets = postType === 'carousel' ? 10 : 1;
+  const currentMediaCount = mediaSource === 'assets' ? selectedAssetIds.length : uploadedImages.length;
+  const canAddMore = postType === 'carousel' && currentMediaCount < maxAssets;
 
   // Get the primary media URL for preview
   const previewUrl = mediaSource === 'assets' && selectedAssets[0]
@@ -464,8 +532,80 @@ export default function NewInstagramPostPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Preview */}
-                {previewUrl && (
+                {/* Carousel Preview - Show all selected images */}
+                {postType === 'carousel' && currentMediaCount > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">
+                        {currentMediaCount}/{maxAssets} images selected
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedAssetIds([]);
+                          setSelectedAssets([]);
+                          setUploadedImages([]);
+                        }}
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-5 gap-2">
+                      {mediaSource === 'assets' ? (
+                        selectedAssets.map((asset, idx) => (
+                          <div key={asset.id} className="relative aspect-square rounded-lg overflow-hidden border">
+                            <img
+                              src={asset.thumbnail_url || asset.url}
+                              alt={`Selected ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                              {idx + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newIds = selectedAssetIds.filter(id => id !== asset.id);
+                                const newAssets = selectedAssets.filter(a => a.id !== asset.id);
+                                setSelectedAssetIds(newIds);
+                                setSelectedAssets(newAssets);
+                              }}
+                              className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3 text-white" />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        uploadedImages.map((img, idx) => (
+                          <div key={img.key} className="relative aspect-square rounded-lg overflow-hidden border">
+                            <img
+                              src={img.url}
+                              alt={`Uploaded ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-1 left-1 bg-sage text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                              {idx + 1}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadedImages(uploadedImages.filter(i => i.key !== img.key));
+                              }}
+                              className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 rounded-full p-0.5"
+                            >
+                              <X className="h-3 w-3 text-white" />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Single Image Preview (non-carousel) */}
+                {postType !== 'carousel' && previewUrl && (
                   <div className={`relative rounded-lg overflow-hidden border bg-muted ${
                     postType === 'story' || postType === 'reel'
                       ? 'aspect-[9/16]'
@@ -490,8 +630,8 @@ export default function NewInstagramPostPage() {
                   </div>
                 )}
 
-                {/* Asset Selector from Quote */}
-                {quoteId && !hasMedia && (
+                {/* Asset Selector from Quote - show for carousel even with media selected */}
+                {quoteId && (!hasMedia || canAddMore) && (
                   <div>
                     <label className="text-sm font-medium mb-2 block">Select from Quote Assets</label>
                     <AssetSelector
@@ -504,11 +644,12 @@ export default function NewInstagramPostPage() {
                   </div>
                 )}
 
-                {/* Upload Option */}
-                {!hasMedia && (
+                {/* Upload Option - show for carousel even with media selected */}
+                {(!hasMedia || canAddMore) && (
                   <div>
                     <label className="text-sm font-medium mb-2 block">
                       {quoteId ? 'Or upload custom image' : 'Upload Image'}
+                      {postType === 'carousel' && hasMedia && ' (add more)'}
                     </label>
                     <ImageUpload
                       onUpload={handleImageUpload}
@@ -519,8 +660,8 @@ export default function NewInstagramPostPage() {
                   </div>
                 )}
 
-                {/* Change Asset button */}
-                {hasMedia && (
+                {/* Change Asset button (non-carousel only) */}
+                {hasMedia && postType !== 'carousel' && (
                   <Button
                     variant="secondary"
                     size="sm"
@@ -653,9 +794,73 @@ export default function NewInstagramPostPage() {
                       {hashtags.length}/{CHARACTER_LIMITS.hashtags}
                     </Badge>
                   </div>
+                  {hashtags.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setHashtags([])}
+                    >
+                      Clear All
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Rotation Sets (Quick Apply) */}
+                {hashtagData?.rotation_sets && hashtagData.rotation_sets.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Quick Apply Set</label>
+                    <div className="flex flex-wrap gap-2">
+                      {hashtagData.rotation_sets.map(set => (
+                        <Button
+                          key={set.id}
+                          variant={hashtagData.recommended_set_id === set.id ? 'primary' : 'secondary'}
+                          size="sm"
+                          onClick={() => handleApplyRotationSet(set.id)}
+                          title={set.description || `${set.hashtags.length} hashtags`}
+                        >
+                          {set.name}
+                          {hashtagData.recommended_set_id === set.id && (
+                            <Sparkles className="ml-1 h-3 w-3" />
+                          )}
+                          <span className="ml-1 text-xs opacity-70">({set.hashtags.length})</span>
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {hashtagData.recommended_set_id && 'Recommended set highlighted based on content pillar'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Individual Groups */}
+                {hashtagData?.groups && hashtagData.groups.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Add by Group</label>
+                    <div className="flex flex-wrap gap-2">
+                      {hashtagData.groups.map(group => (
+                        <button
+                          key={group.id}
+                          type="button"
+                          onClick={() => handleApplyHashtagGroup(group.id)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs border hover:bg-muted/50 cursor-pointer transition-colors"
+                          title={`${group.hashtags.length} tags - ${group.estimated_reach || ''}`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${
+                            group.tier === 'brand' ? 'bg-sage' :
+                            group.tier === 'mega' ? 'bg-purple-500' :
+                            group.tier === 'large' ? 'bg-blue-500' :
+                            'bg-gray-400'
+                          }`} />
+                          {group.name}
+                          <span className="opacity-60">({group.hashtags.length})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual Input */}
                 <div className="flex gap-2">
                   <input
                     type="text"

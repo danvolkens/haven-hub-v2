@@ -13,12 +13,13 @@ export async function GET(request: NextRequest) {
     const contentPillar = searchParams.get('content_pillar');
     const templateType = searchParams.get('template_type');
 
-    // Try to get user's custom templates first
+    // Get user's custom templates AND system templates
     let query = (supabase as any)
       .from('instagram_templates')
       .select('*')
-      .eq('user_id', user.id)
+      .or(`user_id.eq.${user.id},is_system.eq.true`)
       .eq('is_active', true)
+      .order('is_system', { ascending: true }) // User templates first
       .order('created_at', { ascending: false });
 
     if (contentPillar) {
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching templates:', error);
     }
 
-    // If no custom templates, return default templates
+    // If no templates found, return default hardcoded templates
     if (!templates || templates.length === 0) {
       const defaultTemplates = [
         {
