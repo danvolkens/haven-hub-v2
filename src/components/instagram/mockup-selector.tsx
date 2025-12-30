@@ -52,24 +52,27 @@ export function MockupSelector({
     setLocalSelected(selectedMockupIds);
   }, [selectedMockupIds]);
 
-  // Fetch approved mockups
+  // Fetch approved mockups filtered by quoteId on server
   const { data, isLoading, error } = useQuery<{ mockups: Mockup[] }>({
     queryKey: ['mockups', 'approved', quoteId],
     queryFn: async () => {
-      let url = '/api/mockups?status=approved&limit=50';
-      // Note: the API doesn't filter by quote_id directly, so we filter client-side
-      const res = await fetch(url);
+      const params = new URLSearchParams({
+        status: 'approved',
+        limit: '100',
+      });
+      if (quoteId) {
+        params.set('quoteId', quoteId);
+      }
+      const res = await fetch(`/api/mockups?${params}`);
       if (!res.ok) {
         return { mockups: [] };
       }
       return res.json();
     },
+    enabled: !!quoteId, // Only fetch when quoteId is available
   });
 
-  // Filter mockups by quote if quoteId is provided
-  const mockups = quoteId
-    ? (data?.mockups || []).filter(m => m.assets?.quotes?.id === quoteId)
-    : (data?.mockups || []);
+  const mockups = data?.mockups || [];
 
   // Handle mockup selection
   const handleSelect = (mockup: Mockup) => {

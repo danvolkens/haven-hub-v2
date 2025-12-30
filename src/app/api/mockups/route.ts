@@ -7,6 +7,7 @@ const querySchema = z.object({
   scene: z.string().optional(),
   status: z.string().optional(),
   assetId: z.string().uuid().optional(),
+  quoteId: z.string().uuid().optional(),
   limit: z.coerce.number().min(1).max(500).default(50),
   offset: z.coerce.number().min(0).default(0),
 });
@@ -17,16 +18,17 @@ export async function GET(request: NextRequest) {
     const userId = await getApiUserId();
 
     const searchParams = Object.fromEntries(request.nextUrl.searchParams);
-    const { scene, status, assetId, limit, offset } = querySchema.parse(searchParams);
+    const { scene, status, assetId, quoteId, limit, offset } = querySchema.parse(searchParams);
 
     let query = (supabase as any)
       .from('mockups')
       .select(`
         *,
-        assets (
+        assets!inner (
           id,
           file_url,
           format,
+          quote_id,
           quotes (
             id,
             text,
@@ -49,6 +51,11 @@ export async function GET(request: NextRequest) {
 
     if (assetId) {
       query = query.eq('asset_id', assetId);
+    }
+
+    // Filter by quoteId through the assets relation
+    if (quoteId) {
+      query = query.eq('assets.quote_id', quoteId);
     }
 
     const { data, error, count } = await query;
