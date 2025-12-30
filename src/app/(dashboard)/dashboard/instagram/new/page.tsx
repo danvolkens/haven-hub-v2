@@ -174,6 +174,7 @@ export default function NewInstagramPostPage() {
   const [caption, setCaption] = useState('');
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [hashtagInput, setHashtagInput] = useState('');
+  const [appliedSetId, setAppliedSetId] = useState<string | null>(null);
   const [hashtagsAsComment, setHashtagsAsComment] = useState(true);
   const [altText, setAltText] = useState('');
   const [productId, setProductId] = useState<string>('');
@@ -382,14 +383,10 @@ export default function NewInstagramPostPage() {
         .map(tag => tag.replace(/^#/, ''))
         .filter(tag => tag);
 
-      setHashtags(prevHashtags => {
-        const newTags = cleanTags.filter(tag => !prevHashtags.includes(tag));
-        if (newTags.length === 0) return prevHashtags;
-
-        return newTags.length + prevHashtags.length <= CHARACTER_LIMITS.hashtags
-          ? [...prevHashtags, ...newTags]
-          : [...prevHashtags, ...newTags.slice(0, CHARACTER_LIMITS.hashtags - prevHashtags.length)];
-      });
+      // Replace all hashtags with this set's tags (up to limit)
+      const newHashtags = cleanTags.slice(0, CHARACTER_LIMITS.hashtags);
+      setHashtags(newHashtags);
+      setAppliedSetId(setId);
     }
   };
 
@@ -885,7 +882,10 @@ export default function NewInstagramPostPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setHashtags([])}
+                      onClick={() => {
+                        setHashtags([]);
+                        setAppliedSetId(null);
+                      }}
                     >
                       Clear All
                     </Button>
@@ -902,13 +902,16 @@ export default function NewInstagramPostPage() {
                         <Button
                           key={set.id}
                           type="button"
-                          variant={hashtagData.recommended_set_id === set.id ? 'primary' : 'secondary'}
+                          variant={appliedSetId === set.id ? 'primary' : 'secondary'}
                           size="sm"
                           onClick={() => handleApplyRotationSet(set.id)}
                           title={set.description || `${set.hashtags.length} hashtags`}
                         >
+                          {appliedSetId === set.id && (
+                            <Check className="mr-1 h-3 w-3" />
+                          )}
                           {set.name}
-                          {hashtagData.recommended_set_id === set.id && (
+                          {hashtagData.recommended_set_id === set.id && appliedSetId !== set.id && (
                             <Sparkles className="ml-1 h-3 w-3" />
                           )}
                           <span className="ml-1 text-xs opacity-70">({set.hashtags.length})</span>
