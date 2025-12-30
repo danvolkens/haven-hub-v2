@@ -361,7 +361,9 @@ export default function AssetsPage() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['approved-items'] });
+      // Invalidate all related queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['approved-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['approved-mockups'] });
       queryClient.invalidateQueries({ queryKey: ['mockups'] });
       setDeleteItem(null);
       setPreviewItem(null);
