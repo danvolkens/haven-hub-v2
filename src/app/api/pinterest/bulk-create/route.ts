@@ -178,10 +178,39 @@ export async function POST(request: NextRequest) {
       return quote_ids.includes(quoteId) && isPinterestFormat(payload.format);
     });
 
+    // Filter mockups by their source asset's format (must be Pinterest-format)
+    // First get the mockup reference_ids to look up their source assets
+    const mockupReferenceIds = approvedMockups
+      .filter((item: any) => {
+        const payload = item.payload || {};
+        const quoteId = payload.quoteId || payload.quote_id;
+        return quote_ids.includes(quoteId);
+      })
+      .map((item: any) => item.reference_id)
+      .filter(Boolean);
+
+    // Query mockups with their source asset format
+    let pinterestMockupIds = new Set<string>();
+    if (mockupReferenceIds.length > 0) {
+      const { data: mockupsWithAssets } = await (supabase as any)
+        .from('mockups')
+        .select('id, asset_id, assets!inner(id, format)')
+        .in('id', mockupReferenceIds)
+        .eq('user_id', userId);
+
+      // Only include mockups with pinterest-format source assets
+      for (const mockup of mockupsWithAssets || []) {
+        const assetFormat = mockup.assets?.format;
+        if (isPinterestFormat(assetFormat)) {
+          pinterestMockupIds.add(mockup.id);
+        }
+      }
+    }
+
     const filteredMockups = approvedMockups.filter((item: any) => {
       const payload = item.payload || {};
       const quoteId = payload.quoteId || payload.quote_id;
-      return quote_ids.includes(quoteId);
+      return quote_ids.includes(quoteId) && pinterestMockupIds.has(item.reference_id);
     });
 
     // Combine into single list
@@ -577,12 +606,36 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Process approved mockups
+    // Process approved mockups - only include those with Pinterest-format source assets
+    // Get mockup reference_ids to check their source asset format
+    const mockupReferenceIds = (approvedMockups || [])
+      .map((item: any) => item.reference_id)
+      .filter(Boolean);
+
+    // Query mockups with their source asset format
+    let pinterestMockupIds = new Set<string>();
+    if (mockupReferenceIds.length > 0) {
+      const { data: mockupsWithAssets } = await (supabase as any)
+        .from('mockups')
+        .select('id, asset_id, assets!inner(id, format)')
+        .in('id', mockupReferenceIds)
+        .eq('user_id', userId);
+
+      // Filter to only mockups with pinterest-format source assets
+      for (const mockup of mockupsWithAssets || []) {
+        const assetFormat = mockup.assets?.format;
+        if (isPinterestFormat(assetFormat)) {
+          pinterestMockupIds.add(mockup.id);
+        }
+      }
+    }
+
     for (const item of approvedMockups || []) {
       const payload = item.payload || {};
       const quoteId = payload.quoteId || payload.quote_id;
 
-      if (!quoteId) continue;
+      // Only include mockups with Pinterest-format source assets
+      if (!quoteId || !pinterestMockupIds.has(item.reference_id)) continue;
 
       const imageUrl = payload.mockupUrl || payload.file_url || payload.thumbnailUrl;
 
