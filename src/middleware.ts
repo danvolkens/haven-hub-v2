@@ -45,7 +45,8 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
         "img-src 'self' data: https: blob:",
         "font-src 'self' data:",
         "media-src 'self' https://videos.pexels.com https://*.pexels.com https://*.creatomate.com https://*.epidemicsound.com blob:",
-        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.klaviyo.com https://api.pinterest.com https://www.pinterest.com https://*.pinterest.com https://static.cloudflareinsights.com https://api.pexels.com https://api.creatomate.com https://*.creatomate.com",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.klaviyo.com https://api.pinterest.com https://www.pinterest.com https://*.pinterest.com https://static.cloudflareinsights.com https://api.pexels.com https://api.creatomate.com https://*.creatomate.com https://www.facebook.com https://*.facebook.com https://graph.facebook.com https://graph.instagram.com https://*.instagram.com",
+        "frame-src 'self' https://www.facebook.com https://*.facebook.com",
         "frame-ancestors 'none'",
       ].join('; ')
     );
