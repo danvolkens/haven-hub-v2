@@ -14,6 +14,7 @@ import {
   Send,
   ChevronDown,
   ChevronUp,
+  FileText,
 } from 'lucide-react';
 import {
   Button,
@@ -143,6 +144,27 @@ export default function KlaviyoSetupPage() {
     },
     onError: (error) => {
       toast(error instanceof Error ? error.message : 'Failed to send test event', 'error');
+    },
+  });
+
+  // Email template seed status and mutation
+  const { data: seedStatus, isLoading: seedLoading, refetch: refetchSeed } = useQuery({
+    queryKey: ['email-seed-status'],
+    queryFn: () => api.get<{
+      status: Record<string, { total: number; existing: number; expected: number }>;
+      summary: { total_expected: number; total_existing: number; is_complete: boolean };
+    }>('/api/email-workflows/seed'),
+  });
+
+  const seedMutation = useMutation({
+    mutationFn: () => api.post('/api/email-workflows/seed', {}),
+    onSuccess: (data: any) => {
+      toast(data.message || 'Email templates have been seeded successfully.', 'success');
+      refetchSeed();
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Failed to seed email templates.', 'error');
     },
   });
 
@@ -278,6 +300,90 @@ export default function KlaviyoSetupPage() {
                     </Button>
                   </div>
                 )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Email Content Templates */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <FileText className={cn(
+                'h-5 w-5 mt-0.5',
+                seedStatus?.summary?.is_complete ? 'text-success' : 'text-[var(--color-text-tertiary)]'
+              )} />
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-body font-medium">Email Content Templates</h3>
+                  {seedLoading ? (
+                    <Badge variant="outline" className="text-xs">
+                      <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                      Loading...
+                    </Badge>
+                  ) : seedStatus?.summary?.is_complete ? (
+                    <Badge variant="success">Seeded</Badge>
+                  ) : (
+                    <Badge variant="warning">
+                      {seedStatus?.summary?.total_existing || 0} / {seedStatus?.summary?.total_expected || 0} templates
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-body-sm text-[var(--color-text-secondary)]">
+                  Haven & Hold branded email templates for all automation flows.
+                </p>
+
+                {/* Per-flow status breakdown */}
+                {seedStatus?.status && Object.keys(seedStatus.status).length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-caption text-[var(--color-text-tertiary)]">Template status by flow:</p>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {Object.entries(seedStatus.status).map(([flowName, flowStatus]) => (
+                        <div
+                          key={flowName}
+                          className="flex items-center justify-between p-2 rounded border bg-elevated/30"
+                        >
+                          <span className="text-body-sm capitalize">
+                            {flowName.replace(/_/g, ' ')}
+                          </span>
+                          <Badge
+                            variant={flowStatus.existing === flowStatus.expected ? 'success' : 'outline'}
+                            className="text-xs"
+                          >
+                            {flowStatus.existing} / {flowStatus.expected}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Seed button or complete message */}
+                {seedStatus?.summary?.is_complete ? (
+                  <div className="mt-3 flex items-center gap-2 text-success">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-body-sm">All templates ready</span>
+                  </div>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => seedMutation.mutate()}
+                    isLoading={seedMutation.isPending}
+                    leftIcon={<FileText className="h-4 w-4" />}
+                  >
+                    Seed All Email Templates
+                  </Button>
+                )}
+
+                {/* Info box */}
+                <div className="mt-4 p-3 rounded bg-elevated border">
+                  <p className="text-caption text-[var(--color-text-tertiary)]">
+                    <strong>What&apos;s included:</strong> Pre-designed email templates for Welcome, Quiz Results,
+                    Cart Abandonment, Post-Purchase, and Win-Back flows. Templates use Haven & Hold branding
+                    and are ready to use with Klaviyo.
+                  </p>
+                </div>
               </div>
             </div>
           </CardContent>
