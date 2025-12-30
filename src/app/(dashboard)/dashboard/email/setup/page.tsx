@@ -168,6 +168,18 @@ export default function KlaviyoSetupPage() {
     },
   });
 
+  const updateContentMutation = useMutation({
+    mutationFn: () => api.post('/email-workflows/seed', { update_content: true }),
+    onSuccess: (data: any) => {
+      toast(data.message || 'Email template content has been updated.', 'success');
+      refetchSeed();
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+    },
+    onError: (error: any) => {
+      toast(error.message || 'Failed to update template content.', 'error');
+    },
+  });
+
   const getStepIcon = (status: string) => {
     switch (status) {
       case 'complete':
@@ -360,9 +372,20 @@ export default function KlaviyoSetupPage() {
 
                 {/* Seed button or complete message */}
                 {seedStatus?.summary?.is_complete ? (
-                  <div className="mt-3 flex items-center gap-2 text-success">
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="text-body-sm">All templates ready</span>
+                  <div className="mt-3 flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-success">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-body-sm">All templates ready</span>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => updateContentMutation.mutate()}
+                      isLoading={updateContentMutation.isPending}
+                      leftIcon={<RefreshCw className="h-4 w-4" />}
+                    >
+                      Refresh Content
+                    </Button>
                   </div>
                 ) : (
                   <Button
