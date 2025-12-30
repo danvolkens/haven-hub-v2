@@ -181,8 +181,18 @@ export async function POST(request: NextRequest) {
         delayHours: config.delays,
       });
     } else {
+      // Look up the metric ID by name
+      const metricName = config.trigger_metric || config.name;
+      const metricId = await klaviyo.getMetricIdByName(metricName);
+
+      if (!metricId) {
+        return NextResponse.json({
+          error: `Metric "${metricName}" not found in Klaviyo. Please create this metric first by triggering the event.`
+        }, { status: 400 });
+      }
+
       flowDefinition = klaviyo.buildMetricFlowDefinition({
-        metricName: config.trigger_metric || config.name,
+        metricId,
         templateIds,
         fromEmail: from_email,
         fromLabel: from_label,

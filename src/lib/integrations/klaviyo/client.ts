@@ -61,32 +61,30 @@ interface KlaviyoFlowAction {
     message?: {
       from_email: string;
       from_label: string;
-      reply_to_email?: string;
-      subject: string;
+      reply_to_email: string;
+      cc_email: string;
+      bcc_email: string;
+      subject_line: string;
       preview_text?: string;
       template_id: string;
     };
-    delay?: {
-      unit: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks';
-      value: number;
-    };
+    // For time-delay: value in seconds at top level
+    value?: number;
     condition?: any;
   };
   links: {
-    next?: string[];
-    next_if_true?: string[];
-    next_if_false?: string[];
+    next?: string;
+    next_if_true?: string;
+    next_if_false?: string;
   };
 }
 
 interface KlaviyoFlowDefinition {
   triggers: Array<{
     type: 'list' | 'metric' | 'date';
-    data: {
-      list_id?: string;
-      metric_name?: string;
-      date_property?: string;
-    };
+    list_id?: string;
+    metric_id?: string;
+    date_property?: string;
     filter?: any;
   }>;
   profile_filter?: any;
@@ -1132,6 +1130,7 @@ export class KlaviyoClient {
   /**
    * Create a new flow from a definition
    * Note: Rate limited to 100 creations per day
+   * Flows are always created in draft status
    */
   async createFlow(params: CreateFlowRequest): Promise<{
     id: string;
@@ -1143,7 +1142,6 @@ export class KlaviyoClient {
         type: 'flow',
         attributes: {
           name: params.name,
-          status: params.status || 'draft',
           definition: params.definition,
         },
       },
@@ -1160,7 +1158,7 @@ export class KlaviyoClient {
     return {
       id: response.data.id,
       name: response.data.attributes.name,
-      status: response.data.attributes.status,
+      status: response.data.attributes.status || 'draft',
     };
   }
 
@@ -1207,23 +1205,22 @@ export class KlaviyoClient {
       // Add delay before emails 2, 3, 4
       if (index > 0) {
         const delayId = `delay_${index}`;
+        const delayHours = params.delayHours[index] - params.delayHours[index - 1];
         actions.push({
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            delay: {
-              unit: 'hours',
-              value: params.delayHours[index] - params.delayHours[index - 1],
-            },
+            value: delayHours * 3600, // Convert hours to seconds
           },
           links: {
-            next: [`email_${index}`],
+            next: `email_${index}`,
           },
         });
       }
 
       // Add email action
       const emailId = `email_${index}`;
+      const hasNext = index < params.templateIds.length - 1;
       actions.push({
         temporary_id: emailId,
         type: 'send-email',
@@ -1231,26 +1228,27 @@ export class KlaviyoClient {
           message: {
             from_email: params.fromEmail,
             from_label: params.fromLabel,
-            subject: params.subjects[index],
+            reply_to_email: params.fromEmail,
+            cc_email: '',
+            bcc_email: '',
+            subject_line: params.subjects[index],
             preview_text: params.previewTexts[index],
             template_id: templateId,
           },
         },
-        links: {
-          next: index < params.templateIds.length - 1 ? [`delay_${index + 1}`] : [],
-        },
+        links: hasNext ? { next: `delay_${index + 1}` } : {},
       });
     });
 
     // Fix first email to point to first delay
     if (actions.length > 1) {
-      actions[0].links.next = ['delay_1'];
+      actions[0].links.next = 'delay_1';
     }
 
     return {
       triggers: [{
         type: 'list',
-        data: { list_id: params.listId },
+        list_id: params.listId,
       }],
       entry_action_id: 'email_0',
       actions,
@@ -1259,9 +1257,11 @@ export class KlaviyoClient {
 
   /**
    * Build a flow definition for metric-triggered flows (Quiz, Cart, Purchase, Win-back)
+   * Note: metric triggers require metric_id, not metric_name.
+   * We need to look up the metric first.
    */
   buildMetricFlowDefinition(params: {
-    metricName: string;
+    metricId: string;
     templateIds: string[];
     fromEmail: string;
     fromLabel: string;
@@ -1277,17 +1277,15 @@ export class KlaviyoClient {
       if (params.delayHours[index] > 0) {
         const delayId = `delay_${index}`;
         const previousDelay = index > 0 ? params.delayHours[index - 1] : 0;
+        const delayHours = params.delayHours[index] - previousDelay;
         actions.push({
           temporary_id: delayId,
           type: 'time-delay',
           data: {
-            delay: {
-              unit: 'hours',
-              value: params.delayHours[index] - previousDelay,
-            },
+            value: delayHours * 3600, // Convert hours to seconds
           },
           links: {
-            next: [`email_${index}`],
+            next: `email_${index}`,
           },
         });
       }
@@ -1304,14 +1302,17 @@ export class KlaviyoClient {
           message: {
             from_email: params.fromEmail,
             from_label: params.fromLabel,
-            subject: params.subjects[index],
+            reply_to_email: params.fromEmail,
+            cc_email: '',
+            bcc_email: '',
+            subject_line: params.subjects[index],
             preview_text: params.previewTexts[index],
             template_id: templateId,
           },
         },
-        links: {
-          next: hasNextEmail ? [nextDelayExists ? `delay_${index + 1}` : `email_${index + 1}`] : [],
-        },
+        links: hasNextEmail
+          ? { next: nextDelayExists ? `delay_${index + 1}` : `email_${index + 1}` }
+          : {},
       });
     });
 
@@ -1321,10 +1322,19 @@ export class KlaviyoClient {
     return {
       triggers: [{
         type: 'metric',
-        data: { metric_name: params.metricName },
+        metric_id: params.metricId,
       }],
       entry_action_id: entryActionId,
       actions,
     };
+  }
+
+  /**
+   * Get metric ID by name (needed for metric-triggered flows)
+   */
+  async getMetricIdByName(metricName: string): Promise<string | null> {
+    const metrics = await this.getMetrics();
+    const metric = metrics.find(m => m.name.toLowerCase() === metricName.toLowerCase());
+    return metric?.id || null;
   }
 }
