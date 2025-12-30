@@ -27,7 +27,6 @@ import {
   Link as LinkIcon,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import Link from 'next/link';
 
 // ============================================================================
 // Types
@@ -113,12 +112,12 @@ export default function InstagramAccountPage() {
                   {error?.message || 'Connect your Instagram Business account to view profile and media.'}
                 </p>
               </div>
-              <Link href="/api/integrations/instagram/install">
+              <a href="/api/integrations/instagram/install">
                 <Button className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
                   <Instagram className="mr-2 h-5 w-5" />
                   Connect Instagram
                 </Button>
-              </Link>
+              </a>
             </div>
           </CardContent>
         </Card>

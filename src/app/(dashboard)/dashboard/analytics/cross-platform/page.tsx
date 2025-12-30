@@ -88,12 +88,12 @@ export default async function CrossPlatformAnalyticsPage() {
             Connect TikTok and Instagram to track content performance and discover winners
           </p>
           <div className="flex justify-center gap-4">
-            <Link href="/api/integrations/tiktok/install">
+            <a href="/api/integrations/tiktok/install">
               <Button>Connect TikTok</Button>
-            </Link>
-            <Link href="/api/integrations/instagram/install">
+            </a>
+            <a href="/api/integrations/instagram/install">
               <Button variant="secondary">Connect Instagram</Button>
-            </Link>
+            </a>
           </div>
         </Card>
       </div>
