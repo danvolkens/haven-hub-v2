@@ -40,9 +40,20 @@ export class InstagramClient {
    * Get connected Facebook Pages that have Instagram accounts
    */
   async getPages(): Promise<InstagramPage[]> {
+    // First check what permissions the token has
+    try {
+      const debugUrl = `${this.baseUrl}/me/permissions?access_token=${this.accessToken}`;
+      const debugRes = await fetch(debugUrl);
+      const debugData = await debugRes.json();
+      console.log('Token permissions:', JSON.stringify(debugData));
+    } catch (e) {
+      console.log('Failed to get permissions:', e);
+    }
+
     const response = await this.request<InstagramPagesResponse>('/me/accounts', {
       fields: 'id,name,instagram_business_account{id,name,username,profile_picture_url,followers_count,media_count}',
     });
+    console.log('Pages API raw response:', JSON.stringify(response));
     return response.data || [];
   }
 
