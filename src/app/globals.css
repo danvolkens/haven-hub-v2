@@ -106,9 +106,10 @@
   border-color: var(--color-border);
 }
 
+html,
 body {
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 h1 {
