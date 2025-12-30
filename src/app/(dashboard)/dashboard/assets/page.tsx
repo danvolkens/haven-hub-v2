@@ -695,7 +695,7 @@ export default function AssetsPage() {
                   >
                     <option value="">All Sizes</option>
                     <option value="pinterest">Pinterest (1000×1500)</option>
-                    <option value="instagram_post">Instagram Post (1080×1080)</option>
+                    <option value="instagram_post">Instagram Post (1080×1350)</option>
                     <option value="instagram_story">Instagram Story (1080×1920)</option>
                   </select>
                 </div>
