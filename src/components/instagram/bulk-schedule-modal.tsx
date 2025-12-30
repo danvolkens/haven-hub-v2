@@ -32,7 +32,8 @@ import {
 // Types
 // ============================================================================
 
-type ContentPillar = 'inspiration' | 'education' | 'engagement' | 'promotion';
+// Must match database constraint: product_showcase, brand_story, educational, community
+type ContentPillar = 'product_showcase' | 'brand_story' | 'educational' | 'community';
 type ScheduleMode = 'auto' | 'custom';
 
 interface QuoteOption {
@@ -89,17 +90,17 @@ interface BulkScheduleModalProps {
 // ============================================================================
 
 const PILLAR_TARGETS: Record<ContentPillar, number> = {
-  inspiration: 40,
-  education: 20,
-  engagement: 20,
-  promotion: 20,
+  product_showcase: 40,
+  brand_story: 20,
+  educational: 20,
+  community: 20,
 };
 
 const PILLAR_COLORS: Record<ContentPillar, string> = {
-  inspiration: 'bg-grounding text-charcoal',
-  education: 'bg-wholeness text-charcoal',
-  engagement: 'bg-growth text-charcoal',
-  promotion: 'bg-sage text-white',
+  product_showcase: 'bg-grounding text-charcoal',
+  brand_story: 'bg-wholeness text-charcoal',
+  educational: 'bg-growth text-charcoal',
+  community: 'bg-sage text-white',
 };
 
 // ============================================================================
@@ -107,19 +108,19 @@ const PILLAR_COLORS: Record<ContentPillar, string> = {
 // ============================================================================
 
 const mockQuotes: QuoteOption[] = [
-  { id: '1', text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs', collection: 'grounding', content_pillar: 'inspiration', video_status: 'ready' },
-  { id: '2', text: 'In the middle of difficulty lies opportunity.', author: 'Einstein', collection: 'wholeness', content_pillar: 'education', video_status: 'ready' },
-  { id: '3', text: 'You are braver than you believe.', author: 'A.A. Milne', collection: 'growth', content_pillar: 'engagement', video_status: 'pending' },
-  { id: '4', text: 'Every moment is a fresh beginning.', author: 'T.S. Eliot', collection: 'grounding', content_pillar: 'inspiration', video_status: 'ready' },
-  { id: '5', text: 'Believe you can and you\'re halfway there.', author: 'Roosevelt', collection: 'growth', content_pillar: 'engagement', video_status: 'none' },
-  { id: '6', text: 'The best time to plant a tree was 20 years ago.', author: 'Proverb', collection: 'wholeness', content_pillar: 'education', video_status: 'ready' },
+  { id: '1', text: 'The only way to do great work is to love what you do.', author: 'Steve Jobs', collection: 'grounding', content_pillar: 'product_showcase', video_status: 'ready' },
+  { id: '2', text: 'In the middle of difficulty lies opportunity.', author: 'Einstein', collection: 'wholeness', content_pillar: 'educational', video_status: 'ready' },
+  { id: '3', text: 'You are braver than you believe.', author: 'A.A. Milne', collection: 'growth', content_pillar: 'community', video_status: 'pending' },
+  { id: '4', text: 'Every moment is a fresh beginning.', author: 'T.S. Eliot', collection: 'grounding', content_pillar: 'brand_story', video_status: 'ready' },
+  { id: '5', text: 'Believe you can and you\'re halfway there.', author: 'Roosevelt', collection: 'growth', content_pillar: 'community', video_status: 'none' },
+  { id: '6', text: 'The best time to plant a tree was 20 years ago.', author: 'Proverb', collection: 'wholeness', content_pillar: 'educational', video_status: 'ready' },
 ];
 
 const mockTemplates: CaptionTemplate[] = [
-  { id: 'auto', name: 'Auto-select by collection', content_pillar: 'inspiration' },
-  { id: '1', name: 'Monday Motivation', content_pillar: 'inspiration' },
-  { id: '2', name: 'Quote of the Day', content_pillar: 'education' },
-  { id: '3', name: 'Engagement Ask', content_pillar: 'engagement' },
+  { id: 'auto', name: 'Auto-select by collection', content_pillar: 'product_showcase' },
+  { id: '1', name: 'Monday Motivation', content_pillar: 'brand_story' },
+  { id: '2', name: 'Quote of the Day', content_pillar: 'educational' },
+  { id: '3', name: 'Engagement Ask', content_pillar: 'community' },
 ];
 
 const mockCampaigns: Campaign[] = [
@@ -128,13 +129,17 @@ const mockCampaigns: Campaign[] = [
   { id: '2', name: 'Valentine\'s Day' },
 ];
 
-const mockOptimalSlots: OptimalSlot[] = [
-  { datetime: new Date(Date.now() + 1000 * 60 * 60 * 3).toISOString(), engagement_rate: 4.2, day_theme: 'Motivation Monday' },
-  { datetime: new Date(Date.now() + 1000 * 60 * 60 * 27).toISOString(), engagement_rate: 3.8, day_theme: 'Educational' },
-  { datetime: new Date(Date.now() + 1000 * 60 * 60 * 51).toISOString(), engagement_rate: 4.5, day_theme: 'Wisdom Wednesday' },
-  { datetime: new Date(Date.now() + 1000 * 60 * 60 * 75).toISOString(), engagement_rate: 3.9, day_theme: 'Throwback Thursday' },
-  { datetime: new Date(Date.now() + 1000 * 60 * 60 * 99).toISOString(), engagement_rate: 5.1, day_theme: 'Feel-Good Friday' },
-];
+// Generate mock optimal slots client-side only to avoid hydration mismatch
+function getMockOptimalSlots(): OptimalSlot[] {
+  const now = Date.now();
+  return [
+    { datetime: new Date(now + 1000 * 60 * 60 * 3).toISOString(), engagement_rate: 4.2, day_theme: 'Motivation Monday' },
+    { datetime: new Date(now + 1000 * 60 * 60 * 27).toISOString(), engagement_rate: 3.8, day_theme: 'Educational' },
+    { datetime: new Date(now + 1000 * 60 * 60 * 51).toISOString(), engagement_rate: 4.5, day_theme: 'Wisdom Wednesday' },
+    { datetime: new Date(now + 1000 * 60 * 60 * 75).toISOString(), engagement_rate: 3.9, day_theme: 'Throwback Thursday' },
+    { datetime: new Date(now + 1000 * 60 * 60 * 99).toISOString(), engagement_rate: 5.1, day_theme: 'Feel-Good Friday' },
+  ];
+}
 
 // ============================================================================
 // Helper Functions
@@ -153,10 +158,10 @@ function formatDateTime(dateString: string): string {
 
 function calculateMix(items: ScheduledItem[]): PillarMix[] {
   const counts: Record<ContentPillar, number> = {
-    inspiration: 0,
-    education: 0,
-    engagement: 0,
-    promotion: 0,
+    product_showcase: 0,
+    brand_story: 0,
+    educational: 0,
+    community: 0,
   };
 
   items.forEach((item) => {
@@ -191,7 +196,7 @@ function generateSchedule(
       quote_id: quote.id,
       quote_text: quote.text,
       scheduled_at: slots[idx % slots.length]?.datetime || new Date().toISOString(),
-      content_pillar: quote.content_pillar || 'inspiration',
+      content_pillar: quote.content_pillar || 'product_showcase',
       post_type: quote.video_status === 'ready' ? 'reel' : 'feed',
     }));
   }
@@ -213,7 +218,7 @@ function generateSchedule(
       quote_id: quote.id,
       quote_text: quote.text,
       scheduled_at: postDate.toISOString(),
-      content_pillar: quote.content_pillar || 'inspiration',
+      content_pillar: quote.content_pillar || 'product_showcase',
       post_type: quote.video_status === 'ready' ? 'reel' : 'feed',
     });
 
@@ -257,18 +262,22 @@ export function BulkScheduleModal({
   const [shoppingTags, setShoppingTags] = useState(false);
   const [campaignId, setCampaignId] = useState('');
 
-  // Fetch quotes
-  const { data: quotes = mockQuotes, isLoading: loadingQuotes } = useQuery({
+  // Fetch quotes - 'active' is the correct status, not 'approved'
+  const { data: quotesResponse, isLoading: loadingQuotes } = useQuery({
     queryKey: ['schedulable-quotes'],
     queryFn: async () => {
-      const res = await fetch('/api/quotes?status=approved&has_asset=true');
+      const res = await fetch('/api/quotes?status=active&limit=100');
       if (!res.ok) throw new Error('Failed to fetch quotes');
       return res.json();
     },
   });
+  // Handle both array response and { quotes: [] } response format
+  const quotes: QuoteOption[] = Array.isArray(quotesResponse)
+    ? quotesResponse
+    : quotesResponse?.quotes || mockQuotes;
 
-  // Fetch optimal slots
-  const { data: optimalSlots = mockOptimalSlots } = useQuery({
+  // Fetch optimal slots - use function for fallback to avoid hydration issues
+  const { data: optimalSlotsData } = useQuery({
     queryKey: ['optimal-slots', 'bulk'],
     queryFn: async () => {
       const res = await fetch('/api/instagram/optimal-slots?count=20');
@@ -276,6 +285,7 @@ export function BulkScheduleModal({
       return res.json();
     },
   });
+  const optimalSlots: OptimalSlot[] = optimalSlotsData || getMockOptimalSlots();
 
   // Fetch templates
   const { data: templates = mockTemplates } = useQuery({

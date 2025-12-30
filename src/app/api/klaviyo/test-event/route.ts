@@ -36,40 +36,58 @@ export async function POST(request: NextRequest) {
 
     switch (eventType) {
       case 'quiz_completed':
-        await client.trackQuizComplete(
-          testEmail,
-          {
-            grounding: 0.6,
-            wholeness: 0.25,
-            growth: 0.15,
-            completed_at: timestamp,
+        // Use createEvent directly to include URL property
+        await client.createEvent({
+          metric: { name: 'Quiz Completed' },
+          profile: { email: testEmail },
+          properties: {
+            quiz_results: {
+              grounding: 0.6,
+              wholeness: 0.25,
+              growth: 0.15,
+            },
+            quiz_result: 'grounding',
+            recommended_collection: 'grounding',
+            quiz_completed_at: timestamp,
+            url: 'https://havenandhold.com/collections/grounding',
           },
-          'grounding'
-        );
+        });
         break;
 
       case 'cart_abandoned':
-        await client.trackCartAbandonment(
-          testEmail,
-          `test_cart_${Date.now()}`,
-          [
-            { name: 'Test Quote Print - Grounding', quantity: 1, price: 29.99 },
-            { name: 'Test Frame - Natural Oak', quantity: 1, price: 15.00 },
-          ],
-          44.99
-        );
+        await client.createEvent({
+          metric: { name: 'Cart Abandoned' },
+          profile: { email: testEmail },
+          properties: {
+            cart_id: `test_cart_${Date.now()}`,
+            items: [
+              { name: 'Test Quote Print - Grounding', quantity: 1, price: 29.99 },
+              { name: 'Test Frame - Natural Oak', quantity: 1, price: 15.00 },
+            ],
+            cart_value: 44.99,
+            abandoned_at: timestamp,
+            checkout_url: 'https://havenandhold.com/cart',
+          },
+          unique_id: `cart_${Date.now()}`,
+        });
         break;
 
       case 'placed_order':
-        await client.trackPurchase(
-          testEmail,
-          `test_order_${Date.now()}`,
-          59.99,
-          [
-            { name: 'Quote Print - Find Your Center', quantity: 1, price: 34.99 },
-            { name: 'Premium Frame - Walnut', quantity: 1, price: 25.00 },
-          ]
-        );
+        await client.createEvent({
+          metric: { name: 'Placed Order' },
+          profile: { email: testEmail },
+          properties: {
+            order_id: `test_order_${Date.now()}`,
+            items: [
+              { name: 'Quote Print - Find Your Center', quantity: 1, price: 34.99 },
+              { name: 'Premium Frame - Walnut', quantity: 1, price: 25.00 },
+            ],
+            item_count: 2,
+            download_url: 'https://havenandhold.com/account',
+          },
+          value: 59.99,
+          unique_id: `order_${Date.now()}`,
+        });
         break;
 
       case 'pin_save':

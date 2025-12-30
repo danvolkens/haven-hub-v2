@@ -38,13 +38,15 @@ export async function GET(request: NextRequest) {
     }
 
     // If no templates found, return default hardcoded templates
+    // Default templates use correct DB constraint values:
+    // product_showcase, brand_story, educational, community
     if (!templates || templates.length === 0) {
       const defaultTemplates = [
         {
           id: 'default-inspiration',
           name: 'Inspiration Quote',
           template_type: 'feed',
-          content_pillar: 'inspiration',
+          content_pillar: 'product_showcase',
           caption_template: '✨ {quote}\n\n{meaning}\n\nDouble tap if this resonates with you! 💫\n\n.',
           hashtag_group_ids: [],
           is_active: true,
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest) {
           id: 'default-motivation',
           name: 'Monday Motivation',
           template_type: 'feed',
-          content_pillar: 'inspiration',
+          content_pillar: 'brand_story',
           caption_template: '💪 Start your week with intention:\n\n"{quote}"\n— {author}\n\nWhat\'s your goal for this week? Share below! 👇\n\n.',
           hashtag_group_ids: [],
           is_active: true,
@@ -64,7 +66,7 @@ export async function GET(request: NextRequest) {
           id: 'default-education',
           name: 'Quote of the Day',
           template_type: 'feed',
-          content_pillar: 'education',
+          content_pillar: 'educational',
           caption_template: '📖 Today\'s wisdom:\n\n"{quote}"\n— {author}\n\n{cta}\n\n.',
           hashtag_group_ids: [],
           is_active: true,
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
           id: 'default-engagement',
           name: 'Engagement Ask',
           template_type: 'feed',
-          content_pillar: 'engagement',
+          content_pillar: 'community',
           caption_template: '💭 What does this quote mean to you?\n\n"{quote}"\n\nShare your thoughts in the comments! ⬇️\n\n.',
           hashtag_group_ids: [],
           is_active: true,
@@ -84,7 +86,7 @@ export async function GET(request: NextRequest) {
           id: 'default-reel',
           name: 'Reel Quote',
           template_type: 'reel',
-          content_pillar: 'inspiration',
+          content_pillar: 'product_showcase',
           caption_template: '🎬 Words to live by:\n\n"{quote}"\n\nSave this for when you need a reminder 📌\n\n.',
           hashtag_group_ids: [],
           is_active: true,
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
           id: 'default-story',
           name: 'Story Quote',
           template_type: 'story',
-          content_pillar: 'engagement',
+          content_pillar: 'community',
           caption_template: 'Swipe up to shop this quote! ⬆️',
           hashtag_group_ids: [],
           is_active: true,
