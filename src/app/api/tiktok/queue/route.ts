@@ -27,7 +27,7 @@ export async function GET(request: Request) {
         *,
         quotes:quote_id (
           text,
-          author,
+          attribution,
           collection
         )
       `)

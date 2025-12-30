@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     // Get approved quotes with video assets ready
     const { data: quotes } = await (supabase as any)
       .from('quotes')
-      .select('id, text, author, collection')
+      .select('id, text, attribution, collection')
       .eq('user_id', user.id)
       .eq('status', 'approved')
       .limit(20);

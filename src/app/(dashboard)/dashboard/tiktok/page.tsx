@@ -63,7 +63,7 @@ interface TikTokQueueItem {
   shares?: number;
   quotes?: {
     text: string;
-    author: string;
+    attribution: string;
     collection: string;
   };
   video_url?: string;
@@ -227,7 +227,13 @@ export default function TikTokQueuePage() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast(data.message || 'Video hooks library seeded successfully.', 'success');
+      // Check for errors in results
+      if (data.results?.errors?.length > 0) {
+        console.error('Hook seed errors:', data.results.errors);
+        toast(`${data.message} (${data.results.errors.length} errors - see console)`, 'error');
+      } else {
+        toast(data.message || 'Video hooks library seeded successfully.', 'success');
+      }
       refetchHooks();
     },
     onError: (error: Error) => {

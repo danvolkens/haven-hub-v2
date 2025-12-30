@@ -160,43 +160,92 @@ export async function POST(request: NextRequest) {
       errors: [] as string[],
     };
 
-    for (const hook of VIDEO_HOOKS) {
-      // Check if exists (by hook_text to avoid duplicates)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing } = await (supabase as any)
-        .from('video_hooks')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('hook_text', hook.hook_text)
-        .single();
+    console.log(`[Hooks Seed] Starting to seed ${VIDEO_HOOKS.length} hooks for user ${user.id}`);
 
-      if (existing) {
-        results.skipped++;
-        continue;
+    // First, check existing user hooks to get a count
+    const { count: existingCount } = await (supabase as any)
+      .from('video_hooks')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+
+    console.log(`[Hooks Seed] User has ${existingCount || 0} existing hooks`);
+
+    // Batch check existing hook texts
+    const hookTexts = VIDEO_HOOKS.map(h => h.hook_text);
+    const { data: existingHooks } = await (supabase as any)
+      .from('video_hooks')
+      .select('hook_text')
+      .eq('user_id', user.id)
+      .in('hook_text', hookTexts);
+
+    const existingTexts = new Set((existingHooks || []).map((h: { hook_text: string }) => h.hook_text));
+    console.log(`[Hooks Seed] Found ${existingTexts.size} matching hooks to skip`);
+
+    // Filter to only new hooks
+    const newHooks = VIDEO_HOOKS.filter(h => !existingTexts.has(h.hook_text));
+    results.skipped = VIDEO_HOOKS.length - newHooks.length;
+
+    console.log(`[Hooks Seed] Will insert ${newHooks.length} new hooks`);
+
+    if (newHooks.length === 0) {
+      return NextResponse.json({
+        message: `All ${VIDEO_HOOKS.length} hooks already exist`,
+        results: { ...results, created: 0 },
+      });
+    }
+
+    // Batch insert all new hooks at once
+    const hooksToInsert = newHooks.map(hook => ({
+      user_id: user.id,
+      hook_text: hook.hook_text,
+      hook_type: hook.hook_type,
+      content_types: hook.content_types,
+      collections: hook.collections,
+      platforms: hook.platforms,
+      usage_count: 0,
+      avg_completion_rate: 50,
+      last_used_at: null,
+      is_active: true,
+      is_system: false,
+    }));
+
+    const { data: insertedData, error: insertError } = await (supabase as any)
+      .from('video_hooks')
+      .insert(hooksToInsert)
+      .select('id');
+
+    if (insertError) {
+      console.error('[Hooks Seed] Batch insert error:', insertError);
+      results.errors.push(`Batch insert failed: ${insertError.message} (code: ${insertError.code})`);
+
+      // Try inserting one by one to identify specific failures
+      if (insertError.code === '23505') { // Unique violation
+        results.errors.push('Unique constraint violation - trying individual inserts');
+        for (const hook of newHooks.slice(0, 5)) { // Try first 5 to diagnose
+          const { error: singleError } = await (supabase as any)
+            .from('video_hooks')
+            .insert({
+              user_id: user.id,
+              hook_text: hook.hook_text,
+              hook_type: hook.hook_type,
+              content_types: hook.content_types,
+              collections: hook.collections,
+              platforms: hook.platforms,
+              usage_count: 0,
+              avg_completion_rate: 50,
+              is_active: true,
+              is_system: false,
+            });
+          if (singleError) {
+            results.errors.push(`"${hook.hook_text.substring(0, 25)}...": ${singleError.message}`);
+          } else {
+            results.created++;
+          }
+        }
       }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (supabase as any)
-        .from('video_hooks')
-        .insert({
-          user_id: user.id,
-          hook_text: hook.hook_text,
-          hook_type: hook.hook_type,
-          content_types: hook.content_types,
-          collections: hook.collections,
-          platforms: hook.platforms,
-          usage_count: 0,
-          avg_completion_rate: 50, // Default neutral rate
-          last_used_at: null,
-          is_active: true,
-          is_system: false,
-        });
-
-      if (error) {
-        results.errors.push(`${hook.hook_text.substring(0, 30)}...: ${error.message}`);
-      } else {
-        results.created++;
-      }
+    } else {
+      results.created = insertedData?.length || newHooks.length;
+      console.log(`[Hooks Seed] Successfully inserted ${results.created} hooks`);
     }
 
     return NextResponse.json({
@@ -205,7 +254,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error seeding video hooks:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : String(error),
+    }, { status: 500 });
   }
 }
 
