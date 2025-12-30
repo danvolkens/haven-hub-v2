@@ -155,7 +155,7 @@ export function QuizForm({ quiz }: Props) {
             <h1
               style={{
                 fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                fontSize: '1.75em',
+                fontSize: '1.25rem',
                 fontWeight: 400,
                 lineHeight: 1.25,
                 color: '#2C3E50',
@@ -168,7 +168,7 @@ export function QuizForm({ quiz }: Props) {
             <p
               style={{
                 fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                fontSize: '1.125em',
+                fontSize: '1rem',
                 fontWeight: 400,
                 lineHeight: 1.5,
                 color: '#5D6D7E',
@@ -186,7 +186,7 @@ export function QuizForm({ quiz }: Props) {
                   padding: '0.75rem 1.5rem',
                   borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
+                  fontSize: '1rem',
                   fontWeight: 500,
                   color: '#FFFFFF',
                   background: '#2C3E50',
@@ -260,7 +260,7 @@ export function QuizForm({ quiz }: Props) {
             <h2
               style={{
                 fontFamily: 'var(--font-serif), "Crimson Text", serif',
-                fontSize: '1.75em',
+                fontSize: '1.25rem',
                 fontWeight: 400,
                 lineHeight: 1.25,
                 color: '#2C3E50',
@@ -273,7 +273,7 @@ export function QuizForm({ quiz }: Props) {
             <p
               style={{
                 fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                fontSize: '1.125em',
+                fontSize: '1rem',
                 fontWeight: 400,
                 lineHeight: 1.5,
                 color: '#5D6D7E',
@@ -295,7 +295,7 @@ export function QuizForm({ quiz }: Props) {
                   padding: '0.75rem 1rem',
                   borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
+                  fontSize: '1rem',
                   fontWeight: 400,
                   lineHeight: 1.5,
                   color: '#2C3E50',
@@ -321,7 +321,7 @@ export function QuizForm({ quiz }: Props) {
                   padding: '0.75rem 1.5rem',
                   borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
+                  fontSize: '1rem',
                   fontWeight: 500,
                   color: '#FFFFFF',
                   background: '#2C3E50',
@@ -348,7 +348,7 @@ export function QuizForm({ quiz }: Props) {
         className="min-h-screen flex items-center justify-center"
         style={{
           background: '#FAF8F5',
-          fontSize: '18pt',
+          fontSize: '1rem',
         }}
       >
         <p
@@ -369,7 +369,7 @@ export function QuizForm({ quiz }: Props) {
       style={{
         background: '#FAF8F5',
         position: 'relative',
-        fontSize: '18pt',
+        fontSize: '1rem',
       }}
     >
       <div
@@ -440,7 +440,7 @@ export function QuizForm({ quiz }: Props) {
           <h2
             style={{
               fontFamily: 'var(--font-serif), "Crimson Text", serif',
-              fontSize: '1.75em',
+              fontSize: '1.25rem',
               fontWeight: 400,
               lineHeight: 1.25,
               color: '#2C3E50',
@@ -462,7 +462,7 @@ export function QuizForm({ quiz }: Props) {
                   textAlign: 'left',
                   borderRadius: '0.25rem',
                   fontFamily: 'var(--font-sans), "Figtree", system-ui, sans-serif',
-                  fontSize: '1.125em',
+                  fontSize: '1rem',
                   fontWeight: 400,
                   lineHeight: 1.5,
                   color: '#2C3E50',
