@@ -153,11 +153,11 @@ export default function KlaviyoSetupPage() {
     queryFn: () => api.get<{
       status: Record<string, { total: number; existing: number; expected: number }>;
       summary: { total_expected: number; total_existing: number; is_complete: boolean };
-    }>('/api/email-workflows/seed'),
+    }>('/email-workflows/seed'),
   });
 
   const seedMutation = useMutation({
-    mutationFn: () => api.post('/api/email-workflows/seed', {}),
+    mutationFn: () => api.post('/email-workflows/seed', {}),
     onSuccess: (data: any) => {
       toast(data.message || 'Email templates have been seeded successfully.', 'success');
       refetchSeed();
