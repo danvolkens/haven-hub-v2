@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
 
     // Get published pins that can be promoted
+    // Pins table has its own image_url column - use that directly
     const { data: pins, error } = await (supabase as any)
       .from('pins')
       .select(`
@@ -21,10 +22,7 @@ export async function GET(request: NextRequest) {
         title,
         description,
         status,
-        assets:asset_id (
-          file_url,
-          thumbnail_url
-        )
+        image_url
       `)
       .eq('user_id', user.id)
       .eq('status', 'published')
@@ -38,12 +36,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ pins: [] });
     }
 
-    // Transform to expected format
+    // Transform to expected format - use pin's direct image_url field
     const transformedPins = (pins || []).map((pin: any) => ({
       id: pin.id,
       pinterest_pin_id: pin.pinterest_pin_id,
       title: pin.title || 'Untitled Pin',
-      image_url: pin.assets?.thumbnail_url || pin.assets?.file_url || '',
+      image_url: pin.image_url || '',
       status: pin.status,
     }));
 
