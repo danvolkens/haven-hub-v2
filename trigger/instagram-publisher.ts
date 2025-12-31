@@ -82,7 +82,7 @@ export const instagramPublisherTask = schedules.task({
         scheduled_at,
         retry_count,
         status,
-        assets (url),
+        assets:assets!instagram_scheduled_posts_primary_asset_id_fkey (url),
         carousel_items (asset_url, media_type, position)
       `
       )
@@ -355,7 +355,7 @@ export const instagramPublishNowTask = task({
         scheduled_at,
         retry_count,
         status,
-        assets (url)
+        assets:assets!instagram_scheduled_posts_primary_asset_id_fkey (url)
       `
       )
       .eq('id', payload.postId)
