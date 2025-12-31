@@ -100,6 +100,47 @@ export async function updateLinkPositions(
   }
 }
 
+export async function updateLink(
+  userId: string,
+  linkId: string,
+  updates: Partial<LinkInBioLink>
+): Promise<LinkInBioLink> {
+  const supabase = await createClient();
+
+  const { data: link, error } = await (supabase as any)
+    .from('link_in_bio_links')
+    .update({
+      title: updates.title,
+      url: updates.url,
+      description: updates.description,
+      icon: updates.icon,
+      is_active: updates.is_active,
+      is_featured: updates.is_featured,
+    })
+    .eq('id', linkId)
+    .eq('user_id', userId)
+    .select()
+    .single();
+
+  if (error) throw new Error(`Failed to update link: ${error.message}`);
+  return link;
+}
+
+export async function deleteLink(
+  userId: string,
+  linkId: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await (supabase as any)
+    .from('link_in_bio_links')
+    .delete()
+    .eq('id', linkId)
+    .eq('user_id', userId);
+
+  if (error) throw new Error(`Failed to delete link: ${error.message}`);
+}
+
 export async function trackClick(
   linkId: string,
   referrer?: string,
