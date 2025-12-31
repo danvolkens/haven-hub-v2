@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { submitQuiz } from '@/lib/quiz/quiz-service';
 import { createClient } from '@supabase/supabase-js';
+import { quizLimiter, rateLimit } from '@/lib/cache/rate-limiter';
 
 const submitSchema = z.object({
   answers: z.record(z.string(), z.array(z.string())),
@@ -15,6 +16,11 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    // Rate limit by IP to prevent abuse
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'anonymous';
+    const rateLimitResponse = await rateLimit(quizLimiter, `quiz:${ip}`);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { slug } = await params;
 
     const supabase = createClient(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { captureLead } from '@/lib/leads/lead-service';
+import { publicApiLimiter, rateLimit } from '@/lib/cache/rate-limiter';
 
 interface FormField {
   name: string;
@@ -13,6 +14,11 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    // Rate limit by IP to prevent spam
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'anonymous';
+    const rateLimitResponse = await rateLimit(publicApiLimiter, `landing:${ip}`);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { slug } = await params;
 
     const supabase = createClient(

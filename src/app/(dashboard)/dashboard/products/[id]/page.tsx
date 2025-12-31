@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
+import DOMPurify from 'dompurify';
 import {
   Package,
   ExternalLink,
@@ -17,6 +18,17 @@ import { PageContainer } from '@/components/layout/page-container';
 import { Button, Card, Badge } from '@/components/ui';
 import { api } from '@/lib/fetcher';
 import { formatCurrency } from '@/lib/utils';
+
+// Sanitize HTML to prevent XSS attacks
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') {
+    return html.replace(/<[^>]*>/g, '');
+  }
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
+  });
+}
 
 interface ProductVariant {
   id: string;
@@ -181,7 +193,7 @@ export default function ProductDetailPage() {
             {product.description && (
               <div
                 className="text-body-sm text-[var(--color-text-secondary)] mb-4 prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
               />
             )}
 

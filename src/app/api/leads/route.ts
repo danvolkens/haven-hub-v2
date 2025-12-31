@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      query = query.or(`email.ilike.%${search}%,first_name.ilike.%${search}%`);
+      // Escape LIKE special characters to prevent injection
+      const escapedSearch = search.replace(/[%_\\]/g, '\\$&');
+      query = query.or(`email.ilike.%${escapedSearch}%,first_name.ilike.%${escapedSearch}%`);
     }
 
     const { data, error, count } = await query;

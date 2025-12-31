@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGiftByCode, claimGift } from '@/lib/gifts/gift-service';
+import { publicApiLimiter, rateLimit } from '@/lib/cache/rate-limiter';
 
 // GET /api/gifts/claim/[code] - Get gift by code (public)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  // Rate limit by IP to prevent enumeration attacks
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'anonymous';
+  const rateLimitResponse = await rateLimit(publicApiLimiter, `gift:${ip}`);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { code } = await params;
 
   try {
@@ -42,6 +48,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  // Rate limit by IP to prevent abuse
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'anonymous';
+  const rateLimitResponse = await rateLimit(publicApiLimiter, `gift-claim:${ip}`);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { code } = await params;
   const body = await request.json();
   const { email } = body;

@@ -1,7 +1,20 @@
 'use client';
 
+import DOMPurify from 'dompurify';
 import { ContentBlock } from './block-types';
 import { Button } from '@/components/ui/button';
+
+// Sanitize HTML to prevent XSS attacks
+function sanitizeHtml(html: string): string {
+  if (typeof window === 'undefined') {
+    // Server-side: strip all HTML tags as a safe fallback
+    return html.replace(/<[^>]*>/g, '');
+  }
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'span'],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'style'],
+  });
+}
 
 interface BlockRendererProps {
   block: ContentBlock;
@@ -43,7 +56,7 @@ export function BlockRenderer({ block, isPreview = false }: BlockRendererProps) 
       return (
         <div
           className={`py-8 px-8 prose max-w-none text-${content.alignment}`}
-          dangerouslySetInnerHTML={{ __html: content.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.content || '') }}
         />
       );
 
