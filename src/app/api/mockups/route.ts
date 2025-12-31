@@ -10,7 +10,7 @@ const querySchema = z.object({
   quoteId: z.string().uuid().optional(),
   collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
   format: z.enum(['pinterest', 'instagram_post', 'instagram_story']).optional(),
-  limit: z.coerce.number().min(1).max(500).default(50),
+  limit: z.coerce.number().min(1).max(100).default(20),
   offset: z.coerce.number().min(0).default(0),
 });
 
