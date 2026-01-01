@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { LandingPage, FormField } from '@/types/leads';
+import { getEpikFromCookie } from '@/lib/pinterest/click-id';
 
 interface Props {
   page: LandingPage;
@@ -12,6 +13,32 @@ export function LandingPageForm({ page }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Track view_category event on mount
+  useEffect(() => {
+    const trackViewCategory = async () => {
+      if (!page.user_id) return;
+
+      const clickId = getEpikFromCookie();
+
+      try {
+        await fetch('/api/pinterest/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: page.user_id,
+            eventType: 'view_category',
+            categoryName: page.collection || page.headline || 'Landing Page',
+            clickId,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to track view_category:', err);
+      }
+    };
+
+    trackViewCategory();
+  }, [page.user_id, page.collection, page.headline]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

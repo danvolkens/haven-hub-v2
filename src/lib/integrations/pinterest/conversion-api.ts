@@ -310,3 +310,63 @@ export async function trackCheckout(
     numItems: options.numItems || options.productIds.length,
   });
 }
+
+export async function trackViewCategory(
+  userId: string,
+  options: {
+    email?: string;
+    clickId?: string;
+    externalId?: string;
+    categoryName: string;
+    productIds?: string[];
+    numItems?: number;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  return trackConversionEvent(userId, {
+    eventName: 'view_category',
+    email: options.email,
+    clickId: options.clickId,
+    externalId: options.externalId,
+    contentCategory: options.categoryName,
+    contentIds: options.productIds,
+    numItems: options.numItems,
+  });
+}
+
+export async function trackPageVisit(
+  userId: string,
+  options: {
+    email?: string;
+    clickId?: string;
+    externalId?: string;
+    pageName?: string;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  return trackConversionEvent(userId, {
+    eventName: 'page_visit',
+    email: options.email,
+    clickId: options.clickId,
+    externalId: options.externalId,
+    contentName: options.pageName,
+  });
+}
+
+export async function trackSearch(
+  userId: string,
+  options: {
+    email?: string;
+    clickId?: string;
+    externalId?: string;
+    searchQuery: string;
+    numResults?: number;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  return trackConversionEvent(userId, {
+    eventName: 'search',
+    email: options.email,
+    clickId: options.clickId,
+    externalId: options.externalId,
+    contentName: options.searchQuery,
+    numItems: options.numResults,
+  });
+}

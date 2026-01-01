@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getEpikFromCookie } from '@/lib/pinterest/click-id';
 
 interface QuizAnswer {
   id: string;
@@ -35,9 +36,10 @@ interface Quiz {
 
 interface Props {
   quiz: Quiz;
+  userId?: string;
 }
 
-export function QuizForm({ quiz }: Props) {
+export function QuizForm({ quiz, userId }: Props) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [scores, setScores] = useState({ grounding: 0, wholeness: 0, growth: 0 });
@@ -45,6 +47,32 @@ export function QuizForm({ quiz }: Props) {
   const [email, setEmail] = useState('');
   const [result, setResult] = useState<QuizResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Track view_category event on mount
+  useEffect(() => {
+    const trackViewCategory = async () => {
+      if (!userId) return;
+
+      const clickId = getEpikFromCookie();
+
+      try {
+        await fetch('/api/pinterest/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            eventType: 'view_category',
+            categoryName: quiz.title || 'Quiz',
+            clickId,
+          }),
+        });
+      } catch (err) {
+        console.error('Failed to track view_category:', err);
+      }
+    };
+
+    trackViewCategory();
+  }, [userId, quiz.title]);
 
   const questions = quiz.questions || [];
   const progress = questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0;

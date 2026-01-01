@@ -1,5 +1,7 @@
+import { Suspense } from 'react';
 import { Crimson_Text, Figtree } from 'next/font/google';
 import { PopupManager } from '@/components/popups/popup-manager';
+import { PinterestClickIdCapture } from '@/components/pinterest/click-id-capture';
 
 // Haven & Hold brand fonts (matching Carrd site)
 const crimsonText = Crimson_Text({
@@ -26,6 +28,10 @@ export default function PublicLayout({
 }) {
   return (
     <div className={`${crimsonText.variable} ${figtree.variable}`}>
+      {/* Capture Pinterest Click ID from URL parameters */}
+      <Suspense fallback={null}>
+        <PinterestClickIdCapture />
+      </Suspense>
       {children}
       {HAVEN_USER_ID && <PopupManager userId={HAVEN_USER_ID} />}
     </div>

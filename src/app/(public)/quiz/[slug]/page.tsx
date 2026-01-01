@@ -76,5 +76,5 @@ export default async function QuizPage({ params }: PageProps) {
     notFound();
   }
 
-  return <QuizForm quiz={quiz} />;
+  return <QuizForm quiz={quiz} userId={quiz.user_id} />;
 }
