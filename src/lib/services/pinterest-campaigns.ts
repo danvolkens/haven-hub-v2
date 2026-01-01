@@ -122,7 +122,9 @@ function buildTargetingSpec(
     };
   }
 
-  // Standard interest targeting (keywords not supported via API targeting_spec)
+  // Standard demographic targeting
+  // Note: INTEREST requires Pinterest interest IDs (not text), so we skip it
+  // and rely on auto_targeting_enabled instead for interest-based reach
   const targeting = template.targeting as {
     interests?: string[];
     keywords?: string[];
@@ -134,12 +136,9 @@ function buildTargetingSpec(
     LOCALE: ['en-US'],
   };
 
-  if (targeting.interests?.length) {
-    spec.INTEREST = targeting.interests;
-  }
-
-  // Note: KEYWORD is not a valid targeting_spec field in Pinterest API
-  // Keywords are used for search ads placement, not demographic targeting
+  // Note: INTEREST requires numeric Pinterest interest IDs, not text strings
+  // See: https://docs.google.com/spreadsheets/d/1HxL-0Z3p2fgxis9YBP2HWC3tvPrs1hAuHDRtH-NJTIM
+  // For now, we use auto_targeting_enabled=true on the ad group instead
 
   if (targeting.demographics?.genders?.length) {
     spec.GENDER = targeting.demographics.genders;
@@ -205,11 +204,12 @@ export async function createPinterestCampaign(
 
   // Create ad group
   // bid_in_micro_currency: default to $0.50 per click (500000 micro-currency)
+  // auto_targeting_enabled: true to let Pinterest find interested users
   const adGroup = await client.createAdGroup(adAccountId, {
     name: `${campaignName}-AdGroup`,
     campaign_id: campaign.id,
     status: 'PAUSED',
-    auto_targeting_enabled: false,
+    auto_targeting_enabled: true, // Let Pinterest expand to interested users
     billable_event: 'CLICKTHROUGH',
     bid_in_micro_currency: 500000, // $0.50 per click
     targeting_spec: targetingSpec,
