@@ -13,7 +13,7 @@ export const CAMPAIGN_TEMPLATES = {
     targeting: {
       interests: ['mental health', 'therapy', 'counseling', 'psychology', 'self-care', 'mindfulness'],
       keywords: ['therapy office decor', 'counselor office prints', 'anxiety wall art'],
-      demographics: { genders: ['female'], ages: ['25-34', '35-44', '45-54'] },
+      demographics: { genders: ['female'], ages: ['25-34', '35-44', '45-49', '50-54'] },
     },
   },
   'hd-core-traffic': {
@@ -25,7 +25,7 @@ export const CAMPAIGN_TEMPLATES = {
     targeting: {
       interests: ['home decor', 'interior design', 'minimalism', 'wall art'],
       keywords: ['printable wall art', 'minimalist quotes', 'bedroom prints'],
-      demographics: { genders: ['female'], ages: ['25-34', '35-44', '45-54'] },
+      demographics: { genders: ['female'], ages: ['25-34', '35-44', '45-49', '50-54'] },
     },
   },
   'rt-site-visitors': {
@@ -45,7 +45,7 @@ export const CAMPAIGN_TEMPLATES = {
     targeting: {
       interests: ['therapy practice', 'counseling', 'psychology', 'office decor'],
       keywords: ['therapy office decor', 'counselor office art'],
-      demographics: { genders: ['female', 'male'], ages: ['25-34', '35-44', '45-54', '55-64'] },
+      demographics: { genders: ['female', 'male'], ages: ['25-34', '35-44', '45-49', '50-54', '55-64'] },
     },
   },
 } as const;
