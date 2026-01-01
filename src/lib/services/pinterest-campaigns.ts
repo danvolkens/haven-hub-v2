@@ -133,7 +133,6 @@ function buildTargetingSpec(
 
   const spec: Record<string, any> = {
     GEO: ['US'],
-    LOCALE: ['en-US'],
   };
 
   // Note: INTEREST requires numeric Pinterest interest IDs, not text strings
