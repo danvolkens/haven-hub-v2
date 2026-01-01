@@ -428,6 +428,7 @@ export async function POST(request: NextRequest) {
             link: overrideLink || item.productLink || quoteData?.product_link || defaultShopUrl,
             image_url: item.imageUrl,
             collection: item.collection,
+            copy_template_id: selectedTemplate?.id || null,
             status: schedule_strategy === 'immediate' ? 'draft' : 'scheduled',
             scheduled_for: schedule_strategy === 'immediate' ? null : scheduleTimes[i].toISOString(),
           })
