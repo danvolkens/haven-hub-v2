@@ -576,6 +576,25 @@ export async function syncPinAnalytics(userId: string): Promise<{
         pinsWithData++;
       }
 
+      // Calculate engagement rate and performance tier
+      const engagementRate = impressions > 0 ? (saves + clicks) / impressions : 0;
+
+      // Determine performance tier based on engagement rate
+      // top: >2% engagement, good: 1-2%, average: 0.5-1%, underperformer: <0.5% after 7+ days
+      let performanceTier = 'pending';
+      if (impressions >= 100) {
+        // Only tier pins with meaningful impression counts
+        if (engagementRate >= 0.02) {
+          performanceTier = 'top';
+        } else if (engagementRate >= 0.01) {
+          performanceTier = 'good';
+        } else if (engagementRate >= 0.005) {
+          performanceTier = 'average';
+        } else {
+          performanceTier = 'underperformer';
+        }
+      }
+
       // Update pin with analytics
       const { error: updateError } = await (supabase as any)
         .from('pins')
@@ -583,7 +602,8 @@ export async function syncPinAnalytics(userId: string): Promise<{
           impressions,
           saves,
           clicks,
-          engagement_rate: impressions > 0 ? (saves + clicks) / impressions : 0,
+          engagement_rate: engagementRate,
+          performance_tier: performanceTier,
           last_metrics_sync: new Date().toISOString(),
         })
         .eq('id', pin.id);

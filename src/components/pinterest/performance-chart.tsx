@@ -15,10 +15,11 @@ interface ChartDataPoint {
 export function PerformanceChart() {
   const { data, isLoading } = useQuery({
     queryKey: ['pinterest-performance-chart'],
-    queryFn: () => api.get<{ data: ChartDataPoint[] }>('/pinterest/analytics/chart'),
+    queryFn: () => api.get<ChartDataPoint[]>('/pinterest/analytics/chart'),
   });
 
-  const chartData = data?.data || [];
+  // API returns array directly, not { data: [...] }
+  const chartData = Array.isArray(data) ? data : [];
   const maxValue = Math.max(
     ...chartData.map((d) => Math.max(d.impressions, d.saves * 10, d.clicks * 10)),
     100

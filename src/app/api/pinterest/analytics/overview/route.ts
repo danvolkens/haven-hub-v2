@@ -43,7 +43,8 @@ export async function GET() {
       impressions,
       saves,
       clicks,
-      engagementRate: impressions > 0 ? ((saves + clicks) / impressions) * 100 : 0,
+      // Return as decimal (0.05 = 5%) so formatPercent works correctly
+      engagementRate: impressions > 0 ? (saves + clicks) / impressions : 0,
       publishedPins: pins?.length || 0,
       topPerformers,
       underperformers,
