@@ -113,15 +113,20 @@ export class PinterestClient {
     campaign: CreateCampaignRequest
   ): Promise<PinterestCampaign> {
     // Pinterest API expects an array of campaigns with ad_account_id in each item
-    const response = await this.request<{ items: Array<{ data: PinterestCampaign }> }>(
+    const response = await this.request<{ items: Array<{ data?: PinterestCampaign; exceptions?: any[] }> }>(
       `/ad_accounts/${adAccountId}/campaigns`,
       {
         method: 'POST',
         body: JSON.stringify([{ ...campaign, ad_account_id: adAccountId }]),
       }
     );
-    // Return the first campaign from the response
-    return response.items[0].data;
+    // Handle response - Pinterest returns items array with data or exceptions
+    const item = response.items?.[0];
+    if (!item?.data) {
+      const error = item?.exceptions?.[0]?.message || 'Failed to create campaign';
+      throw new Error(error);
+    }
+    return item.data;
   }
 
   async updateAdCampaign(
@@ -142,14 +147,20 @@ export class PinterestClient {
     adGroup: CreateAdGroupRequest
   ): Promise<PinterestAdGroup> {
     // Pinterest API expects an array of ad groups with ad_account_id in each item
-    const response = await this.request<{ items: Array<{ data: PinterestAdGroup }> }>(
+    const response = await this.request<{ items: Array<{ data?: PinterestAdGroup; exceptions?: any[] }> }>(
       `/ad_accounts/${adAccountId}/ad_groups`,
       {
         method: 'POST',
         body: JSON.stringify([{ ...adGroup, ad_account_id: adAccountId }]),
       }
     );
-    return response.items[0].data;
+    // Handle response - Pinterest returns items array with data or exceptions
+    const item = response.items?.[0];
+    if (!item?.data) {
+      const error = item?.exceptions?.[0]?.message || 'Failed to create ad group';
+      throw new Error(error);
+    }
+    return item.data;
   }
 
   async updateAdGroup(
@@ -182,14 +193,20 @@ export class PinterestClient {
     ad: CreateAdRequest
   ): Promise<PinterestAd> {
     // Pinterest API expects an array of ads with ad_account_id in each item
-    const response = await this.request<{ items: Array<{ data: PinterestAd }> }>(
+    const response = await this.request<{ items: Array<{ data?: PinterestAd; exceptions?: any[] }> }>(
       `/ad_accounts/${adAccountId}/ads`,
       {
         method: 'POST',
         body: JSON.stringify([{ ...ad, ad_account_id: adAccountId }]),
       }
     );
-    return response.items[0].data;
+    // Handle response - Pinterest returns items array with data or exceptions
+    const item = response.items?.[0];
+    if (!item?.data) {
+      const error = item?.exceptions?.[0]?.message || 'Failed to create ad';
+      throw new Error(error);
+    }
+    return item.data;
   }
 
   async updateAd(
