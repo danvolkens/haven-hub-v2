@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
 
     const { data: pins, error } = await (supabase as any)
       .from('pins')
-      .select('id, title, image_url, impressions, saves, clicks, published_at, pinterest_pin_id')
+      .select('id, title, image_url, impressions, saves, clicks, engagement_rate, performance_tier, collection, published_at, pinterest_pin_id')
       .eq('user_id', userId)
       .eq('status', 'published')
       .order(sortBy, { ascending: false })

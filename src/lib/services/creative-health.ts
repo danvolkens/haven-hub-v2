@@ -215,6 +215,28 @@ export async function updateCreativeHealth(
 
     updates.fatigue_score = calculateFatigueScore(baseline, recent);
     updates.days_since_baseline = daysActive - BASELINE_THRESHOLD.MIN_DAYS;
+
+    // Set status based on fatigue score
+    if (updates.fatigue_score < STATUS_THRESHOLDS.HEALTHY) {
+      updates.status = 'healthy';
+    } else if (updates.fatigue_score < STATUS_THRESHOLDS.DECLINING) {
+      updates.status = 'declining';
+    } else if (updates.fatigue_score < STATUS_THRESHOLDS.FATIGUED) {
+      updates.status = 'fatigued';
+    } else {
+      updates.status = 'critical';
+    }
+
+    // Recommend refresh for fatigued/critical content
+    if (updates.fatigue_score >= STATUS_THRESHOLDS.DECLINING && !health.refresh_recommended) {
+      updates.refresh_recommended = true;
+      updates.refresh_recommended_at = new Date().toISOString();
+      updates.refresh_reason = updates.status === 'critical'
+        ? 'Critical fatigue - immediate refresh needed'
+        : updates.status === 'fatigued'
+          ? 'Performance significantly declined'
+          : 'Performance starting to decline';
+    }
   }
 
   // Perform update
