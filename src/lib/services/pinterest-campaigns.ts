@@ -122,7 +122,7 @@ function buildTargetingSpec(
     };
   }
 
-  // Standard interest/keyword targeting
+  // Standard interest targeting (keywords not supported via API targeting_spec)
   const targeting = template.targeting as {
     interests?: string[];
     keywords?: string[];
@@ -138,12 +138,8 @@ function buildTargetingSpec(
     spec.INTEREST = targeting.interests;
   }
 
-  if (targeting.keywords?.length) {
-    spec.KEYWORD = targeting.keywords.map((keyword) => ({
-      keyword,
-      match_type: 'BROAD',
-    }));
-  }
+  // Note: KEYWORD is not a valid targeting_spec field in Pinterest API
+  // Keywords are used for search ads placement, not demographic targeting
 
   if (targeting.demographics?.genders?.length) {
     spec.GENDER = targeting.demographics.genders;
