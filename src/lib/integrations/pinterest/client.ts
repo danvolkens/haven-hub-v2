@@ -112,10 +112,16 @@ export class PinterestClient {
     adAccountId: string,
     campaign: CreateCampaignRequest
   ): Promise<PinterestCampaign> {
-    return this.request(`/ad_accounts/${adAccountId}/campaigns`, {
-      method: 'POST',
-      body: JSON.stringify(campaign),
-    });
+    // Pinterest API expects an array of campaigns
+    const response = await this.request<{ items: Array<{ data: PinterestCampaign }> }>(
+      `/ad_accounts/${adAccountId}/campaigns`,
+      {
+        method: 'POST',
+        body: JSON.stringify([campaign]),
+      }
+    );
+    // Return the first campaign from the response
+    return response.items[0].data;
   }
 
   async updateAdCampaign(
@@ -135,10 +141,15 @@ export class PinterestClient {
     adAccountId: string,
     adGroup: CreateAdGroupRequest
   ): Promise<PinterestAdGroup> {
-    return this.request(`/ad_accounts/${adAccountId}/ad_groups`, {
-      method: 'POST',
-      body: JSON.stringify(adGroup),
-    });
+    // Pinterest API expects an array of ad groups
+    const response = await this.request<{ items: Array<{ data: PinterestAdGroup }> }>(
+      `/ad_accounts/${adAccountId}/ad_groups`,
+      {
+        method: 'POST',
+        body: JSON.stringify([adGroup]),
+      }
+    );
+    return response.items[0].data;
   }
 
   async updateAdGroup(
@@ -170,10 +181,15 @@ export class PinterestClient {
     adAccountId: string,
     ad: CreateAdRequest
   ): Promise<PinterestAd> {
-    return this.request(`/ad_accounts/${adAccountId}/ads`, {
-      method: 'POST',
-      body: JSON.stringify(ad),
-    });
+    // Pinterest API expects an array of ads
+    const response = await this.request<{ items: Array<{ data: PinterestAd }> }>(
+      `/ad_accounts/${adAccountId}/ads`,
+      {
+        method: 'POST',
+        body: JSON.stringify([ad]),
+      }
+    );
+    return response.items[0].data;
   }
 
   async updateAd(
