@@ -219,9 +219,22 @@ export async function createPinterestCampaign(
   if (options.pinIds?.length) {
     for (const pinId of options.pinIds) {
       try {
+        // Look up the Pinterest pin ID from our database
+        const { data: pin } = await (supabase as any)
+          .from('pins')
+          .select('pinterest_pin_id')
+          .eq('id', pinId)
+          .eq('user_id', userId)
+          .single();
+
+        if (!pin?.pinterest_pin_id) {
+          console.error(`Pin ${pinId} has no Pinterest pin ID`);
+          continue;
+        }
+
         await client.createAd(adAccountId, {
           ad_group_id: adGroup.id,
-          pin_id: pinId,
+          pin_id: pin.pinterest_pin_id, // Use Pinterest's numeric ID
           status: 'PAUSED',
           creative_type: 'REGULAR',
         });
