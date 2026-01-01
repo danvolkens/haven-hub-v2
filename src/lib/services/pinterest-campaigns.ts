@@ -204,12 +204,14 @@ export async function createPinterestCampaign(
   const targetingSpec = buildTargetingSpec(template, visitorAudienceId);
 
   // Create ad group
+  // bid_in_micro_currency: default to $0.50 per click (500000 micro-currency)
   const adGroup = await client.createAdGroup(adAccountId, {
     name: `${campaignName}-AdGroup`,
     campaign_id: campaign.id,
     status: 'PAUSED',
     auto_targeting_enabled: false,
     billable_event: 'CLICKTHROUGH',
+    bid_in_micro_currency: 500000, // $0.50 per click
     targeting_spec: targetingSpec,
   });
 
