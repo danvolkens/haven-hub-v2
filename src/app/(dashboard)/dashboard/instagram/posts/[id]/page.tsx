@@ -247,10 +247,10 @@ export default function InstagramPostDetailPage({
             <Badge variant={STATUS_COLORS[post.status] as any}>
               {post.status}
             </Badge>
-            {canEdit && !isEditing && (
-              <Button variant="secondary" onClick={() => setIsEditing(true)}>
-                Edit
-              </Button>
+            {canEdit && (
+              <Link href={`/dashboard/instagram/new?edit=${id}`}>
+                <Button variant="secondary">Edit</Button>
+              </Link>
             )}
             {canApprove && (
               <Button

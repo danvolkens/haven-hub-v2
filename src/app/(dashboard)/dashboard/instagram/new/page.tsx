@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageContainer } from '@/components/layout/page-container';
 import {
@@ -163,8 +163,25 @@ function formatDateTime(dateString: string): string {
 // ============================================================================
 
 export default function NewInstagramPostPage() {
+  return (
+    <Suspense fallback={
+      <PageContainer title="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    }>
+      <NewInstagramPostContent />
+    </Suspense>
+  );
+}
+
+function NewInstagramPostContent() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditMode = !!editId;
 
   // Form state
   const [postType, setPostType] = useState<PostType>('feed');
@@ -195,6 +212,75 @@ export default function NewInstagramPostPage() {
   const [selectedMockups, setSelectedMockups] = useState<Mockup[]>([]);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [mediaSource, setMediaSource] = useState<'assets' | 'upload' | 'mixed'>('assets');
+
+  // Track if form has been initialized from edit data
+  const [editDataLoaded, setEditDataLoaded] = useState(false);
+
+  // Fetch existing post data when editing
+  interface ExistingPost {
+    id: string;
+    quote_id: string | null;
+    template_id: string | null;
+    post_type: PostType;
+    content_pillar: ContentPillar;
+    status: string;
+    scheduled_at: string;
+    caption: string;
+    hashtags: string[];
+    hashtags_as_comment: boolean;
+    alt_text: string;
+    product_id: string | null;
+    campaign_tag: string | null;
+    crosspost_to_facebook: boolean;
+    primary_asset_id: string | null;
+    additional_assets: string[];
+    primary_asset: Asset | null;
+  }
+
+  const { data: existingPost, isLoading: existingPostLoading } = useQuery<ExistingPost>({
+    queryKey: ['instagram-post', editId],
+    queryFn: async () => {
+      const res = await fetch(`/api/instagram/posts/${editId}`);
+      if (!res.ok) throw new Error('Failed to fetch post');
+      return res.json();
+    },
+    enabled: isEditMode && !!editId,
+  });
+
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (isEditMode && existingPost && !editDataLoaded) {
+      setPostType(existingPost.post_type || 'feed');
+      setContentPillar(existingPost.content_pillar || 'product_showcase');
+      setTemplateId(existingPost.template_id || '');
+      setQuoteId(existingPost.quote_id || '');
+      setCaption(existingPost.caption || '');
+      setHashtags(existingPost.hashtags || []);
+      setHashtagsAsComment(existingPost.hashtags_as_comment ?? true);
+      setAltText(existingPost.alt_text || '');
+      setProductId(existingPost.product_id || '');
+      setCampaignTag(existingPost.campaign_tag || '');
+      setCrossPostFacebook(existingPost.crosspost_to_facebook ?? false);
+      setUseBestTime(false); // Disable best time when editing to preserve scheduled time
+
+      if (existingPost.scheduled_at) {
+        // Convert ISO string to datetime-local format
+        const date = new Date(existingPost.scheduled_at);
+        const localDateTime = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 16);
+        setScheduledAt(localDateTime);
+      }
+
+      // Set primary asset if exists
+      if (existingPost.primary_asset_id && existingPost.primary_asset) {
+        setSelectedAssetIds([existingPost.primary_asset_id]);
+        setSelectedAssets([existingPost.primary_asset]);
+      }
+
+      setEditDataLoaded(true);
+    }
+  }, [isEditMode, existingPost, editDataLoaded]);
 
   // Fetch quotes for selection
   const { data: quotes = [] } = useQuery<Quote[]>({
@@ -274,8 +360,8 @@ export default function NewInstagramPostPage() {
     }
   }, [useBestTime, optimalSlots]);
 
-  // Create post mutation
-  const createMutation = useMutation({
+  // Create/Update post mutation
+  const saveMutation = useMutation({
     mutationFn: async (isDraft: boolean) => {
       // Determine media URLs - combine assets, mockups, and uploads for carousels
       let mediaUrls: string[] = [];
@@ -299,35 +385,45 @@ export default function NewInstagramPostPage() {
         mediaUrls = [...mediaUrls, ...uploadedImages.map(img => img.url)];
       }
 
-      const res = await fetch('/api/instagram/posts', {
-        method: 'POST',
+      const payload = {
+        quote_id: quoteId || null,
+        post_type: postType,
+        content_pillar: contentPillar,
+        caption,
+        hashtags,
+        hashtags_as_comment: hashtagsAsComment,
+        alt_text: altText,
+        product_id: productId || null,
+        campaign_tag: campaignTag || null,
+        crosspost_to_facebook: crossPostFacebook,
+        primary_asset_id: primaryAssetId,
+        additional_assets: additionalAssets,
+        media_urls: mediaUrls,
+        scheduled_at: new Date(scheduledAt).toISOString(),
+        requires_review: isDraft,
+        status: isDraft ? 'draft' : 'scheduled',
+      };
+
+      // Use PATCH for edit, POST for create
+      const url = isEditMode ? `/api/instagram/posts/${editId}` : '/api/instagram/posts';
+      const method = isEditMode ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          quote_id: quoteId || null,
-          post_type: postType,
-          content_pillar: contentPillar,
-          caption,
-          hashtags,
-          hashtags_as_comment: hashtagsAsComment,
-          alt_text: altText,
-          product_id: productId || null,
-          campaign_tag: campaignTag || null,
-          crosspost_to_facebook: crossPostFacebook,
-          primary_asset_id: primaryAssetId,
-          additional_assets: additionalAssets,
-          media_urls: mediaUrls,
-          scheduled_at: new Date(scheduledAt).toISOString(),
-          requires_review: isDraft,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to create post');
+        throw new Error(error.error || `Failed to ${isEditMode ? 'update' : 'create'} post`);
       }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instagram'] });
+      if (isEditMode) {
+        queryClient.invalidateQueries({ queryKey: ['instagram-post', editId] });
+      }
       router.push('/dashboard/instagram/calendar');
     },
   });
@@ -489,7 +585,7 @@ export default function NewInstagramPostPage() {
   };
 
   const handleSubmit = (isDraft: boolean) => {
-    createMutation.mutate(isDraft);
+    saveMutation.mutate(isDraft);
   };
 
   const totalMediaCount = selectedAssetIds.length + selectedMockupIds.length + uploadedImages.length;
@@ -504,8 +600,19 @@ export default function NewInstagramPostPage() {
       ? selectedMockups[0].file_url
       : uploadedImages[0]?.url;
 
+  // Show loading state when fetching existing post for edit
+  if (isEditMode && existingPostLoading) {
+    return (
+      <PageContainer title="Loading...">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
-    <PageContainer title="New Post">
+    <PageContainer title={isEditMode ? 'Edit Post' : 'New Post'}>
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -515,9 +622,13 @@ export default function NewInstagramPostPage() {
             </Button>
           </Link>
           <div>
-            <h2 className="text-2xl font-bold">Schedule Instagram Post</h2>
+            <h2 className="text-2xl font-bold">
+              {isEditMode ? 'Edit Scheduled Post' : 'Schedule Instagram Post'}
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Create and schedule a new Instagram post
+              {isEditMode
+                ? 'Update your scheduled post content and settings'
+                : 'Create and schedule a new Instagram post'}
             </p>
           </div>
         </div>
@@ -1108,32 +1219,32 @@ export default function NewInstagramPostPage() {
           <Button
             variant="secondary"
             onClick={() => handleSubmit(true)}
-            disabled={createMutation.isPending || !caption.trim()}
+            disabled={saveMutation.isPending || !caption.trim()}
           >
-            {createMutation.isPending ? (
+            {saveMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Save className="mr-2 h-4 w-4" />
             )}
-            Save as Draft
+            {isEditMode ? 'Save as Draft' : 'Save as Draft'}
           </Button>
           <Button
             onClick={() => handleSubmit(false)}
-            disabled={createMutation.isPending || !caption.trim()}
+            disabled={saveMutation.isPending || !caption.trim()}
           >
-            {createMutation.isPending ? (
+            {saveMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Send className="mr-2 h-4 w-4" />
             )}
-            Schedule
+            {isEditMode ? 'Update & Schedule' : 'Schedule'}
           </Button>
         </div>
 
-        {createMutation.isError && (
+        {saveMutation.isError && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
-            {createMutation.error.message}
+            {saveMutation.error.message}
           </div>
         )}
       </div>
