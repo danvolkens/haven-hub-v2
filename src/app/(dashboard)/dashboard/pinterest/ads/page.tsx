@@ -42,6 +42,7 @@ import {
   Sparkles,
   Trophy,
   Download,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -342,6 +343,23 @@ export default function PinterestAdsPage() {
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to update status');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ad-campaigns'] });
+    },
+  });
+
+  // Delete campaign mutation
+  const deleteCampaignMutation = useMutation({
+    mutationFn: async (campaignId: string) => {
+      const res = await fetch(`/api/ads/campaigns/${campaignId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete campaign');
       }
       return res.json();
     },
@@ -662,6 +680,19 @@ export default function PinterestAdsPage() {
                               Activate
                             </Button>
                           ) : null}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (confirm('Delete this campaign? It will be archived on Pinterest.')) {
+                                deleteCampaignMutation.mutate(campaign.id);
+                              }
+                            }}
+                            disabled={deleteCampaignMutation.isPending}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     </CardContent>
