@@ -396,6 +396,11 @@ export default function CalendarGeneratePage() {
                             ? `, ${(applyMutation.data as { skipped: number }).skipped} skipped`
                             : ''}
                         </p>
+                        {((applyMutation.data as { errors?: string[] })?.errors?.length ?? 0) > 0 && (
+                          <p className="text-sm text-red-600 mt-1">
+                            Errors: {(applyMutation.data as { errors?: string[] })?.errors?.join(', ')}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </CardContent>

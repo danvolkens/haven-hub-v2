@@ -334,14 +334,12 @@ export async function applyCalendarTemplate(
         user_id: user.id,
         post_type: slot.postType,
         status: createAsDraft ? 'draft' : 'scheduled',
+        requires_review: createAsDraft,
         scheduled_at: scheduledAt.toISOString(),
         caption: `[${slot.templateType}] Auto-generated placeholder - update with content`,
+        hashtags: [],
         content_pillar: slot.contentPillar,
-        metadata: {
-          generated_from: 'calendar_template',
-          week_type: calendar.weekType,
-          template_type: slot.templateType,
-        },
+        campaign_tag: `calendar_${calendar.weekType}`,
       });
 
     if (error) {
