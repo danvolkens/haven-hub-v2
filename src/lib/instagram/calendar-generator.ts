@@ -361,10 +361,19 @@ async function getExistingPosts(
 ): Promise<{ id: string; post_type: string; scheduled_at: string }[]> {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase as any)
     .from('instagram_scheduled_posts')
     .select('id, post_type, scheduled_at')
+    .eq('user_id', user.id)
     .gte('scheduled_at', startDate.toISOString())
     .lte('scheduled_at', endDate.toISOString())
     .neq('status', 'cancelled');
