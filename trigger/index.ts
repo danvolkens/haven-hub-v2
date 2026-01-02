@@ -12,3 +12,5 @@ export { instagramPublisherTask, instagramPublishNowTask } from './instagram-pub
 export { scheduleAutoStoriesTask, publishStoriesTask, scheduleStoriesNowTask } from './instagram-stories';
 export { refreshInstagramTokensTask, refreshTokenNowTask } from './instagram-token-refresh';
 export { syncInstagramMetricsTask } from './instagram-metrics-sync';
+export { pinterestAnalyticsSyncTask } from './pinterest-analytics-sync';
+export { pinterestConversionsSenderTask } from './pinterest-conversions';

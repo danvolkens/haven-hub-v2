@@ -83,6 +83,10 @@
     {
       "path": "/api/cron/cross-platform-sync",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/pinterest-analytics-sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }

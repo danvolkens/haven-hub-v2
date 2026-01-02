@@ -3,8 +3,92 @@ import { PinterestClient, type PinterestBoard, type CreatePinRequest } from './c
 import { PINTEREST_CONFIG, getPinterestAuthUrl } from './config';
 
 // Get Pinterest access token for user from integrations table
+// Automatically refreshes token if expired or expiring soon
 export async function getPinterestToken(userId: string): Promise<string | null> {
   const supabase = getAdminClient();
+
+  // First check if we need to refresh the token
+  const { data: integration } = await (supabase as any)
+    .from('integrations')
+    .select('metadata, token_expires_at')
+    .eq('user_id', userId)
+    .eq('provider', 'pinterest')
+    .eq('status', 'connected')
+    .single();
+
+  if (!integration) return null;
+
+  // Check if token is expired or expiring within 5 minutes
+  const expiresAt = integration.token_expires_at ? new Date(integration.token_expires_at) : null;
+  const fiveMinutesFromNow = new Date(Date.now() + 5 * 60 * 1000);
+
+  if (expiresAt && expiresAt < fiveMinutesFromNow) {
+    // Token is expired or expiring soon - try to refresh
+    console.log('Pinterest token expiring soon, attempting refresh...');
+
+    try {
+      // Get refresh token
+      let refreshToken: string | null = null;
+
+      try {
+        const { data: vaultRefresh } = await supabase.rpc('get_credential', {
+          p_user_id: userId,
+          p_provider: 'pinterest',
+          p_credential_type: 'refresh_token',
+        });
+        refreshToken = vaultRefresh;
+      } catch {
+        // Fallback to metadata
+        refreshToken = integration.metadata?._refresh_token || null;
+      }
+
+      if (refreshToken) {
+        const newTokens = await refreshPinterestToken(refreshToken);
+
+        // Save the new tokens
+        const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
+
+        // Update vault
+        try {
+          await supabase.rpc('store_credential', {
+            p_user_id: userId,
+            p_provider: 'pinterest',
+            p_credential_type: 'access_token',
+            p_credential_value: newTokens.access_token,
+          });
+
+          await supabase.rpc('store_credential', {
+            p_user_id: userId,
+            p_provider: 'pinterest',
+            p_credential_type: 'refresh_token',
+            p_credential_value: newTokens.refresh_token,
+          });
+        } catch {
+          console.log('Vault update not available, using metadata fallback');
+        }
+
+        // Update integration record
+        await (supabase as any)
+          .from('integrations')
+          .update({
+            token_expires_at: newExpiresAt,
+            metadata: {
+              ...integration.metadata,
+              _access_token: newTokens.access_token,
+              _refresh_token: newTokens.refresh_token,
+            },
+          })
+          .eq('user_id', userId)
+          .eq('provider', 'pinterest');
+
+        console.log('Pinterest token refreshed successfully');
+        return newTokens.access_token;
+      }
+    } catch (err) {
+      console.error('Failed to refresh Pinterest token:', err);
+      // Continue to try returning existing token
+    }
+  }
 
   // Try to get token from vault first
   try {
@@ -22,14 +106,6 @@ export async function getPinterestToken(userId: string): Promise<string | null> 
   }
 
   // Fallback to metadata (for local dev when vault isn't available)
-  const { data: integration } = await (supabase as any)
-    .from('integrations')
-    .select('metadata')
-    .eq('user_id', userId)
-    .eq('provider', 'pinterest')
-    .eq('status', 'connected')
-    .single();
-
   return integration?.metadata?._access_token || null;
 }
 

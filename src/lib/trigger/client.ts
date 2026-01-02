@@ -174,3 +174,15 @@ export async function schedulePinsBatch(
 export async function cancelScheduledPin(runId: string) {
   return runs.cancel(runId);
 }
+
+// ==========================================
+// Pinterest Analytics Sync
+// ==========================================
+
+/**
+ * Trigger Pinterest analytics sync for all connected users.
+ * Syncs pin performance metrics from Pinterest API.
+ */
+export async function triggerPinterestAnalyticsSync() {
+  return tasks.trigger('pinterest-analytics-sync', {});
+}
