@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,8 +89,24 @@ const WEEK_TYPE_COLORS: Record<WeekType, string> = {
   conversion: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function CalendarGeneratePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <CalendarGenerateContent />
+    </Suspense>
+  );
+}
+
+function CalendarGenerateContent() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const weekTypeFromUrl = searchParams.get('weekType') as WeekType | null;
+
   const [selectedWeekType, setSelectedWeekType] = useState<WeekType | null>(null);
   const [startDate, setStartDate] = useState(() => {
     // Default to next Monday
@@ -101,6 +118,13 @@ export default function CalendarGeneratePage() {
   });
   const [skipExisting, setSkipExisting] = useState(true);
   const [createAsDraft, setCreateAsDraft] = useState(false);
+
+  // Auto-select week type from URL parameter
+  useEffect(() => {
+    if (weekTypeFromUrl && ['foundation', 'engagement', 'community', 'conversion'].includes(weekTypeFromUrl)) {
+      setSelectedWeekType(weekTypeFromUrl);
+    }
+  }, [weekTypeFromUrl]);
 
   // Fetch templates
   const { data: templates = [], isLoading: templatesLoading } = useQuery<WeekTemplate[]>({
