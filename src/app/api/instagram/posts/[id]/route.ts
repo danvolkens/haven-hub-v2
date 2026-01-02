@@ -33,7 +33,7 @@ export async function GET(
           id,
           file_url,
           thumbnail_url,
-          type
+          format
         )
       `)
       .eq('id', id)
@@ -80,7 +80,9 @@ export async function GET(
         id: post.primary_asset.id,
         url: post.primary_asset.file_url,
         thumbnail_url: post.primary_asset.thumbnail_url,
-        type: post.primary_asset.type || 'image',
+        // Assets from quotes table are always images; format is the platform format (instagram_post, etc.)
+        type: 'image',
+        format: post.primary_asset.format,
       } : null,
     };
 
