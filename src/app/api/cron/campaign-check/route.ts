@@ -8,10 +8,11 @@ export const GET = cronHandler(async (request: NextRequest) => {
   const now = new Date().toISOString();
 
   // Auto-end campaigns that have passed their end date
+  // Note: The schema uses end_date (DATE) not ended_at (TIMESTAMPTZ)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: expiredCampaigns, error } = await (supabase as any)
     .from('campaigns')
-    .update({ status: 'completed', ended_at: now })
+    .update({ status: 'completed' })
     .eq('status', 'active')
     .lt('end_date', now)
     .select('id');

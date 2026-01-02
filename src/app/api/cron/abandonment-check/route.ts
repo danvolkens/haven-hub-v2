@@ -2,15 +2,24 @@ import { NextRequest } from 'next/server';
 import { cronHandler } from '@/lib/cron/verify-cron';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-// Type for abandoned_checkouts table (not yet in generated types)
+// Type for abandoned_checkouts table (matches schema)
 interface AbandonedCheckout {
   id: string;
   user_id: string;
   shopify_checkout_id: string;
-  customer_email: string | null;
-  order_id: string | null;
-  status: string;
-  checkout_data: Record<string, unknown>;
+  email: string;
+  customer_id: string | null;
+  lead_id: string | null;
+  cart_total: number;
+  cart_items: unknown[];
+  checkout_url: string | null;
+  abandoned_at: string;
+  status: 'abandoned' | 'sequence_triggered' | 'recovered' | 'expired';
+  sequence_triggered_at: string | null;
+  klaviyo_flow_id: string | null;
+  recovered_at: string | null;
+  recovered_order_id: string | null;
+  recovered_order_total: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -26,10 +35,9 @@ export const GET = cronHandler(async (_request: NextRequest) => {
   // Use 'as any' cast since abandoned_checkouts not yet in generated types
   const { data: checkouts, error } = await (supabase as any)
     .from('abandoned_checkouts')
-    .select('id, user_id, shopify_checkout_id, customer_email, order_id, status, checkout_data, created_at, updated_at')
-    .eq('status', 'pending')
-    .lt('created_at', cutoffTime)
-    .is('order_id', null)
+    .select('id, user_id, shopify_checkout_id, email, cart_total, cart_items, checkout_url, abandoned_at, status')
+    .eq('status', 'abandoned')
+    .lt('abandoned_at', cutoffTime)
     .limit(100);
 
   if (error) {
@@ -45,10 +53,13 @@ export const GET = cronHandler(async (_request: NextRequest) => {
   for (const checkout of checkouts as AbandonedCheckout[]) {
     const checkoutId = checkout.id;
     try {
-      // Mark as processing - use 'as any' to avoid TypeScript inference issues
+      // Mark as processing and set trigger timestamp
       const { error: updateError } = await (supabase as any)
         .from('abandoned_checkouts')
-        .update({ status: 'sequence_triggered' })
+        .update({
+          status: 'sequence_triggered',
+          sequence_triggered_at: new Date().toISOString()
+        })
         .eq('id', checkoutId);
 
       if (updateError) throw updateError;
