@@ -4,9 +4,17 @@ import { getApiUserId } from '@/lib/auth/session';
 import { generatePinCopy, applyTemplate } from '@/lib/pinterest/copy-generator';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+// Helper to validate UUID or return undefined
+const optionalUuid = z.string().optional().nullable().transform(val => {
+  if (!val || val.trim() === '') return undefined;
+  // Basic UUID format check
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(val) ? val : undefined;
+});
+
 const generateSchema = z.object({
   // Either provide quote metadata directly
-  quote_text: z.string().min(1).optional(),
+  quote_text: z.string().optional().nullable().transform(val => val?.trim() || undefined),
   // Accept any string for collection - we'll normalize it later
   collection: z.string().optional().nullable().transform(val => {
     if (!val) return undefined;
@@ -17,13 +25,13 @@ const generateSchema = z.object({
     return undefined;
   }),
   mood: z.string().optional().nullable().transform(val => val || undefined),
-  // Or reference a quote/mockup/asset by ID
-  quoteId: z.string().uuid().optional().nullable(),
-  mockupId: z.string().uuid().optional().nullable(),
-  assetId: z.string().uuid().optional().nullable(),
+  // Or reference a quote/mockup/asset by ID - allow empty strings
+  quoteId: optionalUuid,
+  mockupId: optionalUuid,
+  assetId: optionalUuid,
   // Optionally use a specific template
-  templateId: z.string().uuid().optional().nullable(),
-  // Product link for templates - accept any string but validate if provided
+  templateId: optionalUuid,
+  // Product link for templates - accept any string
   product_link: z.string().optional().nullable().transform(val => val || undefined),
 });
 
@@ -33,7 +41,19 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerSupabaseClient();
 
     const body = await request.json();
-    const data = generateSchema.parse(body);
+
+    // Debug logging - remove once issue is resolved
+    console.log('[copy-templates/generate] Request body:', JSON.stringify(body, null, 2));
+
+    const parseResult = generateSchema.safeParse(body);
+    if (!parseResult.success) {
+      console.error('[copy-templates/generate] Validation errors:', parseResult.error.issues);
+      return NextResponse.json(
+        { error: 'Invalid request data', details: parseResult.error.issues },
+        { status: 400 }
+      );
+    }
+    const data = parseResult.data;
 
     let quoteText = data.quote_text;
     let collection = data.collection;
@@ -140,13 +160,10 @@ export async function POST(request: NextRequest) {
       source: 'auto-generated',
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
-    }
     if (error instanceof Error && error.message === 'Unauthorized') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Error generating copy:', error);
+    console.error('[copy-templates/generate] Error:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal error' },
       { status: 500 }
