@@ -304,9 +304,16 @@ export async function createTikTokQueueEntry(
 
   // 7. Update hook usage count if we used a real hook
   if (hook && hook.id !== 'default') {
+    // Fetch current usage count and increment
+    const { data: hookData } = await (supabase as any)
+      .from('video_hooks')
+      .select('usage_count')
+      .eq('id', hook.id)
+      .single();
+
     await (supabase as any)
       .from('video_hooks')
-      .update({ usage_count: (supabase as any).sql`usage_count + 1` })
+      .update({ usage_count: (hookData?.usage_count || 0) + 1 })
       .eq('id', hook.id);
   }
 

@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// UUID validation regex
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // PATCH /api/tiktok/queue/[id]/posted - Mark item as posted
 export async function PATCH(
   request: Request,
@@ -8,6 +11,12 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+
+    // Validate UUID format
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

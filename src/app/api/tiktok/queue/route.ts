@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { addDays, parseISO, format } from 'date-fns';
+import { addDays, parseISO, format, isValid } from 'date-fns';
+
+// Date format validation (YYYY-MM-DD)
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 // GET /api/tiktok/queue - Get queue items for a week
 export async function GET(request: Request) {
@@ -18,7 +21,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'weekStart required' }, { status: 400 });
     }
 
+    // Validate date format
+    if (!DATE_REGEX.test(weekStart)) {
+      return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 });
+    }
+
     const startDate = parseISO(weekStart);
+
+    // Validate the date is valid (e.g., not 2024-02-30)
+    if (!isValid(startDate)) {
+      return NextResponse.json({ error: 'Invalid date' }, { status: 400 });
+    }
     const endDate = addDays(startDate, 7);
 
     const { data: queueItems, error } = await (supabase as any)
