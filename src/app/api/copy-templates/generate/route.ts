@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getApiUserId } from '@/lib/auth/session';
 import { generatePinCopy, applyTemplate } from '@/lib/pinterest/copy-generator';
+import { generateEnhancedCopy, generateCopyVariations } from '@/lib/copy-engine/copy-generator';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 // Helper to validate UUID or return undefined
@@ -12,19 +13,27 @@ const optionalUuid = z.string().optional().nullable().transform(val => {
   return uuidRegex.test(val) ? val : undefined;
 });
 
+// Normalize collection value
+const normalizeCollection = (val: string | null | undefined) => {
+  if (!val) return undefined;
+  const normalized = val.toLowerCase().trim();
+  if (['grounding', 'wholeness', 'growth'].includes(normalized)) {
+    return normalized as 'grounding' | 'wholeness' | 'growth';
+  }
+  return undefined;
+};
+
 const generateSchema = z.object({
-  // Either provide quote metadata directly
+  // Quote text - accept either 'quote' or 'quote_text' field names
   quote_text: z.string().optional().nullable().transform(val => val?.trim() || undefined),
+  quote: z.string().optional().nullable().transform(val => val?.trim() || undefined),
   // Accept any string for collection - we'll normalize it later
-  collection: z.string().optional().nullable().transform(val => {
-    if (!val) return undefined;
-    const normalized = val.toLowerCase().trim();
-    if (['grounding', 'wholeness', 'growth'].includes(normalized)) {
-      return normalized as 'grounding' | 'wholeness' | 'growth';
-    }
-    return undefined;
-  }),
+  collection: z.string().optional().nullable().transform(normalizeCollection),
   mood: z.string().optional().nullable().transform(val => val || undefined),
+  // Additional fields from settings page
+  roomType: z.string().optional().nullable(),
+  shopName: z.string().optional().nullable(),
+  variations: z.number().optional().nullable(),
   // Or reference a quote/mockup/asset by ID - allow empty strings
   quoteId: optionalUuid,
   mockupId: optionalUuid,
@@ -37,7 +46,7 @@ const generateSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await getApiUserId();
+    const userId = await getApiUserId();
     const supabase = await createServerSupabaseClient();
 
     const body = await request.json();
@@ -55,7 +64,8 @@ export async function POST(request: NextRequest) {
     }
     const data = parseResult.data;
 
-    let quoteText = data.quote_text;
+    // Accept either 'quote' or 'quote_text' field
+    let quoteText = data.quote_text || data.quote;
     let collection = data.collection;
     let mood = data.mood;
 
@@ -111,6 +121,42 @@ export async function POST(request: NextRequest) {
         { error: 'Quote text is required. Provide quote_text directly or a valid quoteId/mockupId/assetId.' },
         { status: 400 }
       );
+    }
+
+    // If request has roomType/shopName/variations, use the enhanced copy engine
+    // This is for the settings page copy testing feature
+    if (data.roomType || data.shopName || data.variations) {
+      const variations = data.variations || 1;
+
+      if (variations > 1) {
+        // Generate multiple variations for A/B testing
+        const copies = await generateCopyVariations(userId, {
+          quote: quoteText,
+          collection: collection,
+          mood: mood,
+          roomType: data.roomType || undefined,
+          shopName: data.shopName || undefined,
+        }, variations);
+
+        return NextResponse.json({
+          copies,
+          source: 'enhanced-engine',
+        });
+      } else {
+        // Generate single copy
+        const copy = await generateEnhancedCopy(userId, {
+          quote: quoteText,
+          collection: collection,
+          mood: mood,
+          roomType: data.roomType || undefined,
+          shopName: data.shopName || undefined,
+        });
+
+        return NextResponse.json({
+          copy,
+          source: 'enhanced-engine',
+        });
+      }
     }
 
     // If templateId provided, use that template
