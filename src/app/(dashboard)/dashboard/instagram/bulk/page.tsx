@@ -114,34 +114,40 @@ export default function BulkSchedulePage() {
     },
   });
 
-  // Create posts mutation
+  // Create posts mutation - use bulk API for efficiency
   const createMutation = useMutation({
     mutationFn: async () => {
-      const results = await Promise.all(
-        scheduleSlots.map(async (slot) => {
-          const quote = quotes.find(q => q.id === slot.quoteId);
-          let caption = `"${quote?.text || ''}"`;
-          if (quote?.attribution) {
-            caption += `\n\n— ${quote.attribution}`;
-          }
+      const posts = scheduleSlots.map((slot) => {
+        const quote = quotes.find(q => q.id === slot.quoteId);
+        let caption = `"${quote?.text || ''}"`;
+        if (quote?.attribution) {
+          caption += `\n\n— ${quote.attribution}`;
+        }
 
-          const res = await fetch('/api/instagram/posts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              quote_id: slot.quoteId,
-              post_type: slot.postType,
-              content_pillar: slot.contentPillar,
-              caption,
-              hashtags: [],
-              scheduled_at: slot.scheduledAt,
-              requires_review: true,
-            }),
-          });
-          return res.ok;
-        })
-      );
-      return results.every(Boolean);
+        return {
+          quote_id: slot.quoteId,
+          post_type: slot.postType,
+          content_pillar: slot.contentPillar,
+          caption,
+          hashtags: [],
+          scheduled_at: slot.scheduledAt,
+          // Let the API determine based on operator mode
+          // Don't force requires_review: true
+        };
+      });
+
+      const res = await fetch('/api/instagram/posts/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ posts }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to create posts');
+      }
+
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['instagram'] });

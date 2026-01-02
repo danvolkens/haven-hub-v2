@@ -17,15 +17,15 @@ import type { ScheduledPost } from '@/lib/instagram/api';
 interface DuePost {
   id: string;
   user_id: string;
-  asset_id: string | null;
+  primary_asset_id: string | null;
   post_type: 'feed' | 'reel' | 'carousel' | 'story';
   caption: string;
   hashtags: string[];
   scheduled_at: string;
   retry_count: number;
   status: string;
-  assets?: {
-    url: string;
+  primary_asset?: {
+    file_url: string;
   };
   carousel_items?: Array<{
     asset_url: string;
@@ -75,14 +75,14 @@ export const instagramPublisherTask = schedules.task({
         `
         id,
         user_id,
-        asset_id,
+        primary_asset_id,
         post_type,
         caption,
         hashtags,
         scheduled_at,
         retry_count,
         status,
-        assets:assets!instagram_scheduled_posts_primary_asset_id_fkey (url),
+        primary_asset:primary_asset_id (file_url),
         carousel_items (asset_url, media_type, position)
       `
       )
@@ -118,8 +118,8 @@ export const instagramPublisherTask = schedules.task({
         const scheduledPost: ScheduledPost = {
           id: post.id,
           user_id: post.user_id,
-          asset_id: post.asset_id,
-          asset_url: post.assets?.url || '',
+          asset_id: post.primary_asset_id,
+          asset_url: post.primary_asset?.file_url || '',
           post_type: post.post_type,
           caption: post.caption,
           hashtags: post.hashtags || [],
@@ -143,9 +143,9 @@ export const instagramPublisherTask = schedules.task({
           await supabase
             .from('instagram_scheduled_posts')
             .update({
-              status: 'posted',
+              status: 'published',
               instagram_media_id: result.instagram_media_id,
-              posted_at: new Date().toISOString(),
+              published_at: new Date().toISOString(),
               error_message: null,
             })
             .eq('id', post.id);
@@ -348,14 +348,14 @@ export const instagramPublishNowTask = task({
         `
         id,
         user_id,
-        asset_id,
+        primary_asset_id,
         post_type,
         caption,
         hashtags,
         scheduled_at,
         retry_count,
         status,
-        assets:assets!instagram_scheduled_posts_primary_asset_id_fkey (url)
+        primary_asset:primary_asset_id (file_url)
       `
       )
       .eq('id', payload.postId)
@@ -370,8 +370,8 @@ export const instagramPublishNowTask = task({
     const scheduledPost: ScheduledPost = {
       id: post.id,
       user_id: post.user_id,
-      asset_id: post.asset_id,
-      asset_url: (post as unknown as DuePost).assets?.url || '',
+      asset_id: post.primary_asset_id,
+      asset_url: (post as unknown as DuePost).primary_asset?.file_url || '',
       post_type: post.post_type as 'feed' | 'reel' | 'carousel' | 'story',
       caption: post.caption,
       hashtags: post.hashtags || [],
@@ -383,9 +383,9 @@ export const instagramPublishNowTask = task({
       await supabase
         .from('instagram_scheduled_posts')
         .update({
-          status: 'posted',
+          status: 'published',
           instagram_media_id: result.instagram_media_id,
-          posted_at: new Date().toISOString(),
+          published_at: new Date().toISOString(),
         })
         .eq('id', post.id);
     }

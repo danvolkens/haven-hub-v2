@@ -92,9 +92,9 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await query;
 
     if (error) {
-      // Table might not exist yet - return empty array
       console.error('Error fetching posts:', error);
-      return NextResponse.json([]);
+      // Return error response so frontend can handle it properly
+      return NextResponse.json({ error: error.message, posts: [] }, { status: 500 });
     }
 
     // Transform to expected format for review page and calendar
