@@ -7,16 +7,24 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 const generateSchema = z.object({
   // Either provide quote metadata directly
   quote_text: z.string().min(1).optional(),
-  collection: z.enum(['grounding', 'wholeness', 'growth']).optional(),
-  mood: z.string().optional(),
+  // Accept any string for collection - we'll normalize it later
+  collection: z.string().optional().nullable().transform(val => {
+    if (!val) return undefined;
+    const normalized = val.toLowerCase().trim();
+    if (['grounding', 'wholeness', 'growth'].includes(normalized)) {
+      return normalized as 'grounding' | 'wholeness' | 'growth';
+    }
+    return undefined;
+  }),
+  mood: z.string().optional().nullable().transform(val => val || undefined),
   // Or reference a quote/mockup/asset by ID
-  quoteId: z.string().uuid().optional(),
-  mockupId: z.string().uuid().optional(),
-  assetId: z.string().uuid().optional(),
+  quoteId: z.string().uuid().optional().nullable(),
+  mockupId: z.string().uuid().optional().nullable(),
+  assetId: z.string().uuid().optional().nullable(),
   // Optionally use a specific template
-  templateId: z.string().uuid().optional(),
-  // Product link for templates
-  product_link: z.string().url().optional(),
+  templateId: z.string().uuid().optional().nullable(),
+  // Product link for templates - accept any string but validate if provided
+  product_link: z.string().optional().nullable().transform(val => val || undefined),
 });
 
 export async function POST(request: NextRequest) {
@@ -47,14 +55,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.mockupId) {
+      // Mockups have direct quote_id reference
       const { data: mockup } = await (supabase as any)
         .from('mockups')
-        .select('assets(quotes(text, collection, mood))')
+        .select('quotes(text, collection, mood)')
         .eq('id', data.mockupId)
         .single();
 
-      if (mockup?.assets?.quotes) {
-        const quote = mockup.assets.quotes;
+      if (mockup?.quotes) {
+        const quote = mockup.quotes;
         quoteText = quoteText || quote.text;
         collection = collection || quote.collection;
         mood = mood || quote.mood;
